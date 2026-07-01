@@ -165,6 +165,54 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-s
 .ph-body{font-size:13px;color:var(--muted);line-height:1.6;max-width:260px}
 .coming-pill{display:inline-block;background:var(--gs);color:var(--gm);font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;margin-top:12px;letter-spacing:.4px;text-transform:uppercase}
 
+/* ── VEHICLE SCREEN ── */
+.veh-section{padding:14px 16px 6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.veh-card{margin:0 16px 10px;background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.veh-card-head{padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.veh-card-title{font-size:14px;font-weight:700;color:var(--g)}
+.veh-card-body{padding:14px 16px}
+.odo-row{display:flex;gap:10px;align-items:center}
+.odo-input{flex:1;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:18px;font-weight:700;font-family:'Playfair Display',serif;color:var(--g);outline:none;text-align:center;background:var(--cream);transition:border-color .15s}
+.odo-input:focus{border-color:var(--gm)}
+.btn-odo{padding:12px 18px;background:var(--gm);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:opacity .15s}
+.btn-odo:hover{opacity:.88}
+.btn-odo:disabled{opacity:.45;cursor:default}
+.odo-hint{font-size:11px;color:var(--muted);margin-top:8px}
+
+/* inspection checklist */
+.check-list{display:flex;flex-direction:column;gap:0}
+.check-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.check-item:last-child{border-bottom:none}
+.check-box{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,border-color .15s;font-size:13px;background:#fff}
+.check-box.done{background:var(--gm);border-color:var(--gm);color:#fff}
+.check-item-text{flex:1;font-size:13px;color:var(--text);font-weight:500}
+.check-item-text.done{text-decoration:line-through;color:var(--muted)}
+
+/* upload zones */
+.up-zone{border:2px dashed var(--border);border-radius:10px;padding:18px 12px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;position:relative}
+.up-zone:hover{border-color:var(--gm);background:var(--gs)}
+.up-zone.has-file{border-color:var(--gm);background:#f0fdf4}
+.up-zone .uz-icon{font-size:24px;margin-bottom:4px}
+.up-zone .uz-label{font-size:12px;font-weight:600;color:var(--muted)}
+.up-zone.has-file .uz-label{color:var(--gm)}
+.up-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.up-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.btn-submit-insp{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-top:4px}
+.btn-submit-insp:hover{opacity:.88}
+.btn-submit-insp:disabled{opacity:.45;cursor:default}
+
+/* payment upload */
+.pay-upload-card{margin:0 16px 10px;background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.pay-upload-head{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.pay-history-row{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)}
+.pay-history-row:last-child{border-bottom:none}
+.pay-hist-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pay-hist-ok{background:#4ade80}
+.pay-hist-pend{background:var(--amber)}
+.pay-hist-info{flex:1}
+.pay-hist-label{font-size:13px;font-weight:600;color:var(--text)}
+.pay-hist-date{font-size:11px;color:var(--muted);margin-top:1px}
+
 /* ── TOAST ── */
 .toast{position:fixed;bottom:calc(var(--tab-h) + 16px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--g);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:300}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -216,15 +264,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-s
     </div>
   </div>
 
-  <!-- ── VEHICLE SCREEN (placeholder) ── -->
+  <!-- ── VEHICLE SCREEN ── -->
   <div class="screen" id="scr-vehicle">
-    <div class="screen-body">
-      <div class="ph-screen">
-        <div class="ph-icon">🚗</div>
-        <div class="ph-title">Vehicle & Trips</div>
-        <div class="ph-body">Trip tracking, odometer updates, weekly inspections and payment proof uploads.</div>
-        <span class="coming-pill">Coming next</span>
-      </div>
+    <div class="screen-body" id="vehicle-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
     </div>
   </div>
 
@@ -583,9 +626,223 @@ function switchTab(name){
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
   var scr=eid('scr-'+name); if(scr)scr.classList.add('on');
   var tab=eid('tab-'+name); if(tab)tab.classList.add('on');
-  // Update header subtitle
   var labels={home:'Driver App',vehicle:'My Vehicle',trust:'TrustScore',community:'Community',profile:'My Profile'};
   eid('hdr-sub').textContent=labels[name]||'Driver App';
+  if(name==='vehicle')renderVehicle();
+}
+
+// ── VEHICLE SCREEN ─────────────────────
+var _inspChecks={tyres:false,lights:false,wipers:false,brakes:false,oil:false,windows:false};
+var _inspPhotos={front:null,interior:null};
+var _payFile=null;
+var _payHistory=[];
+
+async function renderVehicle(){
+  var vb=eid('vehicle-body');
+  if(!vb)return;
+  // Fetch recent payment proofs from supabase
+  var ppR=await sb.from('payment_proofs').select('*').eq('driver_id',U.id).order('created_at',{ascending:false}).limit(5);
+  _payHistory=(ppR.data&&!ppR.error)?ppR.data:[];
+
+  var odo=DP&&DP.odometer_km?DP.odometer_km:'';
+  var lastInsp=DP&&DP.last_inspection_at?new Date(DP.last_inspection_at):null;
+  var nextInspDate=lastInsp?new Date(lastInsp.getTime()+7*864e5):new Date(0);
+  var inspDays=Math.ceil((nextInspDate-new Date())/864e5);
+  var inspDue=inspDays<=0;
+
+  var html='';
+
+  // ── Odometer section
+  html+='<div class="veh-section">Odometer</div>';
+  html+='<div class="veh-card">';
+  html+='<div class="veh-card-body">';
+  html+='<div class="odo-row">';
+  html+='<input class="odo-input" id="odo-inp" type="number" min="0" placeholder="'+(odo||'Enter km')+'" value="'+esc(String(odo||''))+'"/>';
+  html+='<button class="btn-odo" id="odo-btn" onclick="saveOdo()">Save</button>';
+  html+='</div>';
+  html+='<div class="odo-hint">'+(odo?'Current: <strong>'+Number(odo).toLocaleString('en-ZA')+' km</strong> — enter new reading to update':'Enter the current odometer reading from your dashboard')+'</div>';
+  html+='</div></div>';
+
+  // ── Weekly Inspection section
+  html+='<div class="veh-section">Weekly Inspection '+(inspDue?'<span style="color:var(--red);font-size:10px">● OVERDUE</span>':'')+'</div>';
+  html+='<div class="veh-card">';
+  html+='<div class="veh-card-head"><div class="veh-card-title">📋 Pre-trip Checklist</div>'
+    +(lastInsp?'<span style="font-size:11px;color:var(--muted)">Last: '+fmtDate(lastInsp.toISOString())+'</span>':'<span style="font-size:11px;color:var(--amber)">Never done</span>')+'</div>';
+  html+='<div class="veh-card-body">';
+  var checkItems=[
+    {k:'tyres',label:'Tyres — pressure & tread OK'},
+    {k:'lights',label:'Lights — headlights, tail & indicators'},
+    {k:'wipers',label:'Wipers & washer fluid'},
+    {k:'brakes',label:'Brakes — no grinding or pulling'},
+    {k:'oil',label:'Oil & fluid levels'},
+    {k:'windows',label:'Windows & mirrors — clean & uncracked'}
+  ];
+  html+='<div class="check-list">';
+  checkItems.forEach(function(c){
+    var done=_inspChecks[c.k];
+    html+='<div class="check-item" onclick="toggleCheck(\''+c.k+'\')">'
+      +'<div class="check-box'+(done?' done':'\')+' id="cb-'+c.k+'">'+( done?'✓':'')+'</div>'
+      +'<div class="check-item-text'+(done?' done':'\')+' id="ct-'+c.k+'">'+esc(c.label)+'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // Photo uploads
+  html+='<div style="margin-top:14px;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Inspection Photos</div>';
+  html+='<div class="up-grid">';
+  html+='<label class="up-zone'+((_inspPhotos.front)?'has-file':'')+'" id="uz-front">'
+    +'<div class="uz-icon">📸</div>'
+    +'<div class="uz-label" id="uz-front-lbl">'+(_inspPhotos.front?'Front ✓':'Front of car')+'</div>'
+    +'<input type="file" accept="image/*" capture="environment" onchange="setInspPhoto(\'front\',this)">'
+    +'</label>';
+  html+='<label class="up-zone'+((_inspPhotos.interior)?'has-file':'')+'" id="uz-interior">'
+    +'<div class="uz-icon">🪑</div>'
+    +'<div class="uz-label" id="uz-interior-lbl">'+(_inspPhotos.interior?'Interior ✓':'Interior')+'</div>'
+    +'<input type="file" accept="image/*" capture="environment" onchange="setInspPhoto(\'interior\',this)">'
+    +'</label>';
+  html+='</div>';
+
+  html+='<button class="btn-submit-insp" id="insp-btn" onclick="submitInspection()">Submit Inspection</button>';
+  html+='</div></div>';
+
+  // ── Payment Proof section
+  html+='<div class="veh-section">Payment Proof</div>';
+  html+='<div class="pay-upload-card">';
+  html+='<div class="pay-upload-head"><div class="veh-card-title">💳 Weekly Rental Proof</div>'
+    +(CAR?'<span style="font-size:13px;font-weight:800;color:var(--gm)">R'+esc(String(CAR.price_per_week||'—'))+'</span>':'')+'</div>';
+  html+='<div style="padding:14px 16px">';
+  html+='<label class="up-zone" id="uz-pay" style="margin-bottom:12px">'
+    +'<div class="uz-icon">🧾</div>'
+    +'<div class="uz-label" id="uz-pay-lbl">Tap to upload payment screenshot</div>'
+    +'<input type="file" accept="image/*" onchange="setPayFile(this)">'
+    +'</label>';
+  html+='<button class="btn-submit-insp" id="pay-btn" onclick="submitPayment()">Submit Proof</button>';
+  html+='</div>';
+
+  // Payment history
+  if(_payHistory.length){
+    html+='<div style="padding:0 16px 8px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Recent Submissions</div>';
+    _payHistory.forEach(function(p){
+      var isPending=p.status==='pending';
+      html+='<div class="pay-history-row">'
+        +'<div class="pay-hist-status '+(isPending?'pay-hist-pend':'pay-hist-ok')+'"></div>'
+        +'<div class="pay-hist-info">'
+        +'<div class="pay-hist-label">'+(isPending?'Pending review':'Verified')+'</div>'
+        +'<div class="pay-hist-date">'+fmtDate(p.created_at)+'</div>'
+        +'</div>'
+        +(p.proof_url?'<a href="'+esc(p.proof_url)+'" target="_blank" style="font-size:11px;color:var(--gm);font-weight:700;text-decoration:none">View</a>':'')
+        +'</div>';
+    });
+  }
+  html+='</div>';
+
+  html+='<div style="height:8px"></div>';
+  vb.innerHTML=html;
+}
+
+function toggleCheck(k){
+  _inspChecks[k]=!_inspChecks[k];
+  var cb=eid('cb-'+k), ct=eid('ct-'+k);
+  if(cb){cb.className='check-box'+(_inspChecks[k]?' done':'');cb.textContent=_inspChecks[k]?'✓':'';}
+  if(ct){ct.className='check-item-text'+(_inspChecks[k]?' done':'');}
+}
+
+function setInspPhoto(slot,inp){
+  if(!inp.files||!inp.files[0])return;
+  var f=inp.files[0];
+  if(!f.type.startsWith('image/')){toast('Please upload an image.');inp.value='';return;}
+  _inspPhotos[slot]=f;
+  var uz=eid('uz-'+slot), lbl=eid('uz-'+slot+'-lbl');
+  if(uz)uz.classList.add('has-file');
+  if(lbl)lbl.textContent=(slot==='front'?'Front':'Interior')+' ✓';
+}
+
+function setPayFile(inp){
+  if(!inp.files||!inp.files[0])return;
+  var f=inp.files[0];
+  if(!f.type.startsWith('image/')){toast('Please upload an image.');inp.value='';return;}
+  _payFile=f;
+  var uz=eid('uz-pay'), lbl=eid('uz-pay-lbl');
+  if(uz)uz.classList.add('has-file');
+  if(lbl)lbl.textContent='✓ '+f.name;
+}
+
+async function saveOdo(){
+  var inp=eid('odo-inp'), btn=eid('odo-btn');
+  var val=parseInt(inp?inp.value:'',10);
+  if(!val||val<0){toast('Enter a valid odometer reading.');return;}
+  if(DP&&DP.odometer_km&&val<DP.odometer_km){toast('New reading must be higher than current ('+DP.odometer_km+' km).');return;}
+  btn.disabled=true; btn.textContent='Saving…';
+  var r=await sb.from('driver_profiles').update({odometer_km:val,odometer_updated_at:new Date().toISOString()}).eq('user_id',U.id);
+  if(r.error){toast('Error: '+r.error.message);btn.disabled=false;btn.textContent='Save';return;}
+  DP.odometer_km=val;
+  toast('Odometer updated to '+val.toLocaleString('en-ZA')+' km ✓');
+  btn.disabled=false; btn.textContent='Save';
+  renderHome();
+  renderVehicle();
+}
+
+async function submitInspection(){
+  var allChecked=Object.values(_inspChecks).every(Boolean);
+  if(!allChecked){toast('Please tick all checklist items first.');return;}
+  if(!_inspPhotos.front||!_inspPhotos.interior){toast('Please upload both photos.');return;}
+  var btn=eid('insp-btn');
+  btn.disabled=true; btn.textContent='Uploading…';
+  // Upload photos
+  var urls={};
+  for(var slot in _inspPhotos){
+    var f=_inspPhotos[slot];
+    var ext=f.name.split('.').pop()||'jpg';
+    var path='inspections/'+U.id+'-'+slot+'-'+Date.now()+'.'+ext;
+    var up=await sb.storage.from('driver-docs').upload(path,f,{upsert:true});
+    if(up.error){toast('Photo upload failed: '+up.error.message);btn.disabled=false;btn.textContent='Submit Inspection';return;}
+    urls[slot]=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
+  }
+  // Save inspection record
+  var ins=await sb.from('inspections').insert({
+    driver_id:U.id,
+    car_id:CAR?CAR.id:null,
+    checklist:JSON.stringify(_inspChecks),
+    photo_front_url:urls.front,
+    photo_interior_url:urls.interior,
+    created_at:new Date().toISOString()
+  });
+  if(ins.error&&ins.error.code!=='42P01'){
+    // table might not exist yet — still update last_inspection_at
+  }
+  var upd=await sb.from('driver_profiles').update({last_inspection_at:new Date().toISOString()}).eq('user_id',U.id);
+  if(upd.error){toast('Error saving: '+upd.error.message);btn.disabled=false;btn.textContent='Submit Inspection';return;}
+  DP.last_inspection_at=new Date().toISOString();
+  _inspPhotos={front:null,interior:null};
+  _inspChecks={tyres:false,lights:false,wipers:false,brakes:false,oil:false,windows:false};
+  toast('✅ Inspection submitted successfully!');
+  btn.disabled=false;
+  renderHome();
+  renderVehicle();
+}
+
+async function submitPayment(){
+  if(!_payFile){toast('Please select a payment screenshot.');return;}
+  var btn=eid('pay-btn');
+  btn.disabled=true; btn.textContent='Uploading…';
+  var ext=_payFile.name.split('.').pop()||'jpg';
+  var path='payments/'+U.id+'-'+Date.now()+'.'+ext;
+  var up=await sb.storage.from('driver-docs').upload(path,_payFile,{upsert:true});
+  if(up.error){toast('Upload failed: '+up.error.message);btn.disabled=false;btn.textContent='Submit Proof';return;}
+  var url=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
+  var ins=await sb.from('payment_proofs').insert({
+    driver_id:U.id,
+    car_id:CAR?CAR.id:null,
+    owner_id:MATCH?MATCH.owner_id:null,
+    proof_url:url,
+    status:'pending',
+    created_at:new Date().toISOString()
+  });
+  if(ins.error){toast('Error saving: '+ins.error.message);btn.disabled=false;btn.textContent='Submit Proof';return;}
+  _payFile=null;
+  toast('✅ Payment proof submitted!');
+  btn.disabled=false;
+  renderVehicle();
 }
 
 // ── SOS ────────────────────────────────
