@@ -280,6 +280,44 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-s
 .action-pts{font-size:12px;font-weight:800}
 .action-pts-pos{color:var(--gm)}
 .action-pts-neg{color:var(--red)}
+
+/* ── COMMUNITY SCREEN ── */
+.comm-filter-bar{display:flex;gap:6px;padding:12px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.comm-filter-bar::-webkit-scrollbar{display:none}
+.filter-chip{padding:6px 14px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:inherit;transition:background .15s,border-color .15s,color .15s}
+.filter-chip.on{background:var(--g);border-color:var(--g);color:#fff}
+.alert-card{margin:0 16px 10px;background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.alert-card-inner{padding:14px 16px}
+.alert-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.alert-type-badge{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.alert-t-police{background:#eff6ff}
+.alert-t-accident{background:#fee2e2}
+.alert-t-hazard{background:#fff8e1}
+.alert-t-roadblock{background:#f3e8ff}
+.alert-t-other{background:var(--sand)}
+.alert-info{flex:1;min-width:0}
+.alert-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.alert-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.alert-footer{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.alert-loc{font-size:11px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alert-time{font-size:10px;color:var(--muted);white-space:nowrap}
+.alert-up{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:var(--sand);border:none;cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);font-family:inherit}
+.alert-up.voted{background:var(--gs);color:var(--gm)}
+.post-alert-btn{position:sticky;bottom:calc(var(--tab-h) + 16px);margin:0 16px 0;width:calc(100% - 32px);padding:14px;background:var(--gm);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(26,92,40,.35);transition:opacity .15s}
+.post-alert-btn:hover{opacity:.9}
+.comm-empty{padding:40px 24px;text-align:center}
+.comm-empty-icon{font-size:40px;margin-bottom:12px}
+.comm-empty-title{font-size:15px;font-weight:700;color:var(--g);margin-bottom:6px}
+.comm-empty-body{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* post alert modal */
+.alert-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.alert-type-btn{padding:12px 8px;border-radius:10px;border:2px solid var(--border);background:#fff;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:5px;transition:border-color .15s,background .15s}
+.alert-type-btn.on{border-color:var(--gm);background:var(--gs)}
+.alert-type-btn .atb-icon{font-size:22px}
+.alert-type-btn .atb-label{font-size:11px;font-weight:700;color:var(--text)}
+.comm-textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;resize:none;outline:none;color:var(--text);background:#fff;transition:border-color .15s;margin-bottom:10px}
+.comm-textarea:focus{border-color:var(--gm)}
 </style>
 </head>
 <body>
@@ -330,15 +368,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-s
     </div>
   </div>
 
-  <!-- ── COMMUNITY SCREEN (placeholder) ── -->
+  <!-- ── COMMUNITY SCREEN ── -->
   <div class="screen" id="scr-community">
-    <div class="screen-body">
-      <div class="ph-screen">
-        <div class="ph-icon">🌍</div>
-        <div class="ph-title">Community</div>
-        <div class="ph-body">Live roadblock alerts, police checkpoints, accidents and hazard reports from fellow drivers.</div>
-        <span class="coming-pill">Coming next</span>
-      </div>
+    <div class="screen-body" id="community-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
     </div>
   </div>
 
@@ -414,6 +447,29 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-s
       </button>
     </div>
     <div class="sos-loc" id="sos-loc-txt">Fetching your location...</div>
+  </div>
+</div>
+
+<!-- POST ALERT MODAL -->
+<div class="overlay" id="post-alert-modal" onclick="closePostAlert(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📢 Post an Alert</div>
+    <div class="modal-sub">Warn fellow TrustMate drivers about hazards on the road.</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Alert Type</div>
+    <div id="pa-type-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px">Please select an alert type.</div>
+    <div class="alert-type-grid">
+      <button class="alert-type-btn" data-type="police" onclick="selectPostType('police')"><span class="atb-icon">🚔</span><span class="atb-label">Police</span></button>
+      <button class="alert-type-btn" data-type="accident" onclick="selectPostType('accident')"><span class="atb-icon">💥</span><span class="atb-label">Accident</span></button>
+      <button class="alert-type-btn" data-type="hazard" onclick="selectPostType('hazard')"><span class="atb-icon">⚠️</span><span class="atb-label">Hazard</span></button>
+      <button class="alert-type-btn" data-type="roadblock" onclick="selectPostType('roadblock')"><span class="atb-icon">🚧</span><span class="atb-label">Roadblock</span></button>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Location <span style="color:var(--red)">*</span></div>
+    <input id="pa-loc" type="text" placeholder="e.g. N1 near Midrand, or cross streets" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px;color:var(--text);background:#fff">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Details (optional)</div>
+    <textarea id="pa-desc" class="comm-textarea" rows="3" placeholder="Add more details — e.g. 'speed trap on southbound lane' or 'overturned truck blocking left lane'"></textarea>
+    <button id="pa-submit-btn" class="btn-submit-insp" onclick="submitAlert()">Post Alert</button>
+    <button onclick="closePostAlert()" style="width:100%;padding:11px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px">Cancel</button>
   </div>
 </div>
 
@@ -677,6 +733,7 @@ function switchTab(name){
   eid('hdr-sub').textContent=labels[name]||'Driver App';
   if(name==='vehicle')renderVehicle();
   if(name==='trust')renderTrust();
+  if(name==='community')renderCommunity();
 }
 
 // ── VEHICLE SCREEN ─────────────────────
@@ -1036,6 +1093,166 @@ async function renderTrust(){
   tb.innerHTML=html;
 }
 
+// ── COMMUNITY SCREEN ───────────────────
+var _commFilter='all';
+var _commAlerts=[];
+var _commVoted={};
+var _postAlertType='';
+
+async function renderCommunity(){
+  var cb=eid('community-body');
+  if(!cb)return;
+  cb.innerHTML='<div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>';
+  var q=sb.from('community_alerts').select('*').eq('active',true).order('created_at',{ascending:false}).limit(30);
+  if(_commFilter!=='all') q=q.eq('type',_commFilter);
+  var r=await q;
+  _commAlerts=(r.data&&!r.error)?r.data:[];
+  buildCommunityHTML();
+}
+
+function buildCommunityHTML(){
+  var cb=eid('community-body');
+  if(!cb)return;
+  var typeMap={
+    police:{icon:'🚔',label:'Police',cls:'alert-t-police'},
+    accident:{icon:'💥',label:'Accident',cls:'alert-t-accident'},
+    hazard:{icon:'⚠️',label:'Hazard',cls:'alert-t-hazard'},
+    roadblock:{icon:'🚧',label:'Roadblock',cls:'alert-t-roadblock'},
+    other:{icon:'📢',label:'Alert',cls:'alert-t-other'}
+  };
+  var filters=[
+    {k:'all',label:'All'},
+    {k:'police',label:'🚔 Police'},
+    {k:'accident',label:'💥 Accident'},
+    {k:'hazard',label:'⚠️ Hazard'},
+    {k:'roadblock',label:'🚧 Roadblock'}
+  ];
+
+  var html='';
+
+  // Filter chips
+  html+='<div class="comm-filter-bar">';
+  filters.forEach(function(f){
+    html+='<button class="filter-chip'+(_commFilter===f.k?' on':'')+'" onclick="setCommFilter(\''+f.k+'\')">'+f.label+'</button>';
+  });
+  html+='</div>';
+
+  if(!_commAlerts.length){
+    html+='<div class="comm-empty">'
+      +'<div class="comm-empty-icon">🌍</div>'
+      +'<div class="comm-empty-title">No alerts in your area</div>'
+      +'<div class="comm-empty-body">Be the first to report a police checkpoint, accident, hazard or roadblock to help fellow TrustMate drivers.</div>'
+      +'</div>';
+  } else {
+    _commAlerts.forEach(function(a){
+      var t=typeMap[a.type]||typeMap.other;
+      var ago=timeAgo(a.created_at);
+      var votes=a.upvotes||0;
+      var voted=!!_commVoted[a.id];
+      html+='<div class="alert-card">'
+        +'<div class="alert-card-inner">'
+        +'<div class="alert-top">'
+        +'<div class="alert-type-badge '+t.cls+'">'+t.icon+'</div>'
+        +'<div class="alert-info">'
+        +'<div class="alert-title">'+t.label+(a.location_text?' — '+esc(a.location_text):'')+'</div>'
+        +(a.description?'<div class="alert-desc">'+esc(a.description)+'</div>':'')
+        +'</div>'
+        +'</div>'
+        +'<div class="alert-footer">'
+        +'<span class="alert-loc">📍 '+(a.location_text?esc(a.location_text):'Location not set')+'</span>'
+        +'<span class="alert-time">'+ago+'</span>'
+        +'<button class="alert-up'+(voted?' voted':'')+'" onclick="upvoteAlert(\''+a.id+'\',this)">'
+        +'👍 '+votes
+        +'</button>'
+        +'</div>'
+        +'</div>'
+        +'</div>';
+    });
+  }
+
+  // Sticky post button
+  html+='<button class="post-alert-btn" onclick="showPostAlert()">📢 Post an Alert</button>';
+  html+='<div style="height:16px"></div>';
+
+  cb.innerHTML=html;
+}
+
+function timeAgo(d){
+  if(!d)return'';
+  var diff=Math.floor((new Date()-new Date(d))/1000);
+  if(diff<60)return'Just now';
+  if(diff<3600)return Math.floor(diff/60)+'m ago';
+  if(diff<86400)return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+
+function setCommFilter(f){
+  _commFilter=f;
+  renderCommunity();
+}
+
+async function upvoteAlert(id,btn){
+  if(_commVoted[id])return;
+  _commVoted[id]=true;
+  btn.classList.add('voted');
+  var a=_commAlerts.find(function(x){return x.id===id;});
+  if(a){
+    a.upvotes=(a.upvotes||0)+1;
+    btn.textContent='👍 '+a.upvotes;
+  }
+  await sb.from('community_alerts').update({upvotes:(a?a.upvotes:1)}).eq('id',id);
+}
+
+function showPostAlert(){
+  _postAlertType='';
+  eid('post-alert-modal').classList.add('on');
+  eid('pa-type-err').style.display='none';
+  eid('pa-desc').value='';
+  eid('pa-loc').value='';
+  // Try to prefill location
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var loc=eid('pa-loc');
+      if(loc&&!loc.value) loc.placeholder='📍 '+pos.coords.latitude.toFixed(4)+', '+pos.coords.longitude.toFixed(4);
+      window._paLat=pos.coords.latitude;
+      window._paLng=pos.coords.longitude;
+    },function(){});
+  }
+}
+
+function selectPostType(type){
+  _postAlertType=type;
+  document.querySelectorAll('.alert-type-btn').forEach(function(b){
+    b.classList.toggle('on',b.dataset.type===type);
+  });
+}
+
+async function submitAlert(){
+  if(!_postAlertType){eid('pa-type-err').style.display='block';return;}
+  var desc=(eid('pa-desc').value||'').trim();
+  var loc=(eid('pa-loc').value||'').trim();
+  if(!loc){toast('Please enter a location.');return;}
+  var btn=eid('pa-submit-btn');
+  btn.disabled=true; btn.textContent='Posting…';
+  var ins=await sb.from('community_alerts').insert({
+    driver_id:U.id,
+    type:_postAlertType,
+    description:desc||null,
+    location_text:loc,
+    lat:window._paLat||null,
+    lng:window._paLng||null,
+    upvotes:0,
+    active:true,
+    created_at:new Date().toISOString()
+  });
+  if(ins.error){toast('Error: '+ins.error.message);btn.disabled=false;btn.textContent='Post Alert';return;}
+  eid('post-alert-modal').classList.remove('on');
+  toast('✅ Alert posted — thanks for keeping drivers safe!',3500);
+  btn.disabled=false; btn.textContent='Post Alert';
+  _commFilter='all';
+  renderCommunity();
+}
+
 // ── SOS ────────────────────────────────
 function showSOS(){
   eid('sos-modal').classList.add('on');
@@ -1051,6 +1268,10 @@ function showSOS(){
 function closeSOS(e){
   if(e&&e.target!==eid('sos-modal'))return;
   eid('sos-modal').classList.remove('on');
+}
+function closePostAlert(e){
+  if(e&&e.target!==eid('post-alert-modal'))return;
+  eid('post-alert-modal').classList.remove('on');
 }
 async function triggerSOS(type){
   var labels={emergency:'Medical emergency',police:'Police assistance',breakdown:'Vehicle breakdown'};
