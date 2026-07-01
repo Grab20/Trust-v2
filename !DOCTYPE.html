@@ -1780,34 +1780,42 @@ async function pOv() {
     if(pendReqs.length){
       var oIds=[...new Set(pendReqs.map(function(a){return a.owner_id;}).filter(Boolean))];
       var carIds=[...new Set(pendReqs.map(function(a){return a.car_id;}).filter(Boolean))];
-      var [opR2,ocR2]=await Promise.all([
+      var [opR2,ocR2,ownerCarsR2]=await Promise.all([
         oIds.length?sb.from('profiles').select('id,full_name,location,phone,whatsapp').in('id',oIds):{data:[]},
-        carIds.length?sb.from('cars').select('id,make,model,year,color,transmission,fuel_policy,deposit,insurance,photo_front_url,location,price_per_week').in('id',carIds):{data:[]}
+        carIds.length?sb.from('cars').select('id,make,model,year,color,transmission,fuel_policy,deposit,insurance,photo_front_url,location,price_per_week').in('id',carIds):{data:[]},
+        oIds.length?sb.from('cars').select('id,owner_id,make,model,year,color,transmission,fuel_policy,deposit,insurance,photo_front_url,location,price_per_week,admin_status').in('owner_id',oIds):{data:[]}
       ]);
-      var om2={},cm2={};
+      var om2={},cm2={},ownerCarMap2={};
       (opR2.data||[]).forEach(function(o){om2[o.id]=o;});
       (ocR2.data||[]).forEach(function(c){cm2[c.id]=c;});
+      (ownerCarsR2.data||[]).forEach(function(c){if(!ownerCarMap2[c.owner_id])ownerCarMap2[c.owner_id]=[];ownerCarMap2[c.owner_id].push(c);});
       html+='<div class="tbox" style="border:2px solid #E8A520;background:#fffbf0">'
         +'<div class="shd" style="color:#7a5200">&#128276; Owner Requests ('+pendReqs.length+')</div>'
         +pendReqs.map(function(a){
           var o=om2[a.owner_id]||{};
           var car=cm2[a.car_id]||null;
+          var oCars2=ownerCarMap2[a.owner_id]||[];
           var carBlock='';
+          function renderCarDetail(c){
+            var b='<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:10px">';
+            if(c.photo_front_url) b+='<img src="'+esc(c.photo_front_url)+'" style="width:100%;height:160px;object-fit:cover;display:block">';
+            b+='<div style="padding:10px 12px">';
+            b+='<div style="font-size:16px;font-weight:800;color:var(--g);margin-bottom:8px">'+esc(c.make)+' '+esc(c.model)+' '+c.year+(c.color?' &middot; '+esc(c.color):'')+'</div>';
+            b+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">';
+            b+='<div><span style="color:var(--muted)">Weekly Rental</span><br><strong style="color:var(--gm);font-size:15px">R'+(c.price_per_week||'—')+'/wk</strong></div>';
+            b+='<div><span style="color:var(--muted)">Location</span><br><strong>&#128205; '+esc(c.location||'—')+'</strong></div>';
+            if(c.transmission) b+='<div><span style="color:var(--muted)">Transmission</span><br><strong>'+esc(c.transmission)+'</strong></div>';
+            if(c.deposit) b+='<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+esc(String(c.deposit))+'</strong></div>';
+            if(c.insurance) b+='<div><span style="color:var(--muted)">Insurance</span><br><strong>'+esc(c.insurance)+'</strong></div>';
+            if(c.fuel_policy) b+='<div><span style="color:var(--muted)">Fuel Policy</span><br><strong>'+esc(c.fuel_policy)+'</strong></div>';
+            b+='</div></div></div>';
+            return b;
+          }
           if(car){
-            carBlock+='<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:10px">';
-            if(car.photo_front_url){
-              carBlock+='<img src="'+esc(car.photo_front_url)+'" style="width:100%;height:160px;object-fit:cover;display:block">';
-            }
-            carBlock+='<div style="padding:10px 12px">';
-            carBlock+='<div style="font-size:16px;font-weight:800;color:var(--g);margin-bottom:6px">'+esc(car.make)+' '+esc(car.model)+' '+car.year+(car.color?' &middot; '+esc(car.color):'')+'</div>';
-            carBlock+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">';
-            carBlock+='<div><span style="color:var(--muted)">Rental</span><br><strong style="color:var(--gm);font-size:14px">R'+(car.price_per_week||'—')+'/wk</strong></div>';
-            carBlock+='<div><span style="color:var(--muted)">Location</span><br><strong>&#128205; '+esc(car.location||'—')+'</strong></div>';
-            if(car.transmission) carBlock+='<div><span style="color:var(--muted)">Transmission</span><br><strong>'+esc(car.transmission)+'</strong></div>';
-            if(car.deposit) carBlock+='<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+esc(String(car.deposit))+'</strong></div>';
-            if(car.insurance) carBlock+='<div><span style="color:var(--muted)">Insurance</span><br><strong>'+esc(car.insurance)+'</strong></div>';
-            if(car.fuel_policy) carBlock+='<div><span style="color:var(--muted)">Fuel Policy</span><br><strong>'+esc(car.fuel_policy)+'</strong></div>';
-            carBlock+='</div></div></div>';
+            carBlock=renderCarDetail(car);
+          } else if(oCars2.length){
+            carBlock='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Available Cars from this Owner</div>';
+            carBlock+=oCars2.slice(0,3).map(renderCarDetail).join('');
           }
           return '<div style="background:#fff;border:1px solid #f0d080;border-radius:10px;padding:14px;margin-bottom:10px">'
             +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
