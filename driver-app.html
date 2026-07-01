@@ -228,6 +228,58 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-s
 @media(prefers-color-scheme:dark){
   /* keep light — this is an intentional brand choice */
 }
+
+/* ── TRUST SCREEN ── */
+.trust-hero{margin:16px 16px 0;border-radius:var(--r);background:var(--g);padding:24px 20px;position:relative;overflow:hidden;text-align:center}
+.trust-hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='170' cy='30' r='80' fill='rgba(255,255,255,.03)'/%3E%3C/svg%3E") no-repeat right top;pointer-events:none}
+.trust-score-ring{position:relative;width:110px;height:110px;margin:0 auto 12px}
+.trust-ring-svg{width:110px;height:110px;transform:rotate(-90deg)}
+.trust-ring-bg{fill:none;stroke:rgba(255,255,255,.12);stroke-width:8}
+.trust-ring-fill{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.trust-score-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.trust-score-val{font-family:'Playfair Display',serif;font-size:30px;font-weight:800;color:#fff;line-height:1}
+.trust-score-max{font-size:11px;color:rgba(255,255,255,.45);margin-top:1px}
+.trust-tier-badge{display:inline-block;padding:4px 14px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;margin-bottom:4px}
+.trust-hero-name{font-size:13px;color:rgba(255,255,255,.6)}
+
+/* tier colours */
+.tier-elite{background:#ffd700;color:#5a3e00}
+.tier-high{background:var(--gs);color:var(--gm)}
+.tier-mid{background:#dbeafe;color:#1e40af}
+.tier-ok{background:#fff8e1;color:#7a5200}
+.tier-low{background:#fee2e2;color:var(--red)}
+
+/* pillar bars */
+.pillar-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.pillar-row:last-child{border-bottom:none}
+.pillar-icon{font-size:18px;width:28px;flex-shrink:0;text-align:center}
+.pillar-info{flex:1;min-width:0}
+.pillar-label{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
+.pillar-bar-wrap{height:6px;background:var(--border);border-radius:4px;overflow:hidden}
+.pillar-bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.pillar-score{font-size:12px;font-weight:800;color:var(--g);width:28px;text-align:right;flex-shrink:0}
+
+/* review cards */
+.review-card{padding:13px 16px;border-bottom:1px solid var(--border)}
+.review-card:last-child{border-bottom:none}
+.review-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.review-stars{font-size:13px;letter-spacing:1px}
+.review-from{font-size:11px;color:var(--muted);flex:1}
+.review-date{font-size:10px;color:var(--muted)}
+.review-text{font-size:12px;color:var(--text);line-height:1.5}
+
+/* trust actions */
+.action-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.action-row:last-child{border-bottom:none}
+.action-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.action-pos{background:var(--gs)}
+.action-neg{background:#fee2e2}
+.action-info{flex:1}
+.action-label{font-size:12px;font-weight:600;color:var(--text)}
+.action-date{font-size:10px;color:var(--muted);margin-top:1px}
+.action-pts{font-size:12px;font-weight:800}
+.action-pts-pos{color:var(--gm)}
+.action-pts-neg{color:var(--red)}
 </style>
 </head>
 <body>
@@ -271,15 +323,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-s
     </div>
   </div>
 
-  <!-- ── TRUST SCREEN (placeholder) ── -->
+  <!-- ── TRUST SCREEN ── -->
   <div class="screen" id="scr-trust">
-    <div class="screen-body">
-      <div class="ph-screen">
-        <div class="ph-icon">⭐</div>
-        <div class="ph-title">My TrustScore</div>
-        <div class="ph-body">Score breakdown across all pillars, review history and trust actions.</div>
-        <span class="coming-pill">Coming next</span>
-      </div>
+    <div class="screen-body" id="trust-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
     </div>
   </div>
 
@@ -629,6 +676,7 @@ function switchTab(name){
   var labels={home:'Driver App',vehicle:'My Vehicle',trust:'TrustScore',community:'Community',profile:'My Profile'};
   eid('hdr-sub').textContent=labels[name]||'Driver App';
   if(name==='vehicle')renderVehicle();
+  if(name==='trust')renderTrust();
 }
 
 // ── VEHICLE SCREEN ─────────────────────
@@ -853,6 +901,139 @@ async function submitPayment(){
   toast('✅ Payment proof submitted!');
   btn.disabled=false;
   renderVehicle();
+}
+
+// ── TRUST SCREEN ───────────────────────
+async function renderTrust(){
+  var tb=eid('trust-body');
+  if(!tb)return;
+
+  var score=DP?DP.trust_score||0:0;
+
+  // Fetch reviews and trust actions in parallel
+  var [rvR,taR]=await Promise.all([
+    sb.from('reviews').select('*').eq('reviewee_id',U.id).order('created_at',{ascending:false}).limit(10),
+    sb.from('trust_actions').select('*').eq('driver_id',U.id).order('created_at',{ascending:false}).limit(15)
+  ]);
+  var reviews=(rvR.data&&!rvR.error)?rvR.data:[];
+  var actions=(taR.data&&!taR.error)?taR.data:[];
+
+  // Tier info
+  var tier,tierClass,tierLabel;
+  if(score>=90){tier=5;tierClass='tier-elite';tierLabel='Elite Driver';}
+  else if(score>=80){tier=4;tierClass='tier-high';tierLabel='Trusted Driver';}
+  else if(score>=70){tier=3;tierClass='tier-mid';tierLabel='Good Standing';}
+  else if(score>=60){tier=2;tierClass='tier-ok';tierLabel='Fair Standing';}
+  else if(score>=50){tier=1;tierClass='tier-low';tierLabel='Needs Improvement';}
+  else{tier=0;tierClass='tier-low';tierLabel='High Risk';}
+
+  // Ring circumference for radius 47
+  var circ=2*Math.PI*47; // ~295
+  var offset=circ-(score/100)*circ;
+  var ringColor=score>=80?'#4ade80':score>=60?'#facc15':'#f87171';
+
+  var html='';
+
+  // Hero score ring
+  html+='<div class="trust-hero">';
+  html+='<div class="trust-score-ring">';
+  html+='<svg class="trust-ring-svg" viewBox="0 0 110 110">'
+    +'<circle class="trust-ring-bg" cx="55" cy="55" r="47"/>'
+    +'<circle class="trust-ring-fill" cx="55" cy="55" r="47" stroke="'+ringColor+'" stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset.toFixed(1)+'"/>'
+    +'</svg>';
+  html+='<div class="trust-score-num"><div class="trust-score-val">'+score+'</div><div class="trust-score-max">/100</div></div>';
+  html+='</div>';
+  html+='<span class="trust-tier-badge '+tierClass+'">'+tierLabel+'</span>';
+  html+='<div class="trust-hero-name">'+(P&&P.full_name?esc(P.full_name):'Driver')+'</div>';
+  html+='</div>';
+
+  // Score pillars — derived from trust_actions categories or static breakdown
+  var pillars=[
+    {icon:'📋',label:'Inspections',key:'inspection',max:25},
+    {icon:'💳',label:'Payments',key:'payment',max:25},
+    {icon:'⭐',label:'Owner Reviews',key:'review',max:25},
+    {icon:'🚗',label:'Driving Conduct',key:'conduct',max:25}
+  ];
+  // Tally points per category from trust_actions
+  var catTotals={inspection:0,payment:0,review:0,conduct:0};
+  actions.forEach(function(a){
+    var cat=a.category||a.type||'conduct';
+    if(catTotals[cat]!==undefined) catTotals[cat]+=(a.points||0);
+  });
+  // If no actions data, distribute score evenly as estimate
+  var hasActions=actions.length>0;
+  if(!hasActions){
+    var base=Math.floor(score/4);
+    pillars.forEach(function(p){catTotals[p.key]=Math.min(base,p.max);});
+  }
+
+  html+='<div class="veh-section">Score Breakdown</div>';
+  html+='<div class="veh-card" style="margin:0 16px 10px">';
+  html+='<div style="padding:4px 16px 8px">';
+  pillars.forEach(function(p){
+    var pts=Math.min(Math.max(catTotals[p.key]||0,0),p.max);
+    var pct=(pts/p.max)*100;
+    var barColor=pct>=80?'var(--gm)':pct>=50?'var(--amber)':'var(--red)';
+    html+='<div class="pillar-row">'
+      +'<div class="pillar-icon">'+p.icon+'</div>'
+      +'<div class="pillar-info">'
+      +'<div class="pillar-label">'+p.label+'</div>'
+      +'<div class="pillar-bar-wrap"><div class="pillar-bar-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'
+      +'</div>'
+      +'<div class="pillar-score">'+pts+'<span style="font-size:9px;font-weight:500;color:var(--muted)">/'+p.max+'</span></div>'
+      +'</div>';
+  });
+  html+='</div></div>';
+
+  // Recent trust actions
+  if(actions.length){
+    html+='<div class="veh-section">Recent Activity</div>';
+    html+='<div class="veh-card" style="margin:0 16px 10px">';
+    actions.slice(0,8).forEach(function(a){
+      var pts=a.points||0;
+      var pos=pts>=0;
+      var label=a.description||a.reason||a.type||'Trust action';
+      html+='<div class="action-row">'
+        +'<div class="action-icon '+(pos?'action-pos':'action-neg')+'">'+(pos?'✓':'!')+'</div>'
+        +'<div class="action-info">'
+        +'<div class="action-label">'+esc(label)+'</div>'
+        +'<div class="action-date">'+fmtDate(a.created_at)+'</div>'
+        +'</div>'
+        +'<div class="action-pts '+(pos?'action-pts-pos':'action-pts-neg')+'">'+(pos?'+':'')+pts+'</div>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
+
+  // Owner reviews
+  if(reviews.length){
+    html+='<div class="veh-section">Owner Reviews</div>';
+    html+='<div class="veh-card" style="margin:0 16px 10px">';
+    reviews.slice(0,5).forEach(function(r){
+      var stars=Math.round(r.rating||r.score||0);
+      var starStr='';
+      for(var i=0;i<5;i++)starStr+=i<stars?'★':'☆';
+      html+='<div class="review-card">'
+        +'<div class="review-top">'
+        +'<span class="review-stars" style="color:'+(stars>=4?'var(--amber)':'var(--muted)')+'">'+starStr+'</span>'
+        +'<span class="review-from">'+esc(r.reviewer_name||'Owner')+'</span>'
+        +'<span class="review-date">'+fmtDate(r.created_at)+'</span>'
+        +'</div>'
+        +(r.comment?'<div class="review-text">'+esc(r.comment)+'</div>':'')
+        +'</div>';
+    });
+    html+='</div>';
+  } else {
+    html+='<div class="veh-section">Owner Reviews</div>';
+    html+='<div style="margin:0 16px 10px;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:24px 16px;text-align:center">'
+      +'<div style="font-size:28px;margin-bottom:8px">⭐</div>'
+      +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">No reviews yet</div>'
+      +'<div style="font-size:12px;color:var(--muted)">Reviews from your vehicle owner will appear here.</div>'
+      +'</div>';
+  }
+
+  html+='<div style="height:8px"></div>';
+  tb.innerHTML=html;
 }
 
 // ── SOS ────────────────────────────────
