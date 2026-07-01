@@ -632,15 +632,19 @@ function switchTab(name){
 }
 
 // ── VEHICLE SCREEN ─────────────────────
-var _inspChecks={tyres:false,lights:false,wipers:false,brakes:false,oil:false,windows:false};
-var _inspPhotos={front:null,interior:null};
+var _inspChecks={
+  // Exterior
+  body_damage:false, tyres:false, lights:false, wipers:false, windows:false,
+  // Interior
+  brakes:false, oil:false, fuel:false, interior_clean:false, seatbelts:false
+};
+var _inspPhotos={front:null,side:null,back:null,interior:null};
 var _payFile=null;
 var _payHistory=[];
 
 async function renderVehicle(){
   var vb=eid('vehicle-body');
   if(!vb)return;
-  // Fetch recent payment proofs from supabase
   var ppR=await sb.from('payment_proofs').select('*').eq('driver_id',U.id).order('created_at',{ascending:false}).limit(5);
   _payHistory=(ppR.data&&!ppR.error)?ppR.data:[];
 
@@ -652,57 +656,71 @@ async function renderVehicle(){
 
   var html='';
 
-  // ── Odometer section
-  html+='<div class="veh-section">Odometer</div>';
-  html+='<div class="veh-card">';
-  html+='<div class="veh-card-body">';
-  html+='<div class="odo-row">';
-  html+='<input class="odo-input" id="odo-inp" type="number" min="0" placeholder="'+(odo||'Enter km')+'" value="'+esc(String(odo||''))+'"/>';
-  html+='<button class="btn-odo" id="odo-btn" onclick="saveOdo()">Save</button>';
-  html+='</div>';
-  html+='<div class="odo-hint">'+(odo?'Current: <strong>'+Number(odo).toLocaleString('en-ZA')+' km</strong> — enter new reading to update':'Enter the current odometer reading from your dashboard')+'</div>';
-  html+='</div></div>';
-
-  // ── Weekly Inspection section
+  // ── Weekly Inspection (unified: odometer + exterior + interior + photos)
   html+='<div class="veh-section">Weekly Inspection '+(inspDue?'<span style="color:var(--red);font-size:10px">● OVERDUE</span>':'')+'</div>';
   html+='<div class="veh-card">';
-  html+='<div class="veh-card-head"><div class="veh-card-title">📋 Pre-trip Checklist</div>'
+  html+='<div class="veh-card-head"><div class="veh-card-title">📋 Weekly Vehicle Check</div>'
     +(lastInsp?'<span style="font-size:11px;color:var(--muted)">Last: '+fmtDate(lastInsp.toISOString())+'</span>':'<span style="font-size:11px;color:var(--amber)">Never done</span>')+'</div>';
   html+='<div class="veh-card-body">';
-  var checkItems=[
-    {k:'tyres',label:'Tyres — pressure & tread OK'},
-    {k:'lights',label:'Lights — headlights, tail & indicators'},
-    {k:'wipers',label:'Wipers & washer fluid'},
-    {k:'brakes',label:'Brakes — no grinding or pulling'},
-    {k:'oil',label:'Oil & fluid levels'},
-    {k:'windows',label:'Windows & mirrors — clean & uncracked'}
-  ];
-  html+='<div class="check-list">';
-  checkItems.forEach(function(c){
+
+  // Odometer reading (part of inspection)
+  html+='<div style="margin-bottom:14px">';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Current Odometer Reading</div>';
+  html+='<div class="odo-row">';
+  html+='<input class="odo-input" id="odo-inp" type="number" min="0" placeholder="'+(odo||'Enter km')+'" value="'+esc(String(odo||''))+'"/>';
+  html+='<span style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap">km</span>';
+  html+='</div>';
+  html+='<div class="odo-hint">'+(odo?'Last recorded: <strong>'+Number(odo).toLocaleString('en-ZA')+' km</strong>':'Enter reading from your dashboard')+'</div>';
+  html+='</div>';
+
+  // Exterior checklist
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Exterior</div>';
+  html+='<div class="check-list" style="margin-bottom:14px">';
+  [{k:'body_damage',label:'Body — no new dents, scratches or damage'},
+   {k:'tyres',label:'Tyres — pressure & tread OK'},
+   {k:'lights',label:'Lights — headlights, tail & indicators working'},
+   {k:'wipers',label:'Wipers & washer fluid topped up'},
+   {k:'windows',label:'Windows & mirrors — clean & uncracked'}
+  ].forEach(function(c){
     var done=_inspChecks[c.k];
     html+='<div class="check-item" onclick="toggleCheck(\''+c.k+'\')">'
-      +'<div class="check-box'+(done?' done':'\')+' id="cb-'+c.k+'">'+( done?'✓':'')+'</div>'
-      +'<div class="check-item-text'+(done?' done':'\')+' id="ct-'+c.k+'">'+esc(c.label)+'</div>'
+      +'<div class="check-box'+(done?' done':'')+'" id="cb-'+c.k+'">'+(done?'✓':'')+'</div>'
+      +'<div class="check-item-text'+(done?' done':'')+'" id="ct-'+c.k+'">'+esc(c.label)+'</div>'
       +'</div>';
   });
   html+='</div>';
 
-  // Photo uploads
-  html+='<div style="margin-top:14px;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Inspection Photos</div>';
-  html+='<div class="up-grid">';
-  html+='<label class="up-zone'+((_inspPhotos.front)?'has-file':'')+'" id="uz-front">'
-    +'<div class="uz-icon">📸</div>'
-    +'<div class="uz-label" id="uz-front-lbl">'+(_inspPhotos.front?'Front ✓':'Front of car')+'</div>'
-    +'<input type="file" accept="image/*" capture="environment" onchange="setInspPhoto(\'front\',this)">'
-    +'</label>';
-  html+='<label class="up-zone'+((_inspPhotos.interior)?'has-file':'')+'" id="uz-interior">'
-    +'<div class="uz-icon">🪑</div>'
-    +'<div class="uz-label" id="uz-interior-lbl">'+(_inspPhotos.interior?'Interior ✓':'Interior')+'</div>'
-    +'<input type="file" accept="image/*" capture="environment" onchange="setInspPhoto(\'interior\',this)">'
-    +'</label>';
+  // Interior checklist
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Interior</div>';
+  html+='<div class="check-list" style="margin-bottom:14px">';
+  [{k:'brakes',label:'Brakes — no grinding, pulling or soft pedal'},
+   {k:'oil',label:'Oil & fluid levels — within range'},
+   {k:'fuel',label:'Fuel level — adequate for the day'},
+   {k:'interior_clean',label:'Interior clean — no damage to seats or dash'},
+   {k:'seatbelts',label:'Seatbelts — all working correctly'}
+  ].forEach(function(c){
+    var done=_inspChecks[c.k];
+    html+='<div class="check-item" onclick="toggleCheck(\''+c.k+'\')">'
+      +'<div class="check-box'+(done?' done':'')+'" id="cb-'+c.k+'">'+(done?'✓':'')+'</div>'
+      +'<div class="check-item-text'+(done?' done':'')+'" id="ct-'+c.k+'">'+esc(c.label)+'</div>'
+      +'</div>';
+  });
   html+='</div>';
 
-  html+='<button class="btn-submit-insp" id="insp-btn" onclick="submitInspection()">Submit Inspection</button>';
+  // Photos — 4 zones in 2x2 grid
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Photos (all 4 required)</div>';
+  html+='<div class="up-grid">';
+  [{slot:'front',icon:'🚗',label:'Front'},{slot:'side',icon:'🔲',label:'Side'},{slot:'back',icon:'🔁',label:'Back'},{slot:'interior',icon:'🪑',label:'Interior'}].forEach(function(p){
+    var has=!!_inspPhotos[p.slot];
+    html+='<label class="up-zone'+(has?' has-file':'')+'" id="uz-'+p.slot+'">'
+      +'<div class="uz-icon">'+p.icon+'</div>'
+      +'<div class="uz-label" id="uz-'+p.slot+'-lbl">'+(has?p.label+' ✓':p.label)+'</div>'
+      +'<input type="file" accept="image/*" capture="environment" onchange="setInspPhoto(\''+p.slot+'\',this)">'
+      +'</label>';
+  });
+  html+='</div>';
+
+  html+='<button class="btn-submit-insp" id="insp-btn" onclick="submitInspection()" style="margin-top:12px">Submit Weekly Inspection</button>';
   html+='</div></div>';
 
   // ── Payment Proof section
@@ -718,8 +736,6 @@ async function renderVehicle(){
     +'</label>';
   html+='<button class="btn-submit-insp" id="pay-btn" onclick="submitPayment()">Submit Proof</button>';
   html+='</div>';
-
-  // Payment history
   if(_payHistory.length){
     html+='<div style="padding:0 16px 8px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Recent Submissions</div>';
     _payHistory.forEach(function(p){
@@ -754,7 +770,8 @@ function setInspPhoto(slot,inp){
   _inspPhotos[slot]=f;
   var uz=eid('uz-'+slot), lbl=eid('uz-'+slot+'-lbl');
   if(uz)uz.classList.add('has-file');
-  if(lbl)lbl.textContent=(slot==='front'?'Front':'Interior')+' ✓';
+  var names={front:'Front',side:'Side',back:'Back',interior:'Interior'};
+  if(lbl)lbl.textContent=(names[slot]||slot)+' ✓';
 }
 
 function setPayFile(inp){
@@ -767,55 +784,48 @@ function setPayFile(inp){
   if(lbl)lbl.textContent='✓ '+f.name;
 }
 
-async function saveOdo(){
-  var inp=eid('odo-inp'), btn=eid('odo-btn');
-  var val=parseInt(inp?inp.value:'',10);
-  if(!val||val<0){toast('Enter a valid odometer reading.');return;}
-  if(DP&&DP.odometer_km&&val<DP.odometer_km){toast('New reading must be higher than current ('+DP.odometer_km+' km).');return;}
-  btn.disabled=true; btn.textContent='Saving…';
-  var r=await sb.from('driver_profiles').update({odometer_km:val,odometer_updated_at:new Date().toISOString()}).eq('user_id',U.id);
-  if(r.error){toast('Error: '+r.error.message);btn.disabled=false;btn.textContent='Save';return;}
-  DP.odometer_km=val;
-  toast('Odometer updated to '+val.toLocaleString('en-ZA')+' km ✓');
-  btn.disabled=false; btn.textContent='Save';
-  renderHome();
-  renderVehicle();
-}
-
 async function submitInspection(){
+  var odoVal=parseInt((eid('odo-inp')||{}).value||'',10);
+  if(!odoVal||odoVal<0){toast('Enter the current odometer reading.');return;}
+  if(DP&&DP.odometer_km&&odoVal<DP.odometer_km){toast('Odometer must be higher than last reading ('+DP.odometer_km+' km).');return;}
   var allChecked=Object.values(_inspChecks).every(Boolean);
-  if(!allChecked){toast('Please tick all checklist items first.');return;}
-  if(!_inspPhotos.front||!_inspPhotos.interior){toast('Please upload both photos.');return;}
+  if(!allChecked){toast('Please tick all checklist items.');return;}
+  var missingPhotos=['front','side','back','interior'].filter(function(s){return!_inspPhotos[s];});
+  if(missingPhotos.length){toast('Please upload all 4 photos (missing: '+missingPhotos.join(', ')+').');return;}
   var btn=eid('insp-btn');
   btn.disabled=true; btn.textContent='Uploading…';
-  // Upload photos
   var urls={};
   for(var slot in _inspPhotos){
     var f=_inspPhotos[slot];
     var ext=f.name.split('.').pop()||'jpg';
     var path='inspections/'+U.id+'-'+slot+'-'+Date.now()+'.'+ext;
     var up=await sb.storage.from('driver-docs').upload(path,f,{upsert:true});
-    if(up.error){toast('Photo upload failed: '+up.error.message);btn.disabled=false;btn.textContent='Submit Inspection';return;}
+    if(up.error){toast('Photo upload failed: '+up.error.message);btn.disabled=false;btn.textContent='Submit Weekly Inspection';return;}
     urls[slot]=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
   }
-  // Save inspection record
-  var ins=await sb.from('inspections').insert({
+  var now=new Date().toISOString();
+  await sb.from('inspections').insert({
     driver_id:U.id,
     car_id:CAR?CAR.id:null,
+    odometer_km:odoVal,
     checklist:JSON.stringify(_inspChecks),
     photo_front_url:urls.front,
+    photo_side_url:urls.side,
+    photo_back_url:urls.back,
     photo_interior_url:urls.interior,
-    created_at:new Date().toISOString()
+    created_at:now
   });
-  if(ins.error&&ins.error.code!=='42P01'){
-    // table might not exist yet — still update last_inspection_at
-  }
-  var upd=await sb.from('driver_profiles').update({last_inspection_at:new Date().toISOString()}).eq('user_id',U.id);
-  if(upd.error){toast('Error saving: '+upd.error.message);btn.disabled=false;btn.textContent='Submit Inspection';return;}
-  DP.last_inspection_at=new Date().toISOString();
-  _inspPhotos={front:null,interior:null};
-  _inspChecks={tyres:false,lights:false,wipers:false,brakes:false,oil:false,windows:false};
-  toast('✅ Inspection submitted successfully!');
+  var upd=await sb.from('driver_profiles').update({
+    last_inspection_at:now,
+    odometer_km:odoVal,
+    odometer_updated_at:now
+  }).eq('user_id',U.id);
+  if(upd.error){toast('Error saving: '+upd.error.message);btn.disabled=false;btn.textContent='Submit Weekly Inspection';return;}
+  DP.last_inspection_at=now;
+  DP.odometer_km=odoVal;
+  _inspPhotos={front:null,side:null,back:null,interior:null};
+  _inspChecks={body_damage:false,tyres:false,lights:false,wipers:false,windows:false,brakes:false,oil:false,fuel:false,interior_clean:false,seatbelts:false};
+  toast('✅ Inspection submitted!');
   btn.disabled=false;
   renderHome();
   renderVehicle();
