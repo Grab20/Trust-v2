@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
+<title>TrustMate Driver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1a2e1a;
+  --gm:#1a5c28;
+  --gs:#d4edd8;
+  --cream:#faf9f5;
+  --sand:#f0ede5;
+  --border:#e8e5df;
+  --text:#1a1a18;
+  --muted:#6b6b60;
+  --amber:#E8A520;
+  --red:#dc2626;
+  --r:14px;
+  --tab-h:68px;
+  --header-h:60px;
+}
+html,body{height:100%;overflow:hidden;background:var(--g)}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-size-adjust:100%}
+
+/* ── APP SHELL ── */
+#app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;background:var(--cream);position:relative;overflow:hidden}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen.on{display:flex}
+
+/* ── GATE SCREENS ── */
+#gate{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;background:var(--g);padding:32px 24px}
+#gate.on{display:flex}
+#gate.off{display:none}
+
+/* ── HEADER ── */
+.app-header{background:var(--g);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;min-height:var(--header-h);padding-top:max(14px,env(safe-area-inset-top))}
+.app-header .logo{font-family:'Playfair Display',serif;font-size:15px;font-weight:800;color:#fff}
+.app-header .logo span{color:var(--gs);font-size:11px;font-weight:500;display:block;font-family:'DM Sans',sans-serif;margin-top:1px}
+.hbtn{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.1);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px}
+
+/* ── SCROLL BODY ── */
+.screen-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--tab-h) + 16px)}
+
+/* ── TAB BAR ── */
+.tab-bar{background:var(--g);display:flex;align-items:stretch;flex-shrink:0;height:var(--tab-h);padding-bottom:env(safe-area-inset-bottom);border-top:1px solid rgba(255,255,255,.08)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:6px 4px;background:none;border:none;font-family:inherit;transition:opacity .15s}
+.tab .ti{font-size:20px;line-height:1}
+.tab .tl{font-size:10px;font-weight:600;color:rgba(255,255,255,.45);letter-spacing:.2px}
+.tab.on .tl{color:#fff}
+.tab.on .ti{filter:drop-shadow(0 0 6px rgba(212,237,216,.6))}
+.tab-dot{width:4px;height:4px;border-radius:50%;background:var(--gs);margin-top:2px;opacity:0}
+.tab.on .tab-dot{opacity:1}
+
+/* ── CARDS ── */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.card-pad{padding:16px}
+
+/* ── HOME SCREEN ── */
+.hero-card{margin:16px 16px 0;border-radius:var(--r);background:var(--g);overflow:hidden;position:relative}
+.hero-card::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='170' cy='30' r='80' fill='rgba(255,255,255,.03)'/%3E%3Ccircle cx='160' cy='160' r='60' fill='rgba(255,255,255,.02)'/%3E%3C/svg%3E") no-repeat right top;pointer-events:none}
+.hero-inner{padding:18px 20px 20px;position:relative;z-index:1}
+.hero-greet{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:3px}
+.hero-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:800;color:#fff;margin-bottom:14px}
+.hero-car{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px}
+.hero-car-photo{width:54px;height:38px;object-fit:cover;border-radius:7px;flex-shrink:0;background:rgba(255,255,255,.1)}
+.hero-car-ph{width:54px;height:38px;border-radius:7px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.hero-car-info{flex:1}
+.hero-car-name{font-size:13px;font-weight:700;color:#fff}
+.hero-car-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:1px}
+.match-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0;box-shadow:0 0 6px #4ade80}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 16px 0}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gm);border-radius:3px 3px 0 0;opacity:0}
+.stat-card.warn::before{background:var(--amber);opacity:1}
+.stat-card.ok::before{background:var(--gm);opacity:1}
+.stat-icon{font-size:20px;margin-bottom:6px}
+.stat-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:800;color:var(--g);line-height:1}
+.stat-label{font-size:11px;color:var(--muted);margin-top:3px;font-weight:500}
+.stat-hint{font-size:10px;font-weight:600;margin-top:4px}
+.stat-hint.up{color:var(--gm)}
+.stat-hint.warn{color:var(--amber)}
+.stat-hint.muted{color:var(--muted)}
+
+/* ── INSPECTION CARD ── */
+.insp-card{margin:10px 16px 0;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.insp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.insp-title{font-size:13px;font-weight:700;color:var(--g)}
+.insp-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px}
+.badge-warn{background:#fff8e1;color:#7a5200;border:1px solid var(--amber)}
+.badge-ok{background:var(--gs);color:var(--gm)}
+.badge-due{background:#fee2e2;color:var(--red)}
+.insp-meta{font-size:12px;color:var(--muted);margin-bottom:12px}
+.btn-insp{width:100%;padding:11px;background:var(--gm);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.btn-insp:hover{opacity:.88}
+.btn-insp:disabled{opacity:.45;cursor:default}
+
+/* ── PAYMENT CARD ── */
+.pay-card{margin:10px 16px 0;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.pay-head{display:flex;justify-content:space-between;align-items:flex-start}
+.pay-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.pay-amount{font-family:'Playfair Display',serif;font-size:26px;font-weight:800;color:var(--g)}
+.pay-due{font-size:12px;color:var(--muted);margin-top:3px}
+.btn-pay{padding:9px 16px;background:var(--g);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:opacity .15s;margin-top:4px}
+.btn-pay:hover{opacity:.85}
+
+/* ── SOS BUTTON ── */
+.sos-wrap{margin:10px 16px 0}
+.sos-btn{width:100%;padding:15px;background:var(--red);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px;transition:transform .1s,box-shadow .1s;box-shadow:0 4px 20px rgba(220,38,38,.3)}
+.sos-btn:active{transform:scale(.97);box-shadow:0 2px 10px rgba(220,38,38,.2)}
+
+/* ── SOS MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end}
+.overlay.on{display:flex}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:430px;margin:0 auto;padding:24px 24px calc(24px + env(safe-area-inset-bottom))}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px}
+.modal-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:800;color:var(--g);margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
+.sos-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sos-action{padding:16px 12px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:6px;transition:opacity .15s}
+.sos-action:hover{opacity:.85}
+.sos-action .sa-icon{font-size:28px}
+.sos-action .sa-label{font-size:12px;font-weight:700}
+.sos-a-emergency{background:#fee2e2;color:var(--red)}
+.sos-a-police{background:#eff6ff;color:#1d4ed8}
+.sos-a-breakdown{background:#fff8e1;color:#7a5200}
+.sos-a-cancel{background:var(--sand);color:var(--muted);grid-column:1/-1}
+.sos-loc{font-size:11px;color:var(--muted);text-align:center;margin-top:12px}
+
+/* ── GATE / LOGIN ── */
+.gate-logo{font-family:'Playfair Display',serif;font-size:28px;font-weight:800;color:#fff;text-align:center;margin-bottom:6px}
+.gate-sub{font-size:13px;color:rgba(255,255,255,.55);text-align:center;margin-bottom:36px}
+.gate-card{background:#fff;border-radius:var(--r);padding:24px;width:100%;max-width:360px}
+.gate-card h2{font-family:'Playfair Display',serif;font-size:18px;color:var(--g);margin-bottom:4px}
+.gate-card .sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.fg input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--text);transition:border-color .15s}
+.fg input:focus{border-color:var(--gm)}
+.btn-login{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;transition:opacity .15s}
+.btn-login:hover{opacity:.88}
+.btn-login:disabled{opacity:.5;cursor:default}
+.gate-err{background:#fee2e2;color:var(--red);padding:9px 12px;border-radius:8px;font-size:12px;margin-bottom:10px;display:none}
+.gate-err.on{display:block}
+
+/* ── HOLDING SCREEN ── */
+.hold-icon{font-size:52px;margin-bottom:16px;text-align:center}
+.hold-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:800;color:#fff;text-align:center;margin-bottom:8px}
+.hold-body{font-size:13px;color:rgba(255,255,255,.6);text-align:center;line-height:1.6;max-width:280px;margin:0 auto 28px}
+.btn-back{padding:11px 28px;border:1.5px solid rgba(255,255,255,.3);border-radius:10px;color:rgba(255,255,255,.7);background:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* ── PLACEHOLDER TABS ── */
+.ph-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 24px;text-align:center}
+.ph-icon{font-size:48px;margin-bottom:16px}
+.ph-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:800;color:var(--g);margin-bottom:8px}
+.ph-body{font-size:13px;color:var(--muted);line-height:1.6;max-width:260px}
+.coming-pill{display:inline-block;background:var(--gs);color:var(--gm);font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;margin-top:12px;letter-spacing:.4px;text-transform:uppercase}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:calc(var(--tab-h) + 16px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--g);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:300}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── SPINNER ── */
+.spin{width:28px;height:28px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── UTILS ── */
+.sep{height:1px;background:var(--border);margin:0 16px}
+.section-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:14px 16px 6px}
+
+@media(prefers-color-scheme:dark){
+  /* keep light — this is an intentional brand choice */
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     GATE — LOGIN
+════════════════════════════════════════ -->
+<div id="gate" class="on">
+  <div class="gate-logo">TrustMate</div>
+  <div class="gate-sub">Driver App</div>
+  <div id="gate-inner">
+    <!-- filled by JS: login form / holding / access denied -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     APP SHELL (shown after auth)
+════════════════════════════════════════ -->
+<div id="app" style="display:none">
+
+  <!-- HEADER -->
+  <div class="app-header">
+    <div class="logo">
+      TrustMate
+      <span id="hdr-sub">Driver App</span>
+    </div>
+    <button class="hbtn" onclick="showSOS()" title="Emergency SOS">🚨</button>
+  </div>
+
+  <!-- ── HOME SCREEN ── -->
+  <div class="screen on" id="scr-home">
+    <div class="screen-body" id="home-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
+    </div>
+  </div>
+
+  <!-- ── VEHICLE SCREEN (placeholder) ── -->
+  <div class="screen" id="scr-vehicle">
+    <div class="screen-body">
+      <div class="ph-screen">
+        <div class="ph-icon">🚗</div>
+        <div class="ph-title">Vehicle & Trips</div>
+        <div class="ph-body">Trip tracking, odometer updates, weekly inspections and payment proof uploads.</div>
+        <span class="coming-pill">Coming next</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TRUST SCREEN (placeholder) ── -->
+  <div class="screen" id="scr-trust">
+    <div class="screen-body">
+      <div class="ph-screen">
+        <div class="ph-icon">⭐</div>
+        <div class="ph-title">My TrustScore</div>
+        <div class="ph-body">Score breakdown across all pillars, review history and trust actions.</div>
+        <span class="coming-pill">Coming next</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── COMMUNITY SCREEN (placeholder) ── -->
+  <div class="screen" id="scr-community">
+    <div class="screen-body">
+      <div class="ph-screen">
+        <div class="ph-icon">🌍</div>
+        <div class="ph-title">Community</div>
+        <div class="ph-body">Live roadblock alerts, police checkpoints, accidents and hazard reports from fellow drivers.</div>
+        <span class="coming-pill">Coming next</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROFILE SCREEN (placeholder) ── -->
+  <div class="screen" id="scr-profile">
+    <div class="screen-body">
+      <div class="ph-screen">
+        <div class="ph-icon">👤</div>
+        <div class="ph-title">My Profile</div>
+        <div class="ph-body">View and edit your profile, documents and verification status.</div>
+        <span class="coming-pill">Coming next</span>
+      </div>
+      <div style="padding:0 24px 24px;text-align:center">
+        <button onclick="doLogout()" style="padding:10px 28px;border:1.5px solid var(--border);border-radius:10px;background:#fff;color:var(--red);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab on" id="tab-home" onclick="switchTab('home')">
+      <span class="ti">🏠</span>
+      <span class="tl">Home</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" id="tab-vehicle" onclick="switchTab('vehicle')">
+      <span class="ti">🚗</span>
+      <span class="tl">Vehicle</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" id="tab-trust" onclick="switchTab('trust')">
+      <span class="ti">⭐</span>
+      <span class="tl">Trust</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" id="tab-community" onclick="switchTab('community')">
+      <span class="ti">🌍</span>
+      <span class="tl">Community</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" id="tab-profile" onclick="switchTab('profile')">
+      <span class="ti">👤</span>
+      <span class="tl">Me</span>
+      <span class="tab-dot"></span>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SOS MODAL
+════════════════════════════════════════ -->
+<div class="overlay" id="sos-modal" onclick="closeSOS(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🚨 Emergency SOS</div>
+    <div class="modal-sub">Select the type of emergency. Your live location will be shared with your contact.</div>
+    <div class="sos-actions">
+      <button class="sos-action sos-a-emergency" onclick="triggerSOS('emergency')">
+        <span class="sa-icon">🚑</span>
+        <span class="sa-label">Medical</span>
+      </button>
+      <button class="sos-action sos-a-police" onclick="triggerSOS('police')">
+        <span class="sa-icon">🚔</span>
+        <span class="sa-label">Police</span>
+      </button>
+      <button class="sos-action sos-a-breakdown" onclick="triggerSOS('breakdown')">
+        <span class="sa-icon">🔧</span>
+        <span class="sa-label">Breakdown</span>
+      </button>
+      <button class="sos-action sos-a-cancel" onclick="closeSOS()">
+        <span class="sa-icon" style="font-size:18px">✕</span>
+        <span class="sa-label">Cancel</span>
+      </button>
+    </div>
+    <div class="sos-loc" id="sos-loc-txt">Fetching your location...</div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+var sb = window.supabase.createClient(
+  'https://qyyflivkmnwikagnvstv.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'
+);
+
+var U=null, P=null, DP=null, MATCH=null, CAR=null;
+
+// ── UTILS ──────────────────────────────
+function eid(id){return document.getElementById(id);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+var _tTimer;
+function toast(msg,dur){
+  var el=eid('toast'); el.textContent=msg; el.classList.add('on');
+  clearTimeout(_tTimer); _tTimer=setTimeout(function(){el.classList.remove('on');},dur||2800);
+}
+function scoreInfo(s){
+  if(s>=90)return['tp-h','sc-h','lb-h','Trusted Driver'];
+  if(s>=80)return['tp-h','sc-h','lb-h','Reliable Driver'];
+  if(s>=70)return['tp-m','sc-m','lb-m','Good Standing'];
+  if(s>=60)return['tp-o','sc-o','lb-o','Fair Standing'];
+  if(s>=50)return['tp-l','sc-l','lb-l','Needs Improvement'];
+  return['tp-l','sc-l','lb-l','High Risk'];
+}
+function fmtDate(d){
+  if(!d)return'—';
+  return new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'});
+}
+function daysUntil(d){
+  if(!d)return null;
+  return Math.ceil((new Date(d)-new Date())/864e5);
+}
+function greet(){
+  var h=new Date().getHours();
+  if(h<12)return'Good morning';
+  if(h<17)return'Good afternoon';
+  return'Good evening';
+}
+
+// ── GATE ───────────────────────────────
+function showGate(){eid('gate').classList.add('on');eid('app').style.display='none';}
+function showApp(){eid('gate').classList.remove('on');eid('gate').className='off';eid('app').style.display='flex';}
+
+function renderLogin(err){
+  eid('gate-inner').innerHTML=
+    '<div class="gate-card">'
+    +'<h2>Driver Sign In</h2>'
+    +'<div class="sub">Access your TrustMate Driver dashboard</div>'
+    +(err?'<div class="gate-err on">'+esc(err)+'</div>':'<div class="gate-err" id="gate-err"></div>')
+    +'<div class="fg"><label>Email</label><input id="li-email" type="email" placeholder="you@example.com" autocomplete="email"/></div>'
+    +'<div class="fg"><label>Password</label><input id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password"/></div>'
+    +'<button class="btn-login" id="li-btn" onclick="doLogin()">Sign In</button>'
+    +'<div style="font-size:12px;color:var(--muted);text-align:center;margin-top:14px">Not registered? <a href="!DOCTYPE.html" style="color:var(--gm);font-weight:700">Join TrustMate</a></div>'
+    +'</div>';
+  setTimeout(function(){var e=eid('li-email');if(e)e.focus();},100);
+  document.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();},{once:true});
+}
+
+function renderHolding(type){
+  var icon='⏳',title='',body='';
+  if(type==='no-match'){icon='🔗';title='No Active Match Yet';body='You\'re registered and approved! You\'ll get access to the Driver App once an owner matches with you. Check the TrustMate website for updates.';}
+  else if(type==='not-driver'){icon='🚫';title='Driver Access Only';body='This app is for TrustMate drivers only. If you\'re a vehicle owner, visit the main TrustMate marketplace.';}
+  else if(type==='pending'){icon='⏳';title='Profile Under Review';body='Your driver profile is still being reviewed by our admin team. This usually takes 1–2 business days. We\'ll notify you once approved.';}
+  eid('gate-inner').innerHTML=
+    '<div style="max-width:320px;margin:0 auto;text-align:center">'
+    +'<div class="hold-icon">'+icon+'</div>'
+    +'<div class="hold-title">'+title+'</div>'
+    +'<div class="hold-body">'+body+'</div>'
+    +'<a href="!DOCTYPE.html"><button class="btn-back">Back to TrustMate</button></a>'
+    +'</div>';
+}
+
+async function doLogin(){
+  var btn=eid('li-btn'); if(!btn||btn.disabled)return;
+  var email=(eid('li-email').value||'').trim();
+  var pass=(eid('li-pass').value||'').trim();
+  if(!email||!pass){renderLogin('Please enter your email and password.');return;}
+  btn.disabled=true; btn.textContent='Signing in…';
+  var r=await sb.auth.signInWithPassword({email:email,password:pass});
+  if(r.error){renderLogin(r.error.message);return;}
+  await boot();
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  U=null;P=null;DP=null;MATCH=null;CAR=null;
+  eid('gate').className='on'; eid('app').style.display='none';
+  renderLogin();
+}
+
+// ── BOOT ───────────────────────────────
+async function boot(){
+  eid('gate-inner').innerHTML='<div style="padding:20px"><div class="spin"></div></div>';
+  var sR=await sb.auth.getUser();
+  U=sR.data&&sR.data.user?sR.data.user:null;
+  if(!U){renderLogin();return;}
+
+  // Load profile
+  var pR=await sb.from('profiles').select('*').eq('id',U.id).maybeSingle();
+  P=pR.data||null;
+  if(!P||!(P.role==='driver'||P.role==='both')){renderHolding('not-driver');return;}
+
+  // Load driver profile
+  var dpR=await sb.from('driver_profiles').select('*').eq('user_id',U.id).maybeSingle();
+  DP=dpR.data||null;
+  if(!DP||DP.status==='pending'){renderHolding('pending');return;}
+
+  // Check active match
+  var mR=await sb.from('applications')
+    .select('*')
+    .eq('driver_id',U.id)
+    .eq('status','approved')
+    .is('unmatched_at',null)
+    .maybeSingle();
+  MATCH=mR.data||null;
+  if(!MATCH){renderHolding('no-match');return;}
+
+  // Load matched car
+  if(MATCH.car_id){
+    var cR=await sb.from('cars').select('*').eq('id',MATCH.car_id).maybeSingle();
+    CAR=cR.data||null;
+  }
+  if(!CAR&&MATCH.owner_id){
+    var cR2=await sb.from('cars').select('*').eq('owner_id',MATCH.owner_id).eq('admin_status','approved').limit(1).maybeSingle();
+    CAR=cR2.data||null;
+  }
+
+  showApp();
+  renderHome();
+}
+
+// ── HOME ───────────────────────────────
+function renderHome(){
+  var firstName=(P&&P.full_name?P.full_name.split(' ')[0]:'Driver');
+  var score=DP?DP.trust_score||0:0;
+  var si=scoreInfo(score);
+
+  // Payment days
+  var payDays=null, payAmt=CAR?CAR.price_per_week||0:0;
+  // Next inspection (7-day cycle from doc_uploaded_at or today)
+  var lastInsp=DP&&DP.last_inspection_at?new Date(DP.last_inspection_at):null;
+  var nextInspDate=lastInsp?new Date(lastInsp.getTime()+7*864e5):new Date();
+  var inspDays=daysUntil(nextInspDate.toISOString());
+  var inspDue=inspDays<=0;
+  var inspSoon=inspDays>0&&inspDays<=2;
+
+  // Odometer
+  var odo=DP&&DP.odometer_km?DP.odometer_km:null;
+
+  var html='';
+
+  // Hero card
+  html+='<div class="hero-card">'
+    +'<div class="hero-inner">'
+    +'<div class="hero-greet">'+greet()+' 👋</div>'
+    +'<div class="hero-name">'+esc(firstName)+'</div>'
+    +'<div class="hero-car">'
+    +(CAR&&CAR.photo_front_url
+      ?'<img class="hero-car-photo" src="'+esc(CAR.photo_front_url)+'" alt="car">'
+      :'<div class="hero-car-ph">🚗</div>')
+    +'<div class="hero-car-info">'
+    +'<div class="hero-car-name">'+(CAR?esc(CAR.make)+' '+esc(CAR.model)+' '+CAR.year:'Vehicle')+'</div>'
+    +'<div class="hero-car-sub">'+(CAR&&CAR.location?'📍 '+esc(CAR.location):'Active Rental')+'</div>'
+    +'</div>'
+    +'<div class="match-dot"></div>'
+    +'</div>'
+    +'</div>'
+    +'</div>';
+
+  // Stat grid
+  html+='<div class="stat-grid">';
+
+  // TrustScore
+  html+='<div class="stat-card ok">'
+    +'<div class="stat-icon">🛡️</div>'
+    +'<div class="stat-val">'+score+'</div>'
+    +'<div class="stat-label">TrustScore</div>'
+    +'<div class="stat-hint up">'+esc(si[3])+'</div>'
+    +'</div>';
+
+  // Today's km (placeholder — trips table to come)
+  html+='<div class="stat-card">'
+    +'<div class="stat-icon">📍</div>'
+    +'<div class="stat-val" id="stat-km">—</div>'
+    +'<div class="stat-label">Today\'s km</div>'
+    +'<div class="stat-hint muted">Tracking soon</div>'
+    +'</div>';
+
+  // Odometer
+  html+='<div class="stat-card">'
+    +'<div class="stat-icon">🔢</div>'
+    +'<div class="stat-val">'+(odo?odo.toLocaleString('en-ZA'):'—')+'</div>'
+    +'<div class="stat-label">Odometer (km)</div>'
+    +'<div class="stat-hint muted">'+(odo?'Last updated':'Not set yet')+'</div>'
+    +'</div>';
+
+  // Next payment
+  var payLabel=payAmt?'R'+payAmt.toLocaleString('en-ZA')+'/wk':'—';
+  html+='<div class="stat-card'+(payDays!==null&&payDays<=3?' warn':'ok')+'">'
+    +'<div class="stat-icon">💳</div>'
+    +'<div class="stat-val">'+payLabel+'</div>'
+    +'<div class="stat-label">Weekly Rental</div>'
+    +'<div class="stat-hint '+(payAmt?'up':'muted')+'">'+( payAmt?'Upload proof below':'—')+'</div>'
+    +'</div>';
+
+  html+='</div>'; // end stat-grid
+
+  // Inspection card
+  html+='<div class="insp-card">'
+    +'<div class="insp-head">'
+    +'<div class="insp-title">📋 Weekly Inspection</div>'
+    +(inspDue
+      ?'<span class="insp-badge badge-due">OVERDUE</span>'
+      :inspSoon
+        ?'<span class="insp-badge badge-warn">Due soon</span>'
+        :'<span class="insp-badge badge-ok">Up to date</span>')
+    +'</div>'
+    +(inspDue
+      ?'<div class="insp-meta">Your inspection is overdue. Please complete it now to keep your TrustScore healthy.</div>'
+      :inspSoon
+        ?'<div class="insp-meta">Due in '+inspDays+' day'+(inspDays!==1?'s':'')+' — '+fmtDate(nextInspDate.toISOString())+'</div>'
+        :'<div class="insp-meta">Next inspection: '+fmtDate(nextInspDate.toISOString())+(inspDays?' ('+inspDays+' days)':'')+'</div>')
+    +'<button class="btn-insp" onclick="switchTab(\'vehicle\')">'+(inspDue?'⚠️ Complete Now →':'Start Inspection →')+'</button>'
+    +'</div>';
+
+  // Payment proof
+  html+='<div class="pay-card">'
+    +'<div class="pay-head">'
+    +'<div>'
+    +'<div class="pay-label">Weekly Rental</div>'
+    +'<div class="pay-amount">'+payLabel+'</div>'
+    +'<div class="pay-due">'+(CAR&&CAR.location?'📍 '+esc(CAR.location):'')+(CAR&&CAR.transmission?' · '+esc(CAR.transmission):'')+'</div>'
+    +'</div>'
+    +'<button class="btn-pay" onclick="switchTab(\'vehicle\')">Upload Proof</button>'
+    +'</div>'
+    +'</div>';
+
+  // SOS
+  html+='<div class="sos-wrap">'
+    +'<button class="sos-btn" onclick="showSOS()">🚨 Emergency SOS</button>'
+    +'</div>';
+
+  html+='<div style="height:8px"></div>';
+
+  eid('home-body').innerHTML=html;
+}
+
+// ── TAB SWITCHING ──────────────────────
+function switchTab(name){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on');});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  var scr=eid('scr-'+name); if(scr)scr.classList.add('on');
+  var tab=eid('tab-'+name); if(tab)tab.classList.add('on');
+  // Update header subtitle
+  var labels={home:'Driver App',vehicle:'My Vehicle',trust:'TrustScore',community:'Community',profile:'My Profile'};
+  eid('hdr-sub').textContent=labels[name]||'Driver App';
+}
+
+// ── SOS ────────────────────────────────
+function showSOS(){
+  eid('sos-modal').classList.add('on');
+  eid('sos-loc-txt').textContent='Fetching your location…';
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      eid('sos-loc-txt').textContent='📍 Location ready: '+pos.coords.latitude.toFixed(4)+', '+pos.coords.longitude.toFixed(4);
+    },function(){
+      eid('sos-loc-txt').textContent='Location unavailable — please enable GPS.';
+    });
+  }
+}
+function closeSOS(e){
+  if(e&&e.target!==eid('sos-modal'))return;
+  eid('sos-modal').classList.remove('on');
+}
+async function triggerSOS(type){
+  var labels={emergency:'Medical emergency',police:'Police assistance',breakdown:'Vehicle breakdown'};
+  var loc='Unknown location';
+  try{
+    var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000});});
+    loc=pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5);
+  }catch(e){}
+  // Log SOS to Supabase (driver_id, type, location, timestamp)
+  await sb.from('sos_events').insert({
+    driver_id:U?U.id:null,
+    type:type,
+    location_text:loc,
+    created_at:new Date().toISOString()
+  }).then(function(){});
+  eid('sos-modal').classList.remove('on');
+  toast('🚨 SOS sent — '+labels[type]+'. Stay safe!',5000);
+}
+
+// ── INIT ───────────────────────────────
+renderLogin();
+sb.auth.onAuthStateChange(function(event,session){
+  if(event==='SIGNED_OUT'){U=null;P=null;DP=null;MATCH=null;CAR=null;}
+});
+boot();
+</script>
+</body>
+</html>
