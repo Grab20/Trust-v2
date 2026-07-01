@@ -816,7 +816,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="sbi2 on" id="sb-ov" onclick="dpanel('ov')"><span>&#128202;</span><span>Overview</span></div>
       <div class="sbi2" id="sb-pr" onclick="dpanel('pr')"><span>&#128100;</span><span>My Profile</span></div>
       <div class="sb-lbl">Activity</div>
-      <div class="sbi2" id="sb-ap" onclick="dpanel('ap')"><span>&#128203;</span><span id="sb-ap-l">Applications</span></div>
+      <div class="sbi2" id="sb-ap" onclick="dpanel('ap')"><span>&#128203;</span><span id="sb-ap-l">Applications</span><span id="sb-ap-badge" style="display:none;background:#E8A520;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px">0</span></div>
       <div class="sbi2" id="sb-rv" onclick="dpanel('rv')"><span>&#11088;</span><span>Reviews</span></div>
       <div class="sbi2" id="sb-dc" style="display:none" onclick="dpanel('dc')"><span>&#128196;</span><span>My Documents</span></div>
       <div class="sbi2" id="sb-lc" style="display:none" onclick="dpanel('lc')"><span>&#128663;</span><span>My Cars</span></div>
@@ -1729,7 +1729,7 @@ function acceptTC() { eid('reg-tc').checked=true; closeModal('terms-modal'); toa
 function acceptPP() { eid('reg-pp').checked=true; closeModal('popia-modal'); toast('POPIA consent given'); }
 
 // ── DASHBOARD ──────────────────────────────────────────
-function initDash() {
+async function initDash() {
   if(!U){go('login');return;}
   eid('dash-name').textContent='Hi '+(P&&P.full_name?P.full_name.split(' ')[0]:'there')+' \uD83D\uDC4B';
   eid('dash-role').textContent=P?(P.role==='driver'?'Driver Account':P.role==='owner'?'Owner Account':'TrustMate'):'';
@@ -1737,6 +1737,12 @@ function initDash() {
   eid('sb-dc').style.display=P&&(P.role==='driver'||P.role==='both')?'flex':'none';
   eid('sb-lc').style.display=P&&(P.role==='owner'||P.role==='both')?'flex':'none';
   eid('adm-link-sb').style.display=P&&P.is_admin?'block':'none';
+  if(P&&(P.role==='driver'||P.role==='both')){
+    var bR=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner');
+    var cnt=bR.count||0;
+    var bdg=eid('sb-ap-badge');
+    if(bdg){bdg.textContent=cnt;bdg.style.display=cnt>0?'inline':'none';}
+  }
   showMobNav();
   dpanel('ov');
 }
@@ -1767,6 +1773,47 @@ async function pOv() {
       +(docValid?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'<p style="font-size:11px;color:#dc2626">&#9888; Documents pending verification</p>')
       +'</div>';
     if(DP.status==='pending')html+='<div class="warn-box"><strong>Pending Admin Approval</strong><p style="font-size:13px;margin-top:4px">Your profile is under review. You will go live once admin approves. This typically takes 1-2 business days.</p></div>';
+
+    // ── PENDING OWNER REQUESTS ──
+    var apR=await sb.from('applications').select('*').eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner').order('created_at',{ascending:false});
+    var pendReqs=apR.data||[];
+    if(pendReqs.length){
+      var oIds=[...new Set(pendReqs.map(function(a){return a.owner_id;}).filter(Boolean))];
+      var carIds=[...new Set(pendReqs.map(function(a){return a.car_id;}).filter(Boolean))];
+      var [opR2,ocR2]=await Promise.all([
+        oIds.length?sb.from('profiles').select('id,full_name,location,phone,whatsapp').in('id',oIds):{data:[]},
+        carIds.length?sb.from('cars').select('id,make,model,year,photo_front_url,location,price_per_week').in('id',carIds):{data:[]}
+      ]);
+      var om2={},cm2={};
+      (opR2.data||[]).forEach(function(o){om2[o.id]=o;});
+      (ocR2.data||[]).forEach(function(c){cm2[c.id]=c;});
+      html+='<div class="tbox" style="border:2px solid #E8A520;background:#fffbf0">'
+        +'<div class="shd" style="color:#7a5200">&#128276; Owner Requests ('+pendReqs.length+')</div>'
+        +pendReqs.map(function(a){
+          var o=om2[a.owner_id]||{};
+          var car=cm2[a.car_id]||null;
+          return '<div style="background:#fff;border:1px solid #f0d080;border-radius:10px;padding:14px;margin-bottom:10px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">'
+            +'<div>'
+            +'<div style="font-size:15px;font-weight:800;color:var(--g)">'+(o.full_name||'Owner')+'</div>'
+            +(o.location?'<div style="font-size:11px;color:var(--muted)">&#128205; '+esc(o.location)+'</div>':'')
+            +'</div>'
+            +'<span style="font-size:10px;font-weight:700;background:#fff8e1;color:#7a5200;padding:3px 8px;border-radius:999px;border:1px solid #E8A520">&#127968; Owner Request</span>'
+            +'</div>'
+            +(car?'<div style="display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--cream);border-radius:8px;margin-bottom:10px">'
+              +(car.photo_front_url?'<img src="'+esc(car.photo_front_url)+'" style="width:56px;height:40px;object-fit:cover;border-radius:5px;flex-shrink:0">':'<span style="font-size:22px">&#128663;</span>')
+              +'<div><div style="font-size:13px;font-weight:700">'+esc(car.make)+' '+esc(car.model)+' '+car.year+'</div>'
+              +'<div style="font-size:11px;color:var(--muted)">&#128205; '+esc(car.location||'')+' &middot; R'+car.price_per_week+'/wk</div></div></div>':'')
+            +(a.message?'<div style="font-size:12px;color:#555;padding:7px 9px;background:var(--cream);border-radius:6px;font-style:italic;margin-bottom:10px">"'+esc(a.message)+'"</div>':'')
+            +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Received '+fmtD(a.created_at)+'</div>'
+            +'<div style="display:flex;gap:8px">'
+            +'<button class="btn btn-gm" style="flex:1;padding:11px;font-size:14px;font-weight:700" data-aid="'+a.id+'" data-s="approved" onclick="drvRespOv(this)">&#10003; Accept</button>'
+            +'<button class="btn btn-red" style="flex:1;padding:11px;font-size:14px;font-weight:700" data-aid="'+a.id+'" data-s="rejected" onclick="drvRespOv(this)">&#10005; Decline</button>'
+            +'</div>'
+            +'</div>';
+        }).join('')
+        +'</div>';
+    }
   }
   if(isO){
     var ar=await sb.from('applications').select('id,status,unmatched_at,driver_id').eq('owner_id',U.id);
@@ -2473,6 +2520,20 @@ async function drvResp(btn){
   if(r.error){toast('Error: '+r.error.message);return;}
   toast(s==='approved'?'Match accepted! Owner contact details are now visible.':'Request declined.');
   pAp();
+}
+async function drvRespOv(btn){
+  var id=btn.getAttribute('data-aid');
+  var s=btn.getAttribute('data-s');
+  var update={status:s};
+  if(s==='approved') update.matched_at=new Date().toISOString();
+  var r=await sb.from('applications').update(update).eq('id',id);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast(s==='approved'?'Match accepted! Owner contact details are now visible.':'Request declined.');
+  var bR=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner');
+  var cnt=bR.count||0;
+  var bdg=eid('sb-ap-badge');
+  if(bdg){bdg.textContent=cnt;bdg.style.display=cnt>0?'inline':'none';}
+  pOv();
 }
 async function doUnmatch(btn) {
   var id=btn.getAttribute('data-aid');
