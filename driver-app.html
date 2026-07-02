@@ -318,6 +318,41 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-s
 .alert-type-btn .atb-label{font-size:11px;font-weight:700;color:var(--text)}
 .comm-textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;resize:none;outline:none;color:var(--text);background:#fff;transition:border-color .15s;margin-bottom:10px}
 .comm-textarea:focus{border-color:var(--gm)}
+
+/* ── PROFILE SCREEN ── */
+.profile-hero{background:var(--g);padding:28px 20px 24px;text-align:center;position:relative}
+.profile-avatar{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.2);margin:0 auto 12px;display:block;background:rgba(255,255,255,.1)}
+.profile-avatar-ph{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 12px}
+.profile-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:800;color:#fff;margin-bottom:3px}
+.profile-role{font-size:12px;color:rgba(255,255,255,.55)}
+.profile-score-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:999px;padding:5px 12px;margin-top:10px;font-size:12px;font-weight:700;color:#fff}
+
+.profile-section{margin:10px 16px 0;background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.profile-row{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)}
+.profile-row:last-child{border-bottom:none}
+.profile-row-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.pr-green{background:var(--gs)}
+.pr-blue{background:#eff6ff}
+.pr-amber{background:#fff8e1}
+.pr-red{background:#fee2e2}
+.pr-sand{background:var(--sand)}
+.profile-row-info{flex:1;min-width:0}
+.profile-row-label{font-size:13px;font-weight:600;color:var(--text)}
+.profile-row-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.profile-row-right{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.doc-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
+.doc-ok{background:var(--gs);color:var(--gm)}
+.doc-pend{background:#fff8e1;color:#7a5200}
+.doc-miss{background:#fee2e2;color:var(--red)}
+.match-info-card{margin:10px 16px 0;background:var(--g);border-radius:var(--r);padding:16px 18px;display:flex;align-items:center;gap:14px}
+.match-car-thumb{width:54px;height:38px;border-radius:7px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,.1)}
+.match-car-ph{width:54px;height:38px;border-radius:7px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.match-info{flex:1;min-width:0}
+.match-info-title{font-size:12px;color:rgba(255,255,255,.55);margin-bottom:2px}
+.match-info-car{font-size:14px;font-weight:700;color:#fff}
+.match-info-owner{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px}
+.btn-signout{width:calc(100% - 32px);margin:10px 16px 0;padding:13px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);color:var(--red);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-signout:hover{background:#fee2e2}
 </style>
 </head>
 <body>
@@ -375,18 +410,10 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-s
     </div>
   </div>
 
-  <!-- ── PROFILE SCREEN (placeholder) ── -->
+  <!-- ── PROFILE SCREEN ── -->
   <div class="screen" id="scr-profile">
-    <div class="screen-body">
-      <div class="ph-screen">
-        <div class="ph-icon">👤</div>
-        <div class="ph-title">My Profile</div>
-        <div class="ph-body">View and edit your profile, documents and verification status.</div>
-        <span class="coming-pill">Coming next</span>
-      </div>
-      <div style="padding:0 24px 24px;text-align:center">
-        <button onclick="doLogout()" style="padding:10px 28px;border:1.5px solid var(--border);border-radius:10px;background:#fff;color:var(--red);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">Sign Out</button>
-      </div>
+    <div class="screen-body" id="profile-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
     </div>
   </div>
 
@@ -734,6 +761,7 @@ function switchTab(name){
   if(name==='vehicle')renderVehicle();
   if(name==='trust')renderTrust();
   if(name==='community')renderCommunity();
+  if(name==='profile')renderProfile();
 }
 
 // ── VEHICLE SCREEN ─────────────────────
@@ -1251,6 +1279,130 @@ async function submitAlert(){
   btn.disabled=false; btn.textContent='Post Alert';
   _commFilter='all';
   renderCommunity();
+}
+
+// ── PROFILE SCREEN ─────────────────────
+async function renderProfile(){
+  var pb=eid('profile-body');
+  if(!pb)return;
+
+  var score=DP?DP.trust_score||0:0;
+  var si=scoreInfo(score);
+  var name=P&&P.full_name?P.full_name:'Driver';
+  var phone=P&&P.phone?P.phone:null;
+  var whatsapp=P&&P.whatsapp?P.whatsapp:null;
+  var location=P&&P.location?P.location:null;
+  var avatarUrl=DP&&DP.profile_photo_url?DP.profile_photo_url:null;
+
+  // Doc fields from driver_profiles
+  var docs=[
+    {key:'id_doc_url',label:'ID Document',icon:'🪪'},
+    {key:'license_url',label:"Driver's Licence",icon:'🚗'},
+    {key:'pdp_url',label:'PDP Certificate',icon:'📄'},
+    {key:'proof_of_address_url',label:'Proof of Address',icon:'🏠'}
+  ];
+
+  var html='';
+
+  // Hero
+  html+='<div class="profile-hero">';
+  if(avatarUrl){
+    html+='<img class="profile-avatar" src="'+esc(avatarUrl)+'" alt="profile">';
+  } else {
+    html+='<div class="profile-avatar-ph">👤</div>';
+  }
+  html+='<div class="profile-name">'+esc(name)+'</div>';
+  html+='<div class="profile-role">TrustMate Driver</div>';
+  html+='<div class="profile-score-chip">🛡️ '+score+' &nbsp;·&nbsp; '+esc(si[3])+'</div>';
+  html+='</div>';
+
+  // Active match info
+  if(CAR){
+    html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Active Match</div>';
+    html+='<div class="match-info-card">';
+    html+=(CAR.photo_front_url
+      ?'<img class="match-car-thumb" src="'+esc(CAR.photo_front_url)+'" alt="car">'
+      :'<div class="match-car-ph">🚗</div>');
+    html+='<div class="match-info">'
+      +'<div class="match-info-title">Your vehicle</div>'
+      +'<div class="match-info-car">'+esc(CAR.make)+' '+esc(CAR.model)+' '+CAR.year+'</div>'
+      +'<div class="match-info-owner">📍 '+(CAR.location?esc(CAR.location):'Location not set')+'&nbsp;·&nbsp;R'+(CAR.price_per_week||'—')+'/wk</div>'
+      +'</div>'
+      +'<div class="match-dot" style="margin-left:auto"></div>';
+    html+='</div>';
+  }
+
+  // Personal info
+  html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Personal Info</div>';
+  html+='<div class="profile-section">';
+  html+='<div class="profile-row">'
+    +'<div class="profile-row-icon pr-green">✉️</div>'
+    +'<div class="profile-row-info"><div class="profile-row-label">Email</div><div class="profile-row-sub">'+esc(U.email||'—')+'</div></div>'
+    +'</div>';
+  html+='<div class="profile-row">'
+    +'<div class="profile-row-icon pr-blue">📞</div>'
+    +'<div class="profile-row-info"><div class="profile-row-label">Phone</div><div class="profile-row-sub">'+(phone?esc(phone):'Not set')+'</div></div>'
+    +'</div>';
+  html+='<div class="profile-row">'
+    +'<div class="profile-row-icon pr-green">💬</div>'
+    +'<div class="profile-row-info"><div class="profile-row-label">WhatsApp</div><div class="profile-row-sub">'+(whatsapp?esc(whatsapp):'Not set')+'</div></div>'
+    +'</div>';
+  html+='<div class="profile-row">'
+    +'<div class="profile-row-icon pr-sand">📍</div>'
+    +'<div class="profile-row-info"><div class="profile-row-label">Location</div><div class="profile-row-sub">'+(location?esc(location):'Not set')+'</div></div>'
+    +'</div>';
+  html+='</div>';
+
+  // Documents
+  html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Documents</div>';
+  html+='<div class="profile-section">';
+  docs.forEach(function(d){
+    var hasDoc=DP&&DP[d.key];
+    var badgeClass=hasDoc?'doc-ok':'doc-miss';
+    var badgeLabel=hasDoc?'Uploaded':'Missing';
+    html+='<div class="profile-row">'
+      +'<div class="profile-row-icon '+(hasDoc?'pr-green':'pr-red')+'">'+d.icon+'</div>'
+      +'<div class="profile-row-info"><div class="profile-row-label">'+d.label+'</div></div>'
+      +'<div class="profile-row-right">'
+      +(hasDoc?'<a href="'+esc(DP[d.key])+'" target="_blank" style="font-size:11px;color:var(--gm);font-weight:700;text-decoration:none;margin-right:6px">View</a>':'')
+      +'<span class="doc-badge '+badgeClass+'">'+badgeLabel+'</span>'
+      +'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // Platform screenshots
+  html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Platform Screenshots</div>';
+  html+='<div class="profile-section">';
+  [{key:'uber_screenshot_url',label:'Uber',icon:'🚗'},{key:'bolt_screenshot_url',label:'Bolt',icon:'⚡'},{key:'indrive_screenshot_url',label:'InDrive',icon:'🔵'}].forEach(function(p){
+    var hasShot=DP&&DP[p.key];
+    html+='<div class="profile-row">'
+      +'<div class="profile-row-icon pr-sand">'+p.icon+'</div>'
+      +'<div class="profile-row-info"><div class="profile-row-label">'+p.label+'</div></div>'
+      +'<div class="profile-row-right">'
+      +(hasShot?'<a href="'+esc(hasShot)+'" target="_blank" style="font-size:11px;color:var(--gm);font-weight:700;text-decoration:none;margin-right:6px">View</a>':'')
+      +'<span class="doc-badge '+(hasShot?'doc-ok':'doc-miss')+'">'+(hasShot?'Uploaded':'Missing')+'</span>'
+      +'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // Inspection & match stats
+  html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Activity</div>';
+  html+='<div class="profile-section">';
+  var lastInsp=DP&&DP.last_inspection_at?fmtDate(DP.last_inspection_at):'Never';
+  var matchDate=MATCH&&MATCH.matched_at?fmtDate(MATCH.matched_at):'—';
+  var odo=DP&&DP.odometer_km?DP.odometer_km.toLocaleString('en-ZA')+' km':'Not set';
+  html+='<div class="profile-row"><div class="profile-row-icon pr-green">📋</div><div class="profile-row-info"><div class="profile-row-label">Last Inspection</div><div class="profile-row-sub">'+lastInsp+'</div></div></div>';
+  html+='<div class="profile-row"><div class="profile-row-icon pr-blue">🔢</div><div class="profile-row-info"><div class="profile-row-label">Odometer</div><div class="profile-row-sub">'+odo+'</div></div></div>';
+  html+='<div class="profile-row"><div class="profile-row-icon pr-green">🔗</div><div class="profile-row-info"><div class="profile-row-label">Matched Since</div><div class="profile-row-sub">'+matchDate+'</div></div></div>';
+  html+='</div>';
+
+  // Sign out
+  html+='<button class="btn-signout" onclick="doLogout()">Sign Out</button>';
+  html+='<div style="height:16px"></div>';
+
+  pb.innerHTML=html;
 }
 
 // ── SOS ────────────────────────────────
