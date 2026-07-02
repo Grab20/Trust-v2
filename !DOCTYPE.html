@@ -2661,7 +2661,8 @@ async function subMatch() {
   var ins;
   if(matchMode==='driver'){
     if(!DP||DP.status!=='approved'){toast('Your profile must be approved by admin before you can apply.');btn.disabled=false;btn.textContent='Send Request';return;}
-    if(!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
+    var hasTripsOrRating=(DP.uber_trips||DP.uber_rating||DP.bolt_trips||DP.bolt_rating||DP.indrive_trips||DP.indrive_rating);
+    if(!hasTripsOrRating&&!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
     var ex=await sb.from('applications').select('id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null);
     if(ex.data&&ex.data.length){toast('You are already matched with an owner. Unmatch first.');btn.disabled=false;btn.textContent='Send Request';return;}
     if(matchCarId){var carEx=await sb.from('applications').select('id').eq('car_id',matchCarId).eq('status','approved').is('unmatched_at',null);if(carEx.data&&carEx.data.length){toast('This car is already matched with another driver and is not available.');btn.disabled=false;btn.textContent='Send Request';return;}}
@@ -4004,8 +4005,23 @@ async function adMatch(){
         +'</div>'
         +'</div>'
         +'<div style="font-size:11px;color:var(--muted);margin-top:8px">Matched: '+fmtD(a.created_at)+'</div>'
+        +'<div style="margin-top:10px"><button class="btn btn-red" style="font-size:12px;padding:7px 16px" data-aid="'+a.id+'" onclick="adAdminUnmatch(this)">&#10006; Unmatch</button></div>'
         +'</div></div></div>';
     }).join('');
+}
+
+async function adAdminUnmatch(btn){
+  if(!confirm('Unmatch this driver and owner? This will end their current rental arrangement.'))return;
+  var id=btn.getAttribute('data-aid');
+  btn.disabled=true;btn.textContent='Unmatching...';
+  var appR=await sb.from('applications').select('driver_id').eq('id',id).maybeSingle();
+  await sb.from('applications').update({status:'rejected',unmatched_at:new Date().toISOString(),unmatched_by:'admin'}).eq('id',id);
+  if(appR.data&&appR.data.driver_id){
+    var dpR=await sb.from('driver_profiles').select('id,rentals_completed').eq('user_id',appR.data.driver_id).maybeSingle();
+    if(dpR.data)await sb.from('driver_profiles').update({rentals_completed:(dpR.data.rentals_completed||0)+1}).eq('id',dpR.data.id);
+  }
+  toast('Match ended.');
+  adMatch();
 }
 
 // ── ALL APPLICATIONS ───────────────────────────────────
