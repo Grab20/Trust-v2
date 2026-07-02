@@ -634,9 +634,9 @@ function switchTab(name){
 // ── VEHICLE SCREEN ─────────────────────
 var _inspChecks={
   // Exterior
-  body_damage:false, tyres:false, lights:false, wipers:false, windows:false,
+  front_body:false, rear_body:false, sides:false, roof:false, windows_glass:false,
   // Interior
-  brakes:false, oil:false, fuel:false, interior_clean:false, seatbelts:false
+  seats:false, dashboard:false, floor:false, door_panels:false, steering:false
 };
 var _inspPhotos={front:null,side:null,back:null,interior:null};
 var _payFile=null;
@@ -676,11 +676,11 @@ async function renderVehicle(){
   // Exterior checklist
   html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Exterior</div>';
   html+='<div class="check-list" style="margin-bottom:14px">';
-  [{k:'body_damage',label:'Body — no new dents, scratches or damage'},
-   {k:'tyres',label:'Tyres — pressure & tread OK'},
-   {k:'lights',label:'Lights — headlights, tail & indicators working'},
-   {k:'wipers',label:'Wipers & washer fluid topped up'},
-   {k:'windows',label:'Windows & mirrors — clean & uncracked'}
+  [{k:'front_body',label:'Front bumper & bonnet — no new dents or scratches'},
+   {k:'rear_body',label:'Rear bumper & boot — no new damage'},
+   {k:'sides',label:'Both sides — doors, panels & sills undamaged'},
+   {k:'roof',label:'Roof — no dents, scratches or damage'},
+   {k:'windows_glass',label:'Windows, mirrors & lights — no cracks or chips'}
   ].forEach(function(c){
     var done=_inspChecks[c.k];
     html+='<div class="check-item" onclick="toggleCheck(\''+c.k+'\')">'
@@ -693,11 +693,11 @@ async function renderVehicle(){
   // Interior checklist
   html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Interior</div>';
   html+='<div class="check-list" style="margin-bottom:14px">';
-  [{k:'brakes',label:'Brakes — no grinding, pulling or soft pedal'},
-   {k:'oil',label:'Oil & fluid levels — within range'},
-   {k:'fuel',label:'Fuel level — adequate for the day'},
-   {k:'interior_clean',label:'Interior clean — no damage to seats or dash'},
-   {k:'seatbelts',label:'Seatbelts — all working correctly'}
+  [{k:'seats',label:'Seats & headrests — no tears, stains or damage'},
+   {k:'dashboard',label:'Dashboard & centre console — undamaged'},
+   {k:'floor',label:'Floor & carpets — no damage or excessive dirt'},
+   {k:'door_panels',label:'Door panels & handles — no cracks or damage'},
+   {k:'steering',label:'Steering wheel & controls — undamaged'}
   ].forEach(function(c){
     var done=_inspChecks[c.k];
     html+='<div class="check-item" onclick="toggleCheck(\''+c.k+'\')">'
@@ -824,7 +824,7 @@ async function submitInspection(){
   DP.last_inspection_at=now;
   DP.odometer_km=odoVal;
   _inspPhotos={front:null,side:null,back:null,interior:null};
-  _inspChecks={body_damage:false,tyres:false,lights:false,wipers:false,windows:false,brakes:false,oil:false,fuel:false,interior_clean:false,seatbelts:false};
+  _inspChecks={front_body:false,rear_body:false,sides:false,roof:false,windows_glass:false,seats:false,dashboard:false,floor:false,door_panels:false,steering:false};
   toast('✅ Inspection submitted!');
   btn.disabled=false;
   renderHome();
