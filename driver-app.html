@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
+<title>TrustMate Driver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g:#1a2e1a;
+  --gm:#1a5c28;
+  --gs:#d4edd8;
+  --cream:#faf9f5;
+  --sand:#f0ede5;
+  --border:#e8e5df;
+  --text:#1a1a18;
+  --muted:#6b6b60;
+  --amber:#E8A520;
+  --red:#dc2626;
+  --r:14px;
+  --tab-h:68px;
+  --header-h:60px;
+}
+html,body{height:100%;overflow:hidden;background:var(--g)}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-text-size-adjust:100%}
+
+/* ── APP SHELL ── */
+#app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;background:var(--cream);position:relative;overflow:hidden}
+
+/* ── SCREENS ── */
+.screen{display:none;flex-direction:column;flex:1;overflow:hidden}
+.screen.on{display:flex}
+
+/* ── GATE SCREENS ── */
+#gate{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;background:var(--g);padding:32px 24px}
+#gate.on{display:flex}
+#gate.off{display:none}
+
+/* ── HEADER ── */
+.app-header{background:var(--g);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;min-height:var(--header-h);padding-top:max(14px,env(safe-area-inset-top))}
+.app-header .logo{font-family:'Playfair Display',serif;font-size:15px;font-weight:800;color:#fff}
+.app-header .logo span{color:var(--gs);font-size:11px;font-weight:500;display:block;font-family:'DM Sans',sans-serif;margin-top:1px}
+.hbtn{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.1);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px}
+
+/* ── SCROLL BODY ── */
+.screen-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(var(--tab-h) + 16px)}
+
+/* ── TAB BAR ── */
+.tab-bar{background:var(--g);display:flex;align-items:stretch;flex-shrink:0;height:var(--tab-h);padding-bottom:env(safe-area-inset-bottom);border-top:1px solid rgba(255,255,255,.08)}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:6px 4px;background:none;border:none;font-family:inherit;transition:opacity .15s}
+.tab .ti{font-size:20px;line-height:1}
+.tab .tl{font-size:10px;font-weight:600;color:rgba(255,255,255,.45);letter-spacing:.2px}
+.tab.on .tl{color:#fff}
+.tab.on .ti{filter:drop-shadow(0 0 6px rgba(212,237,216,.6))}
+.tab-dot{width:4px;height:4px;border-radius:50%;background:var(--gs);margin-top:2px;opacity:0}
+.tab.on .tab-dot{opacity:1}
+
+/* ── CARDS ── */
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.card-pad{padding:16px}
+
+/* ── HOME SCREEN ── */
+.hero-card{margin:16px 16px 0;border-radius:var(--r);background:var(--g);overflow:hidden;position:relative}
+.hero-card::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='170' cy='30' r='80' fill='rgba(255,255,255,.03)'/%3E%3Ccircle cx='160' cy='160' r='60' fill='rgba(255,255,255,.02)'/%3E%3C/svg%3E") no-repeat right top;pointer-events:none}
+.hero-inner{padding:18px 20px 20px;position:relative;z-index:1}
+.hero-greet{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:3px}
+.hero-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:800;color:#fff;margin-bottom:14px}
+.hero-car{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px}
+.hero-car-photo{width:54px;height:38px;object-fit:cover;border-radius:7px;flex-shrink:0;background:rgba(255,255,255,.1)}
+.hero-car-ph{width:54px;height:38px;border-radius:7px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.hero-car-info{flex:1}
+.hero-car-name{font-size:13px;font-weight:700;color:#fff}
+.hero-car-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:1px}
+.match-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0;box-shadow:0 0 6px #4ade80}
+
+/* ── STAT GRID ── */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px 16px 0}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gm);border-radius:3px 3px 0 0;opacity:0}
+.stat-card.warn::before{background:var(--amber);opacity:1}
+.stat-card.ok::before{background:var(--gm);opacity:1}
+.stat-icon{font-size:20px;margin-bottom:6px}
+.stat-val{font-family:'Playfair Display',serif;font-size:22px;font-weight:800;color:var(--g);line-height:1}
+.stat-label{font-size:11px;color:var(--muted);margin-top:3px;font-weight:500}
+.stat-hint{font-size:10px;font-weight:600;margin-top:4px}
+.stat-hint.up{color:var(--gm)}
+.stat-hint.warn{color:var(--amber)}
+.stat-hint.muted{color:var(--muted)}
+
+/* ── INSPECTION CARD ── */
+.insp-card{margin:10px 16px 0;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.insp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.insp-title{font-size:13px;font-weight:700;color:var(--g)}
+.insp-badge{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px}
+.badge-warn{background:#fff8e1;color:#7a5200;border:1px solid var(--amber)}
+.badge-ok{background:var(--gs);color:var(--gm)}
+.badge-due{background:#fee2e2;color:var(--red)}
+.insp-meta{font-size:12px;color:var(--muted);margin-bottom:12px}
+.btn-insp{width:100%;padding:11px;background:var(--gm);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.btn-insp:hover{opacity:.88}
+.btn-insp:disabled{opacity:.45;cursor:default}
+
+/* ── PAYMENT CARD ── */
+.pay-card{margin:10px 16px 0;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.pay-head{display:flex;justify-content:space-between;align-items:flex-start}
+.pay-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px}
+.pay-amount{font-family:'Playfair Display',serif;font-size:26px;font-weight:800;color:var(--g)}
+.pay-due{font-size:12px;color:var(--muted);margin-top:3px}
+.btn-pay{padding:9px 16px;background:var(--g);color:#fff;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:opacity .15s;margin-top:4px}
+.btn-pay:hover{opacity:.85}
+
+/* ── SOS BUTTON ── */
+.sos-wrap{margin:10px 16px 0}
+.sos-btn{width:100%;padding:15px;background:var(--red);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.3px;transition:transform .1s,box-shadow .1s;box-shadow:0 4px 20px rgba(220,38,38,.3)}
+.sos-btn:active{transform:scale(.97);box-shadow:0 2px 10px rgba(220,38,38,.2)}
+
+/* ── SOS MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end}
+.overlay.on{display:flex}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:430px;margin:0 auto;padding:24px 24px calc(24px + env(safe-area-inset-bottom))}
+.modal-handle{width:40px;height:4px;background:var(--border);border-radius:4px;margin:0 auto 20px}
+.modal-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:800;color:var(--g);margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.5}
+.sos-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sos-action{padding:16px 12px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:6px;transition:opacity .15s}
+.sos-action:hover{opacity:.85}
+.sos-action .sa-icon{font-size:28px}
+.sos-action .sa-label{font-size:12px;font-weight:700}
+.sos-a-emergency{background:#fee2e2;color:var(--red)}
+.sos-a-police{background:#eff6ff;color:#1d4ed8}
+.sos-a-breakdown{background:#fff8e1;color:#7a5200}
+.sos-a-cancel{background:var(--sand);color:var(--muted);grid-column:1/-1}
+.sos-loc{font-size:11px;color:var(--muted);text-align:center;margin-top:12px}
+
+/* ── GATE / LOGIN ── */
+.gate-logo{font-family:'Playfair Display',serif;font-size:28px;font-weight:800;color:#fff;text-align:center;margin-bottom:6px}
+.gate-sub{font-size:13px;color:rgba(255,255,255,.55);text-align:center;margin-bottom:36px}
+.gate-card{background:#fff;border-radius:var(--r);padding:24px;width:100%;max-width:360px}
+.gate-card h2{font-family:'Playfair Display',serif;font-size:18px;color:var(--g);margin-bottom:4px}
+.gate-card .sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.fg input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none;background:#fff;color:var(--text);transition:border-color .15s}
+.fg input:focus{border-color:var(--gm)}
+.btn-login{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px;transition:opacity .15s}
+.btn-login:hover{opacity:.88}
+.btn-login:disabled{opacity:.5;cursor:default}
+.gate-err{background:#fee2e2;color:var(--red);padding:9px 12px;border-radius:8px;font-size:12px;margin-bottom:10px;display:none}
+.gate-err.on{display:block}
+
+/* ── HOLDING SCREEN ── */
+.hold-icon{font-size:52px;margin-bottom:16px;text-align:center}
+.hold-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:800;color:#fff;text-align:center;margin-bottom:8px}
+.hold-body{font-size:13px;color:rgba(255,255,255,.6);text-align:center;line-height:1.6;max-width:280px;margin:0 auto 28px}
+.btn-back{padding:11px 28px;border:1.5px solid rgba(255,255,255,.3);border-radius:10px;color:rgba(255,255,255,.7);background:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* ── PLACEHOLDER TABS ── */
+.ph-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 24px;text-align:center}
+.ph-icon{font-size:48px;margin-bottom:16px}
+.ph-title{font-family:'Playfair Display',serif;font-size:20px;font-weight:800;color:var(--g);margin-bottom:8px}
+.ph-body{font-size:13px;color:var(--muted);line-height:1.6;max-width:260px}
+.coming-pill{display:inline-block;background:var(--gs);color:var(--gm);font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;margin-top:12px;letter-spacing:.4px;text-transform:uppercase}
+
+/* ── VEHICLE SCREEN ── */
+.veh-section{padding:14px 16px 6px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.veh-card{margin:0 16px 10px;background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.veh-card-head{padding:14px 16px 10px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border)}
+.veh-card-title{font-size:14px;font-weight:700;color:var(--g)}
+.veh-card-body{padding:14px 16px}
+.odo-row{display:flex;gap:10px;align-items:center}
+.odo-input{flex:1;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:18px;font-weight:700;font-family:'Playfair Display',serif;color:var(--g);outline:none;text-align:center;background:var(--cream);transition:border-color .15s}
+.odo-input:focus{border-color:var(--gm)}
+.btn-odo{padding:12px 18px;background:var(--gm);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;transition:opacity .15s}
+.btn-odo:hover{opacity:.88}
+.btn-odo:disabled{opacity:.45;cursor:default}
+.odo-hint{font-size:11px;color:var(--muted);margin-top:8px}
+
+/* inspection checklist */
+.check-list{display:flex;flex-direction:column;gap:0}
+.check-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border)}
+.check-item:last-child{border-bottom:none}
+.check-box{width:22px;height:22px;border-radius:6px;border:2px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,border-color .15s;font-size:13px;background:#fff}
+.check-box.done{background:var(--gm);border-color:var(--gm);color:#fff}
+.check-item-text{flex:1;font-size:13px;color:var(--text);font-weight:500}
+.check-item-text.done{text-decoration:line-through;color:var(--muted)}
+
+/* upload zones */
+.up-zone{border:2px dashed var(--border);border-radius:10px;padding:18px 12px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;position:relative}
+.up-zone:hover{border-color:var(--gm);background:var(--gs)}
+.up-zone.has-file{border-color:var(--gm);background:#f0fdf4}
+.up-zone .uz-icon{font-size:24px;margin-bottom:4px}
+.up-zone .uz-label{font-size:12px;font-weight:600;color:var(--muted)}
+.up-zone.has-file .uz-label{color:var(--gm)}
+.up-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.up-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.btn-submit-insp{width:100%;padding:13px;background:var(--g);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-top:4px}
+.btn-submit-insp:hover{opacity:.88}
+.btn-submit-insp:disabled{opacity:.45;cursor:default}
+
+/* payment upload */
+.pay-upload-card{margin:0 16px 10px;background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.pay-upload-head{padding:14px 16px 10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.pay-history-row{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border)}
+.pay-history-row:last-child{border-bottom:none}
+.pay-hist-status{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.pay-hist-ok{background:#4ade80}
+.pay-hist-pend{background:var(--amber)}
+.pay-hist-info{flex:1}
+.pay-hist-label{font-size:13px;font-weight:600;color:var(--text)}
+.pay-hist-date{font-size:11px;color:var(--muted);margin-top:1px}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:calc(var(--tab-h) + 16px);left:50%;transform:translateX(-50%) translateY(20px);background:var(--g);color:#fff;padding:10px 20px;border-radius:999px;font-size:13px;font-weight:600;white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;z-index:300}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── SPINNER ── */
+.spin{width:28px;height:28px;border:3px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── UTILS ── */
+.sep{height:1px;background:var(--border);margin:0 16px}
+.section-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:14px 16px 6px}
+
+@media(prefers-color-scheme:dark){
+  /* keep light — this is an intentional brand choice */
+}
+
+/* ── TRUST SCREEN ── */
+.trust-hero{margin:16px 16px 0;border-radius:var(--r);background:var(--g);padding:24px 20px;position:relative;overflow:hidden;text-align:center}
+.trust-hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='170' cy='30' r='80' fill='rgba(255,255,255,.03)'/%3E%3C/svg%3E") no-repeat right top;pointer-events:none}
+.trust-score-ring{position:relative;width:110px;height:110px;margin:0 auto 12px}
+.trust-ring-svg{width:110px;height:110px;transform:rotate(-90deg)}
+.trust-ring-bg{fill:none;stroke:rgba(255,255,255,.12);stroke-width:8}
+.trust-ring-fill{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .6s ease}
+.trust-score-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.trust-score-val{font-family:'Playfair Display',serif;font-size:30px;font-weight:800;color:#fff;line-height:1}
+.trust-score-max{font-size:11px;color:rgba(255,255,255,.45);margin-top:1px}
+.trust-tier-badge{display:inline-block;padding:4px 14px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;margin-bottom:4px}
+.trust-hero-name{font-size:13px;color:rgba(255,255,255,.6)}
+
+/* tier colours */
+.tier-elite{background:#ffd700;color:#5a3e00}
+.tier-high{background:var(--gs);color:var(--gm)}
+.tier-mid{background:#dbeafe;color:#1e40af}
+.tier-ok{background:#fff8e1;color:#7a5200}
+.tier-low{background:#fee2e2;color:var(--red)}
+
+/* pillar bars */
+.pillar-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.pillar-row:last-child{border-bottom:none}
+.pillar-icon{font-size:18px;width:28px;flex-shrink:0;text-align:center}
+.pillar-info{flex:1;min-width:0}
+.pillar-label{font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px}
+.pillar-bar-wrap{height:6px;background:var(--border);border-radius:4px;overflow:hidden}
+.pillar-bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.pillar-score{font-size:12px;font-weight:800;color:var(--g);width:28px;text-align:right;flex-shrink:0}
+
+/* review cards */
+.review-card{padding:13px 16px;border-bottom:1px solid var(--border)}
+.review-card:last-child{border-bottom:none}
+.review-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.review-stars{font-size:13px;letter-spacing:1px}
+.review-from{font-size:11px;color:var(--muted);flex:1}
+.review-date{font-size:10px;color:var(--muted)}
+.review-text{font-size:12px;color:var(--text);line-height:1.5}
+
+/* trust actions */
+.action-row{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border)}
+.action-row:last-child{border-bottom:none}
+.action-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.action-pos{background:var(--gs)}
+.action-neg{background:#fee2e2}
+.action-info{flex:1}
+.action-label{font-size:12px;font-weight:600;color:var(--text)}
+.action-date{font-size:10px;color:var(--muted);margin-top:1px}
+.action-pts{font-size:12px;font-weight:800}
+.action-pts-pos{color:var(--gm)}
+.action-pts-neg{color:var(--red)}
+
+/* ── COMMUNITY SCREEN ── */
+.comm-filter-bar{display:flex;gap:6px;padding:12px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.comm-filter-bar::-webkit-scrollbar{display:none}
+.filter-chip{padding:6px 14px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap;flex-shrink:0;font-family:inherit;transition:background .15s,border-color .15s,color .15s}
+.filter-chip.on{background:var(--g);border-color:var(--g);color:#fff}
+.alert-card{margin:0 16px 10px;background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.alert-card-inner{padding:14px 16px}
+.alert-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.alert-type-badge{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.alert-t-police{background:#eff6ff}
+.alert-t-accident{background:#fee2e2}
+.alert-t-hazard{background:#fff8e1}
+.alert-t-roadblock{background:#f3e8ff}
+.alert-t-other{background:var(--sand)}
+.alert-info{flex:1;min-width:0}
+.alert-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:2px}
+.alert-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.alert-footer{display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.alert-loc{font-size:11px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alert-time{font-size:10px;color:var(--muted);white-space:nowrap}
+.alert-up{display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:var(--sand);border:none;cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);font-family:inherit}
+.alert-up.voted{background:var(--gs);color:var(--gm)}
+.post-alert-btn{position:sticky;bottom:calc(var(--tab-h) + 16px);margin:0 16px 0;width:calc(100% - 32px);padding:14px;background:var(--gm);color:#fff;border:none;border-radius:var(--r);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(26,92,40,.35);transition:opacity .15s}
+.post-alert-btn:hover{opacity:.9}
+.comm-empty{padding:40px 24px;text-align:center}
+.comm-empty-icon{font-size:40px;margin-bottom:12px}
+.comm-empty-title{font-size:15px;font-weight:700;color:var(--g);margin-bottom:6px}
+.comm-empty-body{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* post alert modal */
+.alert-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.alert-type-btn{padding:12px 8px;border-radius:10px;border:2px solid var(--border);background:#fff;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:5px;transition:border-color .15s,background .15s}
+.alert-type-btn.on{border-color:var(--gm);background:var(--gs)}
+.alert-type-btn .atb-icon{font-size:22px}
+.alert-type-btn .atb-label{font-size:11px;font-weight:700;color:var(--text)}
+.comm-textarea{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;resize:none;outline:none;color:var(--text);background:#fff;transition:border-color .15s;margin-bottom:10px}
+.comm-textarea:focus{border-color:var(--gm)}
+
+/* ── PROFILE SCREEN ── */
+.profile-hero{background:var(--g);padding:28px 20px 24px;text-align:center;position:relative}
+.profile-avatar{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,.2);margin:0 auto 12px;display:block;background:rgba(255,255,255,.1)}
+.profile-avatar-ph{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 12px}
+.profile-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:800;color:#fff;margin-bottom:3px}
+.profile-role{font-size:12px;color:rgba(255,255,255,.55)}
+.profile-score-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.1);border-radius:999px;padding:5px 12px;margin-top:10px;font-size:12px;font-weight:700;color:#fff}
+
+.profile-section{margin:10px 16px 0;background:#fff;border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.profile-row{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)}
+.profile-row:last-child{border-bottom:none}
+.profile-row-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.pr-green{background:var(--gs)}
+.pr-blue{background:#eff6ff}
+.pr-amber{background:#fff8e1}
+.pr-red{background:#fee2e2}
+.pr-sand{background:var(--sand)}
+.profile-row-info{flex:1;min-width:0}
+.profile-row-label{font-size:13px;font-weight:600;color:var(--text)}
+.profile-row-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.profile-row-right{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:4px}
+.doc-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px}
+.doc-ok{background:var(--gs);color:var(--gm)}
+.doc-pend{background:#fff8e1;color:#7a5200}
+.doc-miss{background:#fee2e2;color:var(--red)}
+.match-info-card{margin:10px 16px 0;background:var(--g);border-radius:var(--r);padding:16px 18px;display:flex;align-items:center;gap:14px}
+.match-car-thumb{width:54px;height:38px;border-radius:7px;object-fit:cover;flex-shrink:0;background:rgba(255,255,255,.1)}
+.match-car-ph{width:54px;height:38px;border-radius:7px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.match-info{flex:1;min-width:0}
+.match-info-title{font-size:12px;color:rgba(255,255,255,.55);margin-bottom:2px}
+.match-info-car{font-size:14px;font-weight:700;color:#fff}
+.match-info-owner{font-size:11px;color:rgba(255,255,255,.6);margin-top:2px}
+.btn-signout{width:calc(100% - 32px);margin:10px 16px 0;padding:13px;background:#fff;border:1.5px solid var(--border);border-radius:var(--r);color:var(--red);font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-signout:hover{background:#fee2e2}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     GATE — LOGIN
+════════════════════════════════════════ -->
+<div id="gate" class="on">
+  <div class="gate-logo">TrustMate</div>
+  <div class="gate-sub">Driver App</div>
+  <div id="gate-inner">
+    <!-- filled by JS: login form / holding / access denied -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     APP SHELL (shown after auth)
+════════════════════════════════════════ -->
+<div id="app" style="display:none">
+
+  <!-- HEADER -->
+  <div class="app-header">
+    <div class="logo">
+      TrustMate
+      <span id="hdr-sub">Driver App</span>
+    </div>
+    <button class="hbtn" onclick="showSOS()" title="Emergency SOS">🚨</button>
+  </div>
+
+  <!-- ── HOME SCREEN ── -->
+  <div class="screen on" id="scr-home">
+    <div class="screen-body" id="home-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
+    </div>
+  </div>
+
+  <!-- ── VEHICLE SCREEN ── -->
+  <div class="screen" id="scr-vehicle">
+    <div class="screen-body" id="vehicle-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
+    </div>
+  </div>
+
+  <!-- ── TRUST SCREEN ── -->
+  <div class="screen" id="scr-trust">
+    <div class="screen-body" id="trust-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
+    </div>
+  </div>
+
+  <!-- ── COMMUNITY SCREEN ── -->
+  <div class="screen" id="scr-community">
+    <div class="screen-body" id="community-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
+    </div>
+  </div>
+
+  <!-- ── PROFILE SCREEN ── -->
+  <div class="screen" id="scr-profile">
+    <div class="screen-body" id="profile-body">
+      <div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <button class="tab on" id="tab-home" onclick="switchTab('home')">
+      <span class="ti">🏠</span>
+      <span class="tl">Home</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" id="tab-vehicle" onclick="switchTab('vehicle')">
+      <span class="ti">🚗</span>
+      <span class="tl">Vehicle</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" id="tab-trust" onclick="switchTab('trust')">
+      <span class="ti">⭐</span>
+      <span class="tl">Trust</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" id="tab-community" onclick="switchTab('community')">
+      <span class="ti">🌍</span>
+      <span class="tl">Community</span>
+      <span class="tab-dot"></span>
+    </button>
+    <button class="tab" id="tab-profile" onclick="switchTab('profile')">
+      <span class="ti">👤</span>
+      <span class="tl">Me</span>
+      <span class="tab-dot"></span>
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     SOS MODAL
+════════════════════════════════════════ -->
+<div class="overlay" id="sos-modal" onclick="closeSOS(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🚨 Emergency SOS</div>
+    <div class="modal-sub">Select the type of emergency. Your live location will be shared with your contact.</div>
+    <div class="sos-actions">
+      <button class="sos-action sos-a-emergency" onclick="triggerSOS('emergency')">
+        <span class="sa-icon">🚑</span>
+        <span class="sa-label">Medical</span>
+      </button>
+      <button class="sos-action sos-a-police" onclick="triggerSOS('police')">
+        <span class="sa-icon">🚔</span>
+        <span class="sa-label">Police</span>
+      </button>
+      <button class="sos-action sos-a-breakdown" onclick="triggerSOS('breakdown')">
+        <span class="sa-icon">🔧</span>
+        <span class="sa-label">Breakdown</span>
+      </button>
+      <button class="sos-action sos-a-cancel" onclick="closeSOS()">
+        <span class="sa-icon" style="font-size:18px">✕</span>
+        <span class="sa-label">Cancel</span>
+      </button>
+    </div>
+    <div class="sos-loc" id="sos-loc-txt">Fetching your location...</div>
+  </div>
+</div>
+
+<!-- POST ALERT MODAL -->
+<div class="overlay" id="post-alert-modal" onclick="closePostAlert(event)">
+  <div class="modal-sheet" onclick="event.stopPropagation()" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📢 Post an Alert</div>
+    <div class="modal-sub">Warn fellow TrustMate drivers about hazards on the road.</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Alert Type</div>
+    <div id="pa-type-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px">Please select an alert type.</div>
+    <div class="alert-type-grid">
+      <button class="alert-type-btn" data-type="police" onclick="selectPostType('police')"><span class="atb-icon">🚔</span><span class="atb-label">Police</span></button>
+      <button class="alert-type-btn" data-type="accident" onclick="selectPostType('accident')"><span class="atb-icon">💥</span><span class="atb-label">Accident</span></button>
+      <button class="alert-type-btn" data-type="hazard" onclick="selectPostType('hazard')"><span class="atb-icon">⚠️</span><span class="atb-label">Hazard</span></button>
+      <button class="alert-type-btn" data-type="roadblock" onclick="selectPostType('roadblock')"><span class="atb-icon">🚧</span><span class="atb-label">Roadblock</span></button>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Location <span style="color:var(--red)">*</span></div>
+    <input id="pa-loc" type="text" placeholder="e.g. N1 near Midrand, or cross streets" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;outline:none;margin-bottom:10px;color:var(--text);background:#fff">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Details (optional)</div>
+    <textarea id="pa-desc" class="comm-textarea" rows="3" placeholder="Add more details — e.g. 'speed trap on southbound lane' or 'overturned truck blocking left lane'"></textarea>
+    <button id="pa-submit-btn" class="btn-submit-insp" onclick="submitAlert()">Post Alert</button>
+    <button onclick="closePostAlert()" style="width:100%;padding:11px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;margin-top:8px">Cancel</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+var sb = window.supabase.createClient(
+  'https://qyyflivkmnwikagnvstv.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'
+);
+
+var U=null, P=null, DP=null, MATCH=null, CAR=null;
+
+// ── UTILS ──────────────────────────────
+function eid(id){return document.getElementById(id);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+var _tTimer;
+function toast(msg,dur){
+  var el=eid('toast'); el.textContent=msg; el.classList.add('on');
+  clearTimeout(_tTimer); _tTimer=setTimeout(function(){el.classList.remove('on');},dur||2800);
+}
+function scoreInfo(s){
+  if(s>=90)return['tp-h','sc-h','lb-h','Trusted Driver'];
+  if(s>=80)return['tp-h','sc-h','lb-h','Reliable Driver'];
+  if(s>=70)return['tp-m','sc-m','lb-m','Good Standing'];
+  if(s>=60)return['tp-o','sc-o','lb-o','Fair Standing'];
+  if(s>=50)return['tp-l','sc-l','lb-l','Needs Improvement'];
+  return['tp-l','sc-l','lb-l','High Risk'];
+}
+function fmtDate(d){
+  if(!d)return'—';
+  return new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'});
+}
+function daysUntil(d){
+  if(!d)return null;
+  return Math.ceil((new Date(d)-new Date())/864e5);
+}
+function greet(){
+  var h=new Date().getHours();
+  if(h<12)return'Good morning';
+  if(h<17)return'Good afternoon';
+  return'Good evening';
+}
+
+// ── GATE ───────────────────────────────
+function showGate(){eid('gate').classList.add('on');eid('app').style.display='none';}
+function showApp(){eid('gate').classList.remove('on');eid('gate').className='off';eid('app').style.display='flex';}
+
+function renderLogin(err){
+  eid('gate-inner').innerHTML=
+    '<div class="gate-card">'
+    +'<h2>Driver Sign In</h2>'
+    +'<div class="sub">Access your TrustMate Driver dashboard</div>'
+    +(err?'<div class="gate-err on">'+esc(err)+'</div>':'<div class="gate-err" id="gate-err"></div>')
+    +'<div class="fg"><label>Email</label><input id="li-email" type="email" placeholder="you@example.com" autocomplete="email"/></div>'
+    +'<div class="fg"><label>Password</label><input id="li-pass" type="password" placeholder="••••••••" autocomplete="current-password"/></div>'
+    +'<button class="btn-login" id="li-btn" onclick="doLogin()">Sign In</button>'
+    +'<div style="font-size:12px;color:var(--muted);text-align:center;margin-top:14px">Not registered? <a href="!DOCTYPE.html" style="color:var(--gm);font-weight:700">Join TrustMate</a></div>'
+    +'</div>';
+  setTimeout(function(){var e=eid('li-email');if(e)e.focus();},100);
+  document.addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();},{once:true});
+}
+
+function renderHolding(type){
+  var icon='⏳',title='',body='';
+  if(type==='no-match'){icon='🔗';title='No Active Match Yet';body='You\'re registered and approved! You\'ll get access to the Driver App once an owner matches with you. Check the TrustMate website for updates.';}
+  else if(type==='not-driver'){icon='🚫';title='Driver Access Only';body='This app is for TrustMate drivers only. If you\'re a vehicle owner, visit the main TrustMate marketplace.';}
+  else if(type==='pending'){icon='⏳';title='Profile Under Review';body='Your driver profile is still being reviewed by our admin team. This usually takes 1–2 business days. We\'ll notify you once approved.';}
+  eid('gate-inner').innerHTML=
+    '<div style="max-width:320px;margin:0 auto;text-align:center">'
+    +'<div class="hold-icon">'+icon+'</div>'
+    +'<div class="hold-title">'+title+'</div>'
+    +'<div class="hold-body">'+body+'</div>'
+    +'<a href="!DOCTYPE.html"><button class="btn-back">Back to TrustMate</button></a>'
+    +'</div>';
+}
+
+async function doLogin(){
+  var btn=eid('li-btn'); if(!btn||btn.disabled)return;
+  var email=(eid('li-email').value||'').trim();
+  var pass=(eid('li-pass').value||'').trim();
+  if(!email||!pass){renderLogin('Please enter your email and password.');return;}
+  btn.disabled=true; btn.textContent='Signing in…';
+  var r=await sb.auth.signInWithPassword({email:email,password:pass});
+  if(r.error){renderLogin(r.error.message);return;}
+  await boot();
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  U=null;P=null;DP=null;MATCH=null;CAR=null;
+  eid('gate').className='on'; eid('app').style.display='none';
+  renderLogin();
+}
+
+// ── BOOT ───────────────────────────────
+async function boot(){
+  eid('gate-inner').innerHTML='<div style="padding:20px"><div class="spin"></div></div>';
+  var sR=await sb.auth.getUser();
+  U=sR.data&&sR.data.user?sR.data.user:null;
+  if(!U){renderLogin();return;}
+
+  // Load profile
+  var pR=await sb.from('profiles').select('*').eq('id',U.id).maybeSingle();
+  P=pR.data||null;
+  if(!P||!(P.role==='driver'||P.role==='both')){renderHolding('not-driver');return;}
+
+  // Load driver profile
+  var dpR=await sb.from('driver_profiles').select('*').eq('user_id',U.id).maybeSingle();
+  DP=dpR.data||null;
+  if(!DP||DP.status==='pending'){renderHolding('pending');return;}
+
+  // Check active match
+  var mR=await sb.from('applications')
+    .select('*')
+    .eq('driver_id',U.id)
+    .eq('status','approved')
+    .is('unmatched_at',null)
+    .maybeSingle();
+  MATCH=mR.data||null;
+  if(!MATCH){renderHolding('no-match');return;}
+
+  // Load matched car
+  if(MATCH.car_id){
+    var cR=await sb.from('cars').select('*').eq('id',MATCH.car_id).maybeSingle();
+    CAR=cR.data||null;
+  }
+  if(!CAR&&MATCH.owner_id){
+    var cR2=await sb.from('cars').select('*').eq('owner_id',MATCH.owner_id).eq('admin_status','approved').limit(1).maybeSingle();
+    CAR=cR2.data||null;
+  }
+
+  showApp();
+  renderHome();
+}
+
+// ── HOME ───────────────────────────────
+function renderHome(){
+  var firstName=(P&&P.full_name?P.full_name.split(' ')[0]:'Driver');
+  var score=DP?DP.trust_score||0:0;
+  var si=scoreInfo(score);
+
+  // Payment days
+  var payDays=null, payAmt=CAR?CAR.price_per_week||0:0;
+  // Next inspection (7-day cycle from doc_uploaded_at or today)
+  var lastInsp=DP&&DP.last_inspection_at?new Date(DP.last_inspection_at):null;
+  var nextInspDate=lastInsp?new Date(lastInsp.getTime()+7*864e5):new Date();
+  var inspDays=daysUntil(nextInspDate.toISOString());
+  var inspDue=inspDays<=0;
+  var inspSoon=inspDays>0&&inspDays<=2;
+
+  // Odometer
+  var odo=DP&&DP.odometer_km?DP.odometer_km:null;
+
+  var html='';
+
+  // Hero card
+  html+='<div class="hero-card">'
+    +'<div class="hero-inner">'
+    +'<div class="hero-greet">'+greet()+' 👋</div>'
+    +'<div class="hero-name">'+esc(firstName)+'</div>'
+    +'<div class="hero-car">'
+    +(CAR&&CAR.photo_front_url
+      ?'<img class="hero-car-photo" src="'+esc(CAR.photo_front_url)+'" alt="car">'
+      :'<div class="hero-car-ph">🚗</div>')
+    +'<div class="hero-car-info">'
+    +'<div class="hero-car-name">'+(CAR?esc(CAR.make)+' '+esc(CAR.model)+' '+CAR.year:'Vehicle')+'</div>'
+    +'<div class="hero-car-sub">'+(CAR&&CAR.location?'📍 '+esc(CAR.location):'Active Rental')+'</div>'
+    +'</div>'
+    +'<div class="match-dot"></div>'
+    +'</div>'
+    +'</div>'
+    +'</div>';
+
+  // Stat grid
+  html+='<div class="stat-grid">';
+
+  // TrustScore
+  html+='<div class="stat-card ok">'
+    +'<div class="stat-icon">🛡️</div>'
+    +'<div class="stat-val">'+score+'</div>'
+    +'<div class="stat-label">TrustScore</div>'
+    +'<div class="stat-hint up">'+esc(si[3])+'</div>'
+    +'</div>';
+
+  // Today's km (placeholder — trips table to come)
+  html+='<div class="stat-card">'
+    +'<div class="stat-icon">📍</div>'
+    +'<div class="stat-val" id="stat-km">—</div>'
+    +'<div class="stat-label">Today\'s km</div>'
+    +'<div class="stat-hint muted">Tracking soon</div>'
+    +'</div>';
+
+  // Odometer
+  html+='<div class="stat-card">'
+    +'<div class="stat-icon">🔢</div>'
+    +'<div class="stat-val">'+(odo?odo.toLocaleString('en-ZA'):'—')+'</div>'
+    +'<div class="stat-label">Odometer (km)</div>'
+    +'<div class="stat-hint muted">'+(odo?'Last updated':'Not set yet')+'</div>'
+    +'</div>';
+
+  // Next payment
+  var payLabel=payAmt?'R'+payAmt.toLocaleString('en-ZA')+'/wk':'—';
+  html+='<div class="stat-card'+(payDays!==null&&payDays<=3?' warn':'ok')+'">'
+    +'<div class="stat-icon">💳</div>'
+    +'<div class="stat-val">'+payLabel+'</div>'
+    +'<div class="stat-label">Weekly Rental</div>'
+    +'<div class="stat-hint '+(payAmt?'up':'muted')+'">'+( payAmt?'Upload proof below':'—')+'</div>'
+    +'</div>';
+
+  html+='</div>'; // end stat-grid
+
+  // Inspection card
+  html+='<div class="insp-card">'
+    +'<div class="insp-head">'
+    +'<div class="insp-title">📋 Weekly Inspection</div>'
+    +(inspDue
+      ?'<span class="insp-badge badge-due">OVERDUE</span>'
+      :inspSoon
+        ?'<span class="insp-badge badge-warn">Due soon</span>'
+        :'<span class="insp-badge badge-ok">Up to date</span>')
+    +'</div>'
+    +(inspDue
+      ?'<div class="insp-meta">Your inspection is overdue. Please complete it now to keep your TrustScore healthy.</div>'
+      :inspSoon
+        ?'<div class="insp-meta">Due in '+inspDays+' day'+(inspDays!==1?'s':'')+' — '+fmtDate(nextInspDate.toISOString())+'</div>'
+        :'<div class="insp-meta">Next inspection: '+fmtDate(nextInspDate.toISOString())+(inspDays?' ('+inspDays+' days)':'')+'</div>')
+    +'<button class="btn-insp" onclick="switchTab(\'vehicle\')">'+(inspDue?'⚠️ Complete Now →':'Start Inspection →')+'</button>'
+    +'</div>';
+
+  // Payment proof
+  html+='<div class="pay-card">'
+    +'<div class="pay-head">'
+    +'<div>'
+    +'<div class="pay-label">Weekly Rental</div>'
+    +'<div class="pay-amount">'+payLabel+'</div>'
+    +'<div class="pay-due">'+(CAR&&CAR.location?'📍 '+esc(CAR.location):'')+(CAR&&CAR.transmission?' · '+esc(CAR.transmission):'')+'</div>'
+    +'</div>'
+    +'<button class="btn-pay" onclick="switchTab(\'vehicle\')">Upload Proof</button>'
+    +'</div>'
+    +'</div>';
+
+  // SOS
+  html+='<div class="sos-wrap">'
+    +'<button class="sos-btn" onclick="showSOS()">🚨 Emergency SOS</button>'
+    +'</div>';
+
+  html+='<div style="height:8px"></div>';
+
+  eid('home-body').innerHTML=html;
+}
+
+// ── TAB SWITCHING ──────────────────────
+function switchTab(name){
+  document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('on');});
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  var scr=eid('scr-'+name); if(scr)scr.classList.add('on');
+  var tab=eid('tab-'+name); if(tab)tab.classList.add('on');
+  var labels={home:'Driver App',vehicle:'My Vehicle',trust:'TrustScore',community:'Community',profile:'My Profile'};
+  eid('hdr-sub').textContent=labels[name]||'Driver App';
+  if(name==='vehicle')renderVehicle();
+  if(name==='trust')renderTrust();
+  if(name==='community')renderCommunity();
+  if(name==='profile')renderProfile();
+}
+
+// ── VEHICLE SCREEN ─────────────────────
+var _inspChecks={
+  // Exterior
+  front_body:false, rear_body:false, sides:false, roof:false, windows_glass:false,
+  // Interior
+  seats:false, dashboard:false, floor:false, door_panels:false, steering:false
+};
+var _inspPhotos={front:null,side:null,back:null,interior:null};
+var _payFile=null;
+var _payHistory=[];
+
+async function renderVehicle(){
+  var vb=eid('vehicle-body');
+  if(!vb)return;
+  var ppR=await sb.from('payment_proofs').select('*').eq('driver_id',U.id).order('created_at',{ascending:false}).limit(5);
+  _payHistory=(ppR.data&&!ppR.error)?ppR.data:[];
+
+  var odo=DP&&DP.odometer_km?DP.odometer_km:'';
+  var lastInsp=DP&&DP.last_inspection_at?new Date(DP.last_inspection_at):null;
+  var nextInspDate=lastInsp?new Date(lastInsp.getTime()+7*864e5):new Date(0);
+  var inspDays=Math.ceil((nextInspDate-new Date())/864e5);
+  var inspDue=inspDays<=0;
+
+  var html='';
+
+  // ── Weekly Inspection (unified: odometer + exterior + interior + photos)
+  html+='<div class="veh-section">Weekly Inspection '+(inspDue?'<span style="color:var(--red);font-size:10px">● OVERDUE</span>':'')+'</div>';
+  html+='<div class="veh-card">';
+  html+='<div class="veh-card-head"><div class="veh-card-title">📋 Weekly Vehicle Check</div>'
+    +(lastInsp?'<span style="font-size:11px;color:var(--muted)">Last: '+fmtDate(lastInsp.toISOString())+'</span>':'<span style="font-size:11px;color:var(--amber)">Never done</span>')+'</div>';
+  html+='<div class="veh-card-body">';
+
+  // Odometer reading (part of inspection)
+  html+='<div style="margin-bottom:14px">';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Current Odometer Reading</div>';
+  html+='<div class="odo-row">';
+  html+='<input class="odo-input" id="odo-inp" type="number" min="0" placeholder="'+(odo||'Enter km')+'" value="'+esc(String(odo||''))+'"/>';
+  html+='<span style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap">km</span>';
+  html+='</div>';
+  html+='<div class="odo-hint">'+(odo?'Last recorded: <strong>'+Number(odo).toLocaleString('en-ZA')+' km</strong>':'Enter reading from your dashboard')+'</div>';
+  html+='</div>';
+
+  // Exterior checklist
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Exterior</div>';
+  html+='<div class="check-list" style="margin-bottom:14px">';
+  [{k:'front_body',label:'Front bumper & bonnet — no new dents or scratches'},
+   {k:'rear_body',label:'Rear bumper & boot — no new damage'},
+   {k:'sides',label:'Both sides — doors, panels & sills undamaged'},
+   {k:'roof',label:'Roof — no dents, scratches or damage'},
+   {k:'windows_glass',label:'Windows, mirrors & lights — no cracks or chips'}
+  ].forEach(function(c){
+    var done=_inspChecks[c.k];
+    html+='<div class="check-item" onclick="toggleCheck(\''+c.k+'\')">'
+      +'<div class="check-box'+(done?' done':'')+'" id="cb-'+c.k+'">'+(done?'✓':'')+'</div>'
+      +'<div class="check-item-text'+(done?' done':'')+'" id="ct-'+c.k+'">'+esc(c.label)+'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // Interior checklist
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Interior</div>';
+  html+='<div class="check-list" style="margin-bottom:14px">';
+  [{k:'seats',label:'Seats & headrests — no tears, stains or damage'},
+   {k:'dashboard',label:'Dashboard & centre console — undamaged'},
+   {k:'floor',label:'Floor & carpets — no damage or excessive dirt'},
+   {k:'door_panels',label:'Door panels & handles — no cracks or damage'},
+   {k:'steering',label:'Steering wheel & controls — undamaged'}
+  ].forEach(function(c){
+    var done=_inspChecks[c.k];
+    html+='<div class="check-item" onclick="toggleCheck(\''+c.k+'\')">'
+      +'<div class="check-box'+(done?' done':'')+'" id="cb-'+c.k+'">'+(done?'✓':'')+'</div>'
+      +'<div class="check-item-text'+(done?' done':'')+'" id="ct-'+c.k+'">'+esc(c.label)+'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // Photos — 4 zones in 2x2 grid
+  html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px">Photos (all 4 required)</div>';
+  html+='<div class="up-grid">';
+  [{slot:'front',icon:'🚗',label:'Front'},{slot:'side',icon:'🔲',label:'Side'},{slot:'back',icon:'🔁',label:'Back'},{slot:'interior',icon:'🪑',label:'Interior'}].forEach(function(p){
+    var has=!!_inspPhotos[p.slot];
+    html+='<label class="up-zone'+(has?' has-file':'')+'" id="uz-'+p.slot+'">'
+      +'<div class="uz-icon">'+p.icon+'</div>'
+      +'<div class="uz-label" id="uz-'+p.slot+'-lbl">'+(has?p.label+' ✓':p.label)+'</div>'
+      +'<input type="file" accept="image/*" capture="environment" onchange="setInspPhoto(\''+p.slot+'\',this)">'
+      +'</label>';
+  });
+  html+='</div>';
+
+  html+='<button class="btn-submit-insp" id="insp-btn" onclick="submitInspection()" style="margin-top:12px">Submit Weekly Inspection</button>';
+  html+='</div></div>';
+
+  // ── Payment Proof section
+  html+='<div class="veh-section">Payment Proof</div>';
+  html+='<div class="pay-upload-card">';
+  html+='<div class="pay-upload-head"><div class="veh-card-title">💳 Weekly Rental Proof</div>'
+    +(CAR?'<span style="font-size:13px;font-weight:800;color:var(--gm)">R'+esc(String(CAR.price_per_week||'—'))+'</span>':'')+'</div>';
+  html+='<div style="padding:14px 16px">';
+  html+='<label class="up-zone" id="uz-pay" style="margin-bottom:12px">'
+    +'<div class="uz-icon">🧾</div>'
+    +'<div class="uz-label" id="uz-pay-lbl">Tap to upload payment screenshot</div>'
+    +'<input type="file" accept="image/*" onchange="setPayFile(this)">'
+    +'</label>';
+  html+='<button class="btn-submit-insp" id="pay-btn" onclick="submitPayment()">Submit Proof</button>';
+  html+='</div>';
+  if(_payHistory.length){
+    html+='<div style="padding:0 16px 8px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">Recent Submissions</div>';
+    _payHistory.forEach(function(p){
+      var isPending=p.status==='pending';
+      html+='<div class="pay-history-row">'
+        +'<div class="pay-hist-status '+(isPending?'pay-hist-pend':'pay-hist-ok')+'"></div>'
+        +'<div class="pay-hist-info">'
+        +'<div class="pay-hist-label">'+(isPending?'Pending review':'Verified')+'</div>'
+        +'<div class="pay-hist-date">'+fmtDate(p.created_at)+'</div>'
+        +'</div>'
+        +(p.proof_url?'<a href="'+esc(p.proof_url)+'" target="_blank" style="font-size:11px;color:var(--gm);font-weight:700;text-decoration:none">View</a>':'')
+        +'</div>';
+    });
+  }
+  html+='</div>';
+
+  html+='<div style="height:8px"></div>';
+  vb.innerHTML=html;
+}
+
+function toggleCheck(k){
+  _inspChecks[k]=!_inspChecks[k];
+  var cb=eid('cb-'+k), ct=eid('ct-'+k);
+  if(cb){cb.className='check-box'+(_inspChecks[k]?' done':'');cb.textContent=_inspChecks[k]?'✓':'';}
+  if(ct){ct.className='check-item-text'+(_inspChecks[k]?' done':'');}
+}
+
+function setInspPhoto(slot,inp){
+  if(!inp.files||!inp.files[0])return;
+  var f=inp.files[0];
+  if(!f.type.startsWith('image/')){toast('Please upload an image.');inp.value='';return;}
+  _inspPhotos[slot]=f;
+  var uz=eid('uz-'+slot), lbl=eid('uz-'+slot+'-lbl');
+  if(uz)uz.classList.add('has-file');
+  var names={front:'Front',side:'Side',back:'Back',interior:'Interior'};
+  if(lbl)lbl.textContent=(names[slot]||slot)+' ✓';
+}
+
+function setPayFile(inp){
+  if(!inp.files||!inp.files[0])return;
+  var f=inp.files[0];
+  if(!f.type.startsWith('image/')){toast('Please upload an image.');inp.value='';return;}
+  _payFile=f;
+  var uz=eid('uz-pay'), lbl=eid('uz-pay-lbl');
+  if(uz)uz.classList.add('has-file');
+  if(lbl)lbl.textContent='✓ '+f.name;
+}
+
+async function submitInspection(){
+  var odoVal=parseInt((eid('odo-inp')||{}).value||'',10);
+  if(!odoVal||odoVal<0){toast('Enter the current odometer reading.');return;}
+  if(DP&&DP.odometer_km&&odoVal<DP.odometer_km){toast('Odometer must be higher than last reading ('+DP.odometer_km+' km).');return;}
+  var allChecked=Object.values(_inspChecks).every(Boolean);
+  if(!allChecked){toast('Please tick all checklist items.');return;}
+  var missingPhotos=['front','side','back','interior'].filter(function(s){return!_inspPhotos[s];});
+  if(missingPhotos.length){toast('Please upload all 4 photos (missing: '+missingPhotos.join(', ')+').');return;}
+  var btn=eid('insp-btn');
+  btn.disabled=true; btn.textContent='Uploading…';
+  var urls={};
+  for(var slot in _inspPhotos){
+    var f=_inspPhotos[slot];
+    var ext=f.name.split('.').pop()||'jpg';
+    var path='inspections/'+U.id+'-'+slot+'-'+Date.now()+'.'+ext;
+    var up=await sb.storage.from('driver-docs').upload(path,f,{upsert:true});
+    if(up.error){toast('Photo upload failed: '+up.error.message);btn.disabled=false;btn.textContent='Submit Weekly Inspection';return;}
+    urls[slot]=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
+  }
+  var now=new Date().toISOString();
+  await sb.from('inspections').insert({
+    driver_id:U.id,
+    car_id:CAR?CAR.id:null,
+    odometer_km:odoVal,
+    checklist:JSON.stringify(_inspChecks),
+    photo_front_url:urls.front,
+    photo_side_url:urls.side,
+    photo_back_url:urls.back,
+    photo_interior_url:urls.interior,
+    created_at:now
+  });
+  var upd=await sb.from('driver_profiles').update({
+    last_inspection_at:now,
+    odometer_km:odoVal,
+    odometer_updated_at:now
+  }).eq('user_id',U.id);
+  if(upd.error){toast('Error saving: '+upd.error.message);btn.disabled=false;btn.textContent='Submit Weekly Inspection';return;}
+  DP.last_inspection_at=now;
+  DP.odometer_km=odoVal;
+  _inspPhotos={front:null,side:null,back:null,interior:null};
+  _inspChecks={front_body:false,rear_body:false,sides:false,roof:false,windows_glass:false,seats:false,dashboard:false,floor:false,door_panels:false,steering:false};
+  toast('✅ Inspection submitted!');
+  btn.disabled=false;
+  renderHome();
+  renderVehicle();
+}
+
+async function submitPayment(){
+  if(!_payFile){toast('Please select a payment screenshot.');return;}
+  var btn=eid('pay-btn');
+  btn.disabled=true; btn.textContent='Uploading…';
+  var ext=_payFile.name.split('.').pop()||'jpg';
+  var path='payments/'+U.id+'-'+Date.now()+'.'+ext;
+  var up=await sb.storage.from('driver-docs').upload(path,_payFile,{upsert:true});
+  if(up.error){toast('Upload failed: '+up.error.message);btn.disabled=false;btn.textContent='Submit Proof';return;}
+  var url=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
+  var ins=await sb.from('payment_proofs').insert({
+    driver_id:U.id,
+    car_id:CAR?CAR.id:null,
+    owner_id:MATCH?MATCH.owner_id:null,
+    proof_url:url,
+    status:'pending',
+    created_at:new Date().toISOString()
+  });
+  if(ins.error){toast('Error saving: '+ins.error.message);btn.disabled=false;btn.textContent='Submit Proof';return;}
+  _payFile=null;
+  toast('✅ Payment proof submitted!');
+  btn.disabled=false;
+  renderVehicle();
+}
+
+// ── TRUST SCREEN ───────────────────────
+async function renderTrust(){
+  var tb=eid('trust-body');
+  if(!tb)return;
+
+  var score=DP?DP.trust_score||0:0;
+
+  // Fetch reviews and trust actions in parallel
+  var [rvR,taR]=await Promise.all([
+    sb.from('reviews').select('*').eq('reviewee_id',U.id).order('created_at',{ascending:false}).limit(10),
+    sb.from('trust_actions').select('*').eq('driver_id',U.id).order('created_at',{ascending:false}).limit(15)
+  ]);
+  var reviews=(rvR.data&&!rvR.error)?rvR.data:[];
+  var actions=(taR.data&&!taR.error)?taR.data:[];
+
+  // Tier info
+  var tier,tierClass,tierLabel;
+  if(score>=90){tier=5;tierClass='tier-elite';tierLabel='Elite Driver';}
+  else if(score>=80){tier=4;tierClass='tier-high';tierLabel='Trusted Driver';}
+  else if(score>=70){tier=3;tierClass='tier-mid';tierLabel='Good Standing';}
+  else if(score>=60){tier=2;tierClass='tier-ok';tierLabel='Fair Standing';}
+  else if(score>=50){tier=1;tierClass='tier-low';tierLabel='Needs Improvement';}
+  else{tier=0;tierClass='tier-low';tierLabel='High Risk';}
+
+  // Ring circumference for radius 47
+  var circ=2*Math.PI*47; // ~295
+  var offset=circ-(score/100)*circ;
+  var ringColor=score>=80?'#4ade80':score>=60?'#facc15':'#f87171';
+
+  var html='';
+
+  // Hero score ring
+  html+='<div class="trust-hero">';
+  html+='<div class="trust-score-ring">';
+  html+='<svg class="trust-ring-svg" viewBox="0 0 110 110">'
+    +'<circle class="trust-ring-bg" cx="55" cy="55" r="47"/>'
+    +'<circle class="trust-ring-fill" cx="55" cy="55" r="47" stroke="'+ringColor+'" stroke-dasharray="'+circ+'" stroke-dashoffset="'+offset.toFixed(1)+'"/>'
+    +'</svg>';
+  html+='<div class="trust-score-num"><div class="trust-score-val">'+score+'</div><div class="trust-score-max">/100</div></div>';
+  html+='</div>';
+  html+='<span class="trust-tier-badge '+tierClass+'">'+tierLabel+'</span>';
+  html+='<div class="trust-hero-name">'+(P&&P.full_name?esc(P.full_name):'Driver')+'</div>';
+  html+='</div>';
+
+  // Score pillars — derived from trust_actions categories or static breakdown
+  var pillars=[
+    {icon:'📋',label:'Inspections',key:'inspection',max:25},
+    {icon:'💳',label:'Payments',key:'payment',max:25},
+    {icon:'⭐',label:'Owner Reviews',key:'review',max:25},
+    {icon:'🚗',label:'Driving Conduct',key:'conduct',max:25}
+  ];
+  // Tally points per category from trust_actions
+  var catTotals={inspection:0,payment:0,review:0,conduct:0};
+  actions.forEach(function(a){
+    var cat=a.category||a.type||'conduct';
+    if(catTotals[cat]!==undefined) catTotals[cat]+=(a.points||0);
+  });
+  // If no actions data, distribute score evenly as estimate
+  var hasActions=actions.length>0;
+  if(!hasActions){
+    var base=Math.floor(score/4);
+    pillars.forEach(function(p){catTotals[p.key]=Math.min(base,p.max);});
+  }
+
+  html+='<div class="veh-section">Score Breakdown</div>';
+  html+='<div class="veh-card" style="margin:0 16px 10px">';
+  html+='<div style="padding:4px 16px 8px">';
+  pillars.forEach(function(p){
+    var pts=Math.min(Math.max(catTotals[p.key]||0,0),p.max);
+    var pct=(pts/p.max)*100;
+    var barColor=pct>=80?'var(--gm)':pct>=50?'var(--amber)':'var(--red)';
+    html+='<div class="pillar-row">'
+      +'<div class="pillar-icon">'+p.icon+'</div>'
+      +'<div class="pillar-info">'
+      +'<div class="pillar-label">'+p.label+'</div>'
+      +'<div class="pillar-bar-wrap"><div class="pillar-bar-fill" style="width:'+pct+'%;background:'+barColor+'"></div></div>'
+      +'</div>'
+      +'<div class="pillar-score">'+pts+'<span style="font-size:9px;font-weight:500;color:var(--muted)">/'+p.max+'</span></div>'
+      +'</div>';
+  });
+  html+='</div></div>';
+
+  // Recent trust actions
+  if(actions.length){
+    html+='<div class="veh-section">Recent Activity</div>';
+    html+='<div class="veh-card" style="margin:0 16px 10px">';
+    actions.slice(0,8).forEach(function(a){
+      var pts=a.points||0;
+      var pos=pts>=0;
+      var label=a.description||a.reason||a.type||'Trust action';
+      html+='<div class="action-row">'
+        +'<div class="action-icon '+(pos?'action-pos':'action-neg')+'">'+(pos?'✓':'!')+'</div>'
+        +'<div class="action-info">'
+        +'<div class="action-label">'+esc(label)+'</div>'
+        +'<div class="action-date">'+fmtDate(a.created_at)+'</div>'
+        +'</div>'
+        +'<div class="action-pts '+(pos?'action-pts-pos':'action-pts-neg')+'">'+(pos?'+':'')+pts+'</div>'
+        +'</div>';
+    });
+    html+='</div>';
+  }
+
+  // Owner reviews
+  if(reviews.length){
+    html+='<div class="veh-section">Owner Reviews</div>';
+    html+='<div class="veh-card" style="margin:0 16px 10px">';
+    reviews.slice(0,5).forEach(function(r){
+      var stars=Math.round(r.rating||r.score||0);
+      var starStr='';
+      for(var i=0;i<5;i++)starStr+=i<stars?'★':'☆';
+      html+='<div class="review-card">'
+        +'<div class="review-top">'
+        +'<span class="review-stars" style="color:'+(stars>=4?'var(--amber)':'var(--muted)')+'">'+starStr+'</span>'
+        +'<span class="review-from">'+esc(r.reviewer_name||'Owner')+'</span>'
+        +'<span class="review-date">'+fmtDate(r.created_at)+'</span>'
+        +'</div>'
+        +(r.comment?'<div class="review-text">'+esc(r.comment)+'</div>':'')
+        +'</div>';
+    });
+    html+='</div>';
+  } else {
+    html+='<div class="veh-section">Owner Reviews</div>';
+    html+='<div style="margin:0 16px 10px;background:#fff;border:1px solid var(--border);border-radius:var(--r);padding:24px 16px;text-align:center">'
+      +'<div style="font-size:28px;margin-bottom:8px">⭐</div>'
+      +'<div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px">No reviews yet</div>'
+      +'<div style="font-size:12px;color:var(--muted)">Reviews from your vehicle owner will appear here.</div>'
+      +'</div>';
+  }
+
+  html+='<div style="height:8px"></div>';
+  tb.innerHTML=html;
+}
+
+// ── COMMUNITY SCREEN ───────────────────
+var _commFilter='all';
+var _commAlerts=[];
+var _commVoted={};
+var _postAlertType='';
+
+async function renderCommunity(){
+  var cb=eid('community-body');
+  if(!cb)return;
+  cb.innerHTML='<div style="padding:60px 20px;text-align:center"><div class="spin" style="border-top-color:var(--gm);border-color:var(--border)"></div></div>';
+  var q=sb.from('community_alerts').select('*').eq('active',true).order('created_at',{ascending:false}).limit(30);
+  if(_commFilter!=='all') q=q.eq('type',_commFilter);
+  var r=await q;
+  _commAlerts=(r.data&&!r.error)?r.data:[];
+  buildCommunityHTML();
+}
+
+function buildCommunityHTML(){
+  var cb=eid('community-body');
+  if(!cb)return;
+  var typeMap={
+    police:{icon:'🚔',label:'Police',cls:'alert-t-police'},
+    accident:{icon:'💥',label:'Accident',cls:'alert-t-accident'},
+    hazard:{icon:'⚠️',label:'Hazard',cls:'alert-t-hazard'},
+    roadblock:{icon:'🚧',label:'Roadblock',cls:'alert-t-roadblock'},
+    other:{icon:'📢',label:'Alert',cls:'alert-t-other'}
+  };
+  var filters=[
+    {k:'all',label:'All'},
+    {k:'police',label:'🚔 Police'},
+    {k:'accident',label:'💥 Accident'},
+    {k:'hazard',label:'⚠️ Hazard'},
+    {k:'roadblock',label:'🚧 Roadblock'}
+  ];
+
+  var html='';
+
+  // Filter chips
+  html+='<div class="comm-filter-bar">';
+  filters.forEach(function(f){
+    html+='<button class="filter-chip'+(_commFilter===f.k?' on':'')+'" onclick="setCommFilter(\''+f.k+'\')">'+f.label+'</button>';
+  });
+  html+='</div>';
+
+  if(!_commAlerts.length){
+    html+='<div class="comm-empty">'
+      +'<div class="comm-empty-icon">🌍</div>'
+      +'<div class="comm-empty-title">No alerts in your area</div>'
+      +'<div class="comm-empty-body">Be the first to report a police checkpoint, accident, hazard or roadblock to help fellow TrustMate drivers.</div>'
+      +'</div>';
+  } else {
+    _commAlerts.forEach(function(a){
+      var t=typeMap[a.type]||typeMap.other;
+      var ago=timeAgo(a.created_at);
+      var votes=a.upvotes||0;
+      var voted=!!_commVoted[a.id];
+      html+='<div class="alert-card">'
+        +'<div class="alert-card-inner">'
+        +'<div class="alert-top">'
+        +'<div class="alert-type-badge '+t.cls+'">'+t.icon+'</div>'
+        +'<div class="alert-info">'
+        +'<div class="alert-title">'+t.label+(a.location_text?' — '+esc(a.location_text):'')+'</div>'
+        +(a.description?'<div class="alert-desc">'+esc(a.description)+'</div>':'')
+        +'</div>'
+        +'</div>'
+        +'<div class="alert-footer">'
+        +'<span class="alert-loc">📍 '+(a.location_text?esc(a.location_text):'Location not set')+'</span>'
+        +'<span class="alert-time">'+ago+'</span>'
+        +'<button class="alert-up'+(voted?' voted':'')+'" onclick="upvoteAlert(\''+a.id+'\',this)">'
+        +'👍 '+votes
+        +'</button>'
+        +'</div>'
+        +'</div>'
+        +'</div>';
+    });
+  }
+
+  // Sticky post button
+  html+='<button class="post-alert-btn" onclick="showPostAlert()">📢 Post an Alert</button>';
+  html+='<div style="height:16px"></div>';
+
+  cb.innerHTML=html;
+}
+
+function timeAgo(d){
+  if(!d)return'';
+  var diff=Math.floor((new Date()-new Date(d))/1000);
+  if(diff<60)return'Just now';
+  if(diff<3600)return Math.floor(diff/60)+'m ago';
+  if(diff<86400)return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+
+function setCommFilter(f){
+  _commFilter=f;
+  renderCommunity();
+}
+
+async function upvoteAlert(id,btn){
+  if(_commVoted[id])return;
+  _commVoted[id]=true;
+  btn.classList.add('voted');
+  var a=_commAlerts.find(function(x){return x.id===id;});
+  if(a){
+    a.upvotes=(a.upvotes||0)+1;
+    btn.textContent='👍 '+a.upvotes;
+  }
+  await sb.from('community_alerts').update({upvotes:(a?a.upvotes:1)}).eq('id',id);
+}
+
+function showPostAlert(){
+  _postAlertType='';
+  eid('post-alert-modal').classList.add('on');
+  eid('pa-type-err').style.display='none';
+  eid('pa-desc').value='';
+  eid('pa-loc').value='';
+  // Try to prefill location
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      var loc=eid('pa-loc');
+      if(loc&&!loc.value) loc.placeholder='📍 '+pos.coords.latitude.toFixed(4)+', '+pos.coords.longitude.toFixed(4);
+      window._paLat=pos.coords.latitude;
+      window._paLng=pos.coords.longitude;
+    },function(){});
+  }
+}
+
+function selectPostType(type){
+  _postAlertType=type;
+  document.querySelectorAll('.alert-type-btn').forEach(function(b){
+    b.classList.toggle('on',b.dataset.type===type);
+  });
+}
+
+async function submitAlert(){
+  if(!_postAlertType){eid('pa-type-err').style.display='block';return;}
+  var desc=(eid('pa-desc').value||'').trim();
+  var loc=(eid('pa-loc').value||'').trim();
+  if(!loc){toast('Please enter a location.');return;}
+  var btn=eid('pa-submit-btn');
+  btn.disabled=true; btn.textContent='Posting…';
+  var ins=await sb.from('community_alerts').insert({
+    driver_id:U.id,
+    type:_postAlertType,
+    description:desc||null,
+    location_text:loc,
+    lat:window._paLat||null,
+    lng:window._paLng||null,
+    upvotes:0,
+    active:true,
+    created_at:new Date().toISOString()
+  });
+  if(ins.error){toast('Error: '+ins.error.message);btn.disabled=false;btn.textContent='Post Alert';return;}
+  eid('post-alert-modal').classList.remove('on');
+  toast('✅ Alert posted — thanks for keeping drivers safe!',3500);
+  btn.disabled=false; btn.textContent='Post Alert';
+  _commFilter='all';
+  renderCommunity();
+}
+
+// ── PROFILE SCREEN ─────────────────────
+async function renderProfile(){
+  var pb=eid('profile-body');
+  if(!pb)return;
+
+  var score=DP?DP.trust_score||0:0;
+  var si=scoreInfo(score);
+  var name=P&&P.full_name?P.full_name:'Driver';
+  var phone=P&&P.phone?P.phone:null;
+  var whatsapp=P&&P.whatsapp?P.whatsapp:null;
+  var location=P&&P.location?P.location:null;
+  var avatarUrl=DP&&DP.profile_photo_url?DP.profile_photo_url:null;
+
+  // Doc fields from driver_profiles
+  var docs=[
+    {key:'id_doc_url',label:'ID Document',icon:'🪪'},
+    {key:'license_url',label:"Driver's Licence",icon:'🚗'},
+    {key:'pdp_url',label:'PDP Certificate',icon:'📄'},
+    {key:'proof_of_address_url',label:'Proof of Address',icon:'🏠'}
+  ];
+
+  var html='';
+
+  // Hero
+  html+='<div class="profile-hero">';
+  if(avatarUrl){
+    html+='<img class="profile-avatar" src="'+esc(avatarUrl)+'" alt="profile">';
+  } else {
+    html+='<div class="profile-avatar-ph">👤</div>';
+  }
+  html+='<div class="profile-name">'+esc(name)+'</div>';
+  html+='<div class="profile-role">TrustMate Driver</div>';
+  html+='<div class="profile-score-chip">🛡️ '+score+' &nbsp;·&nbsp; '+esc(si[3])+'</div>';
+  html+='</div>';
+
+  // Active match info
+  if(CAR){
+    html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Active Match</div>';
+    html+='<div class="match-info-card">';
+    html+=(CAR.photo_front_url
+      ?'<img class="match-car-thumb" src="'+esc(CAR.photo_front_url)+'" alt="car">'
+      :'<div class="match-car-ph">🚗</div>');
+    html+='<div class="match-info">'
+      +'<div class="match-info-title">Your vehicle</div>'
+      +'<div class="match-info-car">'+esc(CAR.make)+' '+esc(CAR.model)+' '+CAR.year+'</div>'
+      +'<div class="match-info-owner">📍 '+(CAR.location?esc(CAR.location):'Location not set')+'&nbsp;·&nbsp;R'+(CAR.price_per_week||'—')+'/wk</div>'
+      +'</div>'
+      +'<div class="match-dot" style="margin-left:auto"></div>';
+    html+='</div>';
+  }
+
+  // Personal info
+  html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Personal Info</div>';
+  html+='<div class="profile-section">';
+  html+='<div class="profile-row">'
+    +'<div class="profile-row-icon pr-green">✉️</div>'
+    +'<div class="profile-row-info"><div class="profile-row-label">Email</div><div class="profile-row-sub">'+esc(U.email||'—')+'</div></div>'
+    +'</div>';
+  html+='<div class="profile-row">'
+    +'<div class="profile-row-icon pr-blue">📞</div>'
+    +'<div class="profile-row-info"><div class="profile-row-label">Phone</div><div class="profile-row-sub">'+(phone?esc(phone):'Not set')+'</div></div>'
+    +'</div>';
+  html+='<div class="profile-row">'
+    +'<div class="profile-row-icon pr-green">💬</div>'
+    +'<div class="profile-row-info"><div class="profile-row-label">WhatsApp</div><div class="profile-row-sub">'+(whatsapp?esc(whatsapp):'Not set')+'</div></div>'
+    +'</div>';
+  html+='<div class="profile-row">'
+    +'<div class="profile-row-icon pr-sand">📍</div>'
+    +'<div class="profile-row-info"><div class="profile-row-label">Location</div><div class="profile-row-sub">'+(location?esc(location):'Not set')+'</div></div>'
+    +'</div>';
+  html+='</div>';
+
+  // Documents
+  html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Documents</div>';
+  html+='<div class="profile-section">';
+  docs.forEach(function(d){
+    var hasDoc=DP&&DP[d.key];
+    var badgeClass=hasDoc?'doc-ok':'doc-miss';
+    var badgeLabel=hasDoc?'Uploaded':'Missing';
+    html+='<div class="profile-row">'
+      +'<div class="profile-row-icon '+(hasDoc?'pr-green':'pr-red')+'">'+d.icon+'</div>'
+      +'<div class="profile-row-info"><div class="profile-row-label">'+d.label+'</div></div>'
+      +'<div class="profile-row-right">'
+      +(hasDoc?'<a href="'+esc(DP[d.key])+'" target="_blank" style="font-size:11px;color:var(--gm);font-weight:700;text-decoration:none;margin-right:6px">View</a>':'')
+      +'<span class="doc-badge '+badgeClass+'">'+badgeLabel+'</span>'
+      +'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // Platform screenshots
+  html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Platform Screenshots</div>';
+  html+='<div class="profile-section">';
+  [{key:'uber_screenshot_url',label:'Uber',icon:'🚗'},{key:'bolt_screenshot_url',label:'Bolt',icon:'⚡'},{key:'indrive_screenshot_url',label:'InDrive',icon:'🔵'}].forEach(function(p){
+    var hasShot=DP&&DP[p.key];
+    html+='<div class="profile-row">'
+      +'<div class="profile-row-icon pr-sand">'+p.icon+'</div>'
+      +'<div class="profile-row-info"><div class="profile-row-label">'+p.label+'</div></div>'
+      +'<div class="profile-row-right">'
+      +(hasShot?'<a href="'+esc(hasShot)+'" target="_blank" style="font-size:11px;color:var(--gm);font-weight:700;text-decoration:none;margin-right:6px">View</a>':'')
+      +'<span class="doc-badge '+(hasShot?'doc-ok':'doc-miss')+'">'+(hasShot?'Uploaded':'Missing')+'</span>'
+      +'</div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // Inspection & match stats
+  html+='<div style="padding:10px 16px 0;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Activity</div>';
+  html+='<div class="profile-section">';
+  var lastInsp=DP&&DP.last_inspection_at?fmtDate(DP.last_inspection_at):'Never';
+  var matchDate=MATCH&&MATCH.matched_at?fmtDate(MATCH.matched_at):'—';
+  var odo=DP&&DP.odometer_km?DP.odometer_km.toLocaleString('en-ZA')+' km':'Not set';
+  html+='<div class="profile-row"><div class="profile-row-icon pr-green">📋</div><div class="profile-row-info"><div class="profile-row-label">Last Inspection</div><div class="profile-row-sub">'+lastInsp+'</div></div></div>';
+  html+='<div class="profile-row"><div class="profile-row-icon pr-blue">🔢</div><div class="profile-row-info"><div class="profile-row-label">Odometer</div><div class="profile-row-sub">'+odo+'</div></div></div>';
+  html+='<div class="profile-row"><div class="profile-row-icon pr-green">🔗</div><div class="profile-row-info"><div class="profile-row-label">Matched Since</div><div class="profile-row-sub">'+matchDate+'</div></div></div>';
+  html+='</div>';
+
+  // Sign out
+  html+='<button class="btn-signout" onclick="doLogout()">Sign Out</button>';
+  html+='<div style="height:16px"></div>';
+
+  pb.innerHTML=html;
+}
+
+// ── SOS ────────────────────────────────
+function showSOS(){
+  eid('sos-modal').classList.add('on');
+  eid('sos-loc-txt').textContent='Fetching your location…';
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(function(pos){
+      eid('sos-loc-txt').textContent='📍 Location ready: '+pos.coords.latitude.toFixed(4)+', '+pos.coords.longitude.toFixed(4);
+    },function(){
+      eid('sos-loc-txt').textContent='Location unavailable — please enable GPS.';
+    });
+  }
+}
+function closeSOS(e){
+  if(e&&e.target!==eid('sos-modal'))return;
+  eid('sos-modal').classList.remove('on');
+}
+function closePostAlert(e){
+  if(e&&e.target!==eid('post-alert-modal'))return;
+  eid('post-alert-modal').classList.remove('on');
+}
+async function triggerSOS(type){
+  var labels={emergency:'Medical emergency',police:'Police assistance',breakdown:'Vehicle breakdown'};
+  var loc='Unknown location';
+  try{
+    var pos=await new Promise(function(res,rej){navigator.geolocation.getCurrentPosition(res,rej,{timeout:4000});});
+    loc=pos.coords.latitude.toFixed(5)+', '+pos.coords.longitude.toFixed(5);
+  }catch(e){}
+  // Log SOS to Supabase (driver_id, type, location, timestamp)
+  await sb.from('sos_events').insert({
+    driver_id:U?U.id:null,
+    type:type,
+    location_text:loc,
+    created_at:new Date().toISOString()
+  }).then(function(){});
+  eid('sos-modal').classList.remove('on');
+  toast('🚨 SOS sent — '+labels[type]+'. Stay safe!',5000);
+}
+
+// ── INIT ───────────────────────────────
+renderLogin();
+sb.auth.onAuthStateChange(function(event,session){
+  if(event==='SIGNED_OUT'){U=null;P=null;DP=null;MATCH=null;CAR=null;}
+});
+boot();
+</script>
+</body>
+</html>

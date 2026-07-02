@@ -679,7 +679,9 @@ nav div::-webkit-scrollbar{display:none}
     <!-- S2 Driver -->
     <div id="reg-s2-d" style="display:none">
       <div class="frow"><div class="fg"><label>Phone *</label><input id="d-ph" type="tel" placeholder="+27..."/></div><div class="fg"><label>Age *</label><input id="d-ag" type="number" min="18" placeholder="25"/></div></div>
-      <div class="fg"><label>City / Location *</label><input id="d-lo" placeholder="Johannesburg"/></div>
+      <div class="fg"><label>City / Location *</label><input id="d-lo" placeholder="e.g. Sandton, Johannesburg"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">&#128204; Be specific — include your suburb or area (e.g. <em>Sandton, Johannesburg</em> or <em>Mitchells Plain, Cape Town</em>). This helps owners find drivers near their vehicle.</div>
+      </div>
       <div class="fg"><label>WhatsApp *</label><input id="d-wa" type="tel" placeholder="+27..." required/></div>
       <div class="fg"><label>Years driving *</label>
         <select id="d-yr"><option value="0">Under 1 year</option><option value="1">1-2 years</option><option value="2">2-3 years</option><option value="3">3-5 years</option><option value="5">5-7 years</option><option value="7">7+ years</option></select></div>
@@ -692,31 +694,49 @@ nav div::-webkit-scrollbar{display:none}
           <label class="chk"><input type="checkbox" value="inDrive" class="dpc" onchange="togglePlatShot('indrive',this)"> inDrive</label>
         </div></div>
       <div id="shot-uber" style="display:none" class="fg">
-        <label>Uber profile screenshot *<span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">Shows your rating &amp; no. of trips</span></label>
+        <label>Uber profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
         <div id="example-uber-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Uber screenshot:</div>
           <img id="example-uber-img" src="" alt="Example Uber screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
           <div style="font-size:10px;color:var(--muted);margin-top:4px">Your screenshot must show your name, rating and trip count like this example.</div>
         </div>
-        <div class="dbox" id="dbox-uber"><input type="file" accept="image/*" onchange="mPlatShot('uber',this)"><div style="font-size:18px">&#128247;</div><div style="font-size:10px;font-weight:600">Upload Uber Screenshot</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="dbox" id="dbox-uber-1"><input type="file" accept="image/*" onchange="mPlatShot('uber',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
+          <div class="dbox" id="dbox-uber-2"><input type="file" accept="image/*" onchange="mPlatShot('uber',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
+          <div class="dbox" id="dbox-uber-3"><input type="file" accept="image/*" onchange="mPlatShot('uber',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
+        </div>
+        <div id="plat-count-uber" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
       <div id="shot-bolt" style="display:none" class="fg">
-        <label>Bolt profile screenshot *<span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">Shows your rating &amp; no. of trips</span></label>
+        <label>Bolt profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
+        <div style="font-weight:700;color:var(--g);font-size:13px;margin-bottom:10px;padding:11px 13px;background:#f0fdf4;border-radius:8px;border-left:3px solid var(--gm);line-height:1.55">
+          &#128222; <strong>Bolt drivers:</strong> Contact <strong>Bolt Support</strong> and request your <strong>total number of trips completed since you started on Bolt</strong> (e.g. since 2023). Ask them for your all-time trip total and mention it in your profile. <strong>Including your total trip history greatly increases your chances of being matched with a vehicle owner.</strong>
+        </div>
         <div id="example-bolt-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Bolt screenshot:</div>
           <img id="example-bolt-img" src="" alt="Example Bolt screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
           <div style="font-size:10px;color:var(--muted);margin-top:4px">Your screenshot must show your name, rating and trip count like this example.</div>
         </div>
-        <div class="dbox" id="dbox-bolt"><input type="file" accept="image/*" onchange="mPlatShot('bolt',this)"><div style="font-size:18px">&#128247;</div><div style="font-size:10px;font-weight:600">Upload Bolt Screenshot</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="dbox" id="dbox-bolt-1"><input type="file" accept="image/*" onchange="mPlatShot('bolt',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
+          <div class="dbox" id="dbox-bolt-2"><input type="file" accept="image/*" onchange="mPlatShot('bolt',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
+          <div class="dbox" id="dbox-bolt-3"><input type="file" accept="image/*" onchange="mPlatShot('bolt',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
+        </div>
+        <div id="plat-count-bolt" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
       <div id="shot-indrive" style="display:none" class="fg">
-        <label>inDrive profile screenshot *<span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">Shows your rating &amp; no. of trips</span></label>
+        <label>inDrive profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
         <div id="example-indrive-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example inDrive screenshot:</div>
           <img id="example-indrive-img" src="" alt="Example inDrive screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
           <div style="font-size:10px;color:var(--muted);margin-top:4px">Your screenshot must show your name, rating and trip count like this example.</div>
         </div>
-        <div class="dbox" id="dbox-indrive"><input type="file" accept="image/*" onchange="mPlatShot('indrive',this)"><div style="font-size:18px">&#128247;</div><div style="font-size:10px;font-weight:600">inDrive Screenshot</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="dbox" id="dbox-indrive-1"><input type="file" accept="image/*" onchange="mPlatShot('indrive',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
+          <div class="dbox" id="dbox-indrive-2"><input type="file" accept="image/*" onchange="mPlatShot('indrive',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
+          <div class="dbox" id="dbox-indrive-3"><input type="file" accept="image/*" onchange="mPlatShot('indrive',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
+        </div>
+        <div id="plat-count-indrive" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
       <div class="fg"><label>SA ID Number *</label><input id="d-id" placeholder="ID number" required/></div>
       <div class="fg"><label>Licence Number *</label><input id="d-lic" placeholder="Licence number" required/></div>
@@ -727,7 +747,9 @@ nav div::-webkit-scrollbar{display:none}
     <!-- S2 Owner -->
     <div id="reg-s2-o" style="display:none">
       <div class="fg"><label>Phone *</label><input id="o-ph" type="tel" placeholder="+27..."/></div>
-      <div class="fg"><label>City / Location *</label><input id="o-lo" placeholder="Johannesburg"/></div>
+      <div class="fg"><label>City / Location *</label><input id="o-lo" placeholder="e.g. Midrand, Johannesburg"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">&#128204; Be specific — include your suburb or area (e.g. <em>Midrand, Johannesburg</em> or <em>Bellville, Cape Town</em>). This is used to match your vehicle with nearby drivers.</div>
+      </div>
       <div class="fg"><label>WhatsApp *</label><input id="o-wa" type="tel" placeholder="+27..." required/></div>
       <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">ID / Passport (required)</div>
       <div class="doc-grid" style="margin-bottom:12px">
@@ -816,7 +838,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="sbi2 on" id="sb-ov" onclick="dpanel('ov')"><span>&#128202;</span><span>Overview</span></div>
       <div class="sbi2" id="sb-pr" onclick="dpanel('pr')"><span>&#128100;</span><span>My Profile</span></div>
       <div class="sb-lbl">Activity</div>
-      <div class="sbi2" id="sb-ap" onclick="dpanel('ap')"><span>&#128203;</span><span id="sb-ap-l">Applications</span></div>
+      <div class="sbi2" id="sb-ap" onclick="dpanel('ap')"><span>&#128203;</span><span id="sb-ap-l">Applications</span><span id="sb-ap-badge" style="display:none;background:#E8A520;color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:4px">0</span></div>
       <div class="sbi2" id="sb-rv" onclick="dpanel('rv')"><span>&#11088;</span><span>Reviews</span></div>
       <div class="sbi2" id="sb-dc" style="display:none" onclick="dpanel('dc')"><span>&#128196;</span><span>My Documents</span></div>
       <div class="sbi2" id="sb-lc" style="display:none" onclick="dpanel('lc')"><span>&#128663;</span><span>My Cars</span></div>
@@ -1013,10 +1035,20 @@ var sb = window.supabase.createClient(
 
 // Global state
 var U = null, P = null, DP = null;
+
+async function sendNotifEmail(type, appId) {
+  try {
+    await fetch('https://qyyflivkmnwikagnvstv.supabase.co/functions/v1/send-match-email', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'},
+      body: JSON.stringify({type: type, application_id: appId})
+    });
+  } catch(e) { console.warn('Email notification failed', e); }
+}
 var rRole = 'driver', rName = '', rEmail = '', rPass = '';
 var oCarData = {};
 var docFiles = {};
-var platFiles={};
+var platFiles={uber:[],bolt:[],indrive:[]};
 function tmSetEx(img){
   var plat=img.dataset.plat;
   var src=img.dataset.src;
@@ -1030,16 +1062,22 @@ function togglePlatShot(plat,cb){
   var box=document.getElementById('shot-'+plat);
   if(box)box.style.display=cb.checked?'block':'none';
   if(cb.checked) loadPlatExamples();
-  if(!cb.checked){platFiles[plat]=null;var db=document.getElementById('dbox-'+plat);if(db){db.classList.remove('up');db.style.borderColor='';}}
+  if(!cb.checked){platFiles[plat]=[];['1','2','3'].forEach(function(i){var db=document.getElementById('dbox-'+plat+'-'+i);if(db){db.classList.remove('up');db.style.borderColor='';}});}
 }
-function mPlatShot(plat,inp){
+function mPlatShot(plat,idx,inp){
   if(!inp.files||!inp.files[0])return;
   var file=inp.files[0];
   if(!file.type.startsWith('image/')){toast('Please upload an image file.');inp.value='';return;}
   if(file.size>5*1024*1024){toast('Screenshot must be under 5MB.');inp.value='';return;}
-  platFiles[plat]=file;
-  var db=document.getElementById('dbox-'+plat);
+  platFiles[plat][idx]=file;
+  var db=document.getElementById('dbox-'+plat+'-'+( idx+1));
   if(db){db.style.borderColor='var(--gm)';db.classList.add('up');}
+  updatePlatCount(plat);
+}
+function updatePlatCount(plat){
+  var count=(platFiles[plat]||[]).filter(Boolean).length;
+  var lbl=document.getElementById('plat-count-'+plat);
+  if(lbl)lbl.textContent=count+'/3 uploaded'+(count>=2?' ✓':'');
 }
 var _drvCache=null,_drvCacheTs=0,_carCache=null,_carCacheTs=0;
 var curStar = 0, incSel = null;
@@ -1572,18 +1610,16 @@ function reg2d() {
   if(!lo){showErr('reg-err','City / Location is required.');return;}
   if(!idNo){showErr('reg-err','SA ID Number is required.');return;}
   if(!lic){showErr('reg-err','Licence Number is required.');return;}
-  if(!plats.length){showErr('reg-err','Please select at least one platform (Uber, Bolt or inDrive) and upload your profile screenshot.');return;}
+  if(!plats.length){showErr('reg-err','Please select at least one platform (Uber, Bolt or inDrive) and upload your profile screenshots.');return;}
   var platVals=plats.map(function(c){return c.value;});
-  var anyScreenshot=false;
   for(var pi=0;pi<platVals.length;pi++){
     var pk=platVals[pi]==='inDrive'?'indrive':platVals[pi].toLowerCase();
-    if(!platFiles[pk]){
-      showErr('reg-err','You selected '+platVals[pi]+' but did not upload a screenshot. Please upload your '+platVals[pi]+' profile screenshot showing your rating and trip count, then continue.');
+    var uploaded=(platFiles[pk]||[]).filter(Boolean).length;
+    if(uploaded<2){
+      showErr('reg-err','Please upload at least 2 screenshots for '+platVals[pi]+' (you have '+uploaded+'/2). Screenshots must show your name, rating and trip count.');
       return;
     }
-    anyScreenshot=true;
   }
-  if(!anyScreenshot){showErr('reg-err','At least one platform screenshot is required to continue. Please select a platform and upload your profile screenshot.');return;}
   eid('reg-s2-d').style.display='none'; eid('reg-s3').style.display='block';
   eid('rs2').className='sbi done'; eid('rs3').className='sbi on';
 }
@@ -1613,11 +1649,11 @@ async function reg3() {
   // Re-validate platform screenshots at final submit
   if(rRole==='driver'){
     var chkPlats=Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;});
+    if(!chkPlats.length){showErr('reg-err','Please go back and select at least one platform.');return;}
     for(var ci=0;ci<chkPlats.length;ci++){
       var ck=chkPlats[ci]==='inDrive'?'indrive':chkPlats[ci].toLowerCase();
-      if(!platFiles[ck]){showErr('reg-err','Please go back and upload your '+chkPlats[ci]+' profile screenshot.');return;}
+      if((platFiles[ck]||[]).filter(Boolean).length<2){showErr('reg-err','Please go back and upload at least 2 screenshots for '+chkPlats[ci]+'.');return;}
     }
-    if(!chkPlats.length){showErr('reg-err','Please go back and select at least one platform.');return;}
   }
   if(!docFiles.df){showErr('reg-err','Full Body photo is required.');return;}
   if(!docFiles.dh){showErr('reg-err','Headshot photo is required.');return;}
@@ -1663,11 +1699,16 @@ async function doReg() {
     var hasDoc=Object.keys(u).length>0;// pending if ANY doc uploaded
     var shotUrls={uber:null,bolt:null,indrive:null};
     for(var sp in platFiles){
-      if(platFiles[sp]){
-        var sExt=(platFiles[sp].name.split('.').pop()||'jpg').toLowerCase();
-        var sPath='screenshots/'+uid+'-'+sp+'-'+Date.now()+'.'+sExt;
-        var sUp=await sb.storage.from('driver-docs').upload(sPath,platFiles[sp],{upsert:true});
-        if(!sUp.error){shotUrls[sp]=sb.storage.from('driver-docs').getPublicUrl(sPath).data.publicUrl;}
+      var files=(platFiles[sp]||[]).filter(Boolean);
+      if(files.length){
+        var urls=[];
+        for(var fi=0;fi<files.length;fi++){
+          var sExt=(files[fi].name.split('.').pop()||'jpg').toLowerCase();
+          var sPath='screenshots/'+uid+'-'+sp+'-'+fi+'-'+Date.now()+'.'+sExt;
+          var sUp=await sb.storage.from('driver-docs').upload(sPath,files[fi],{upsert:true});
+          if(!sUp.error){urls.push(sb.storage.from('driver-docs').getPublicUrl(sPath).data.publicUrl);}
+        }
+        if(urls.length) shotUrls[sp]=JSON.stringify(urls);
       }
     }
     var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;}),safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:shotUrls.uber,screenshot_bolt_url:shotUrls.bolt,screenshot_indrive_url:shotUrls.indrive},u);
@@ -1729,7 +1770,7 @@ function acceptTC() { eid('reg-tc').checked=true; closeModal('terms-modal'); toa
 function acceptPP() { eid('reg-pp').checked=true; closeModal('popia-modal'); toast('POPIA consent given'); }
 
 // ── DASHBOARD ──────────────────────────────────────────
-function initDash() {
+async function initDash() {
   if(!U){go('login');return;}
   eid('dash-name').textContent='Hi '+(P&&P.full_name?P.full_name.split(' ')[0]:'there')+' \uD83D\uDC4B';
   eid('dash-role').textContent=P?(P.role==='driver'?'Driver Account':P.role==='owner'?'Owner Account':'TrustMate'):'';
@@ -1737,6 +1778,12 @@ function initDash() {
   eid('sb-dc').style.display=P&&(P.role==='driver'||P.role==='both')?'flex':'none';
   eid('sb-lc').style.display=P&&(P.role==='owner'||P.role==='both')?'flex':'none';
   eid('adm-link-sb').style.display=P&&P.is_admin?'block':'none';
+  if(P&&(P.role==='driver'||P.role==='both')){
+    var bR=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner');
+    var cnt=bR.count||0;
+    var bdg=eid('sb-ap-badge');
+    if(bdg){bdg.textContent=cnt;bdg.style.display=cnt>0?'inline':'none';}
+  }
   showMobNav();
   dpanel('ov');
 }
@@ -1767,6 +1814,69 @@ async function pOv() {
       +(docValid?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'<p style="font-size:11px;color:#dc2626">&#9888; Documents pending verification</p>')
       +'</div>';
     if(DP.status==='pending')html+='<div class="warn-box"><strong>Pending Admin Approval</strong><p style="font-size:13px;margin-top:4px">Your profile is under review. You will go live once admin approves. This typically takes 1-2 business days.</p></div>';
+
+    // ── PENDING OWNER REQUESTS ──
+    var apR=await sb.from('applications').select('*').eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner').order('created_at',{ascending:false});
+    var pendReqs=apR.data||[];
+    if(pendReqs.length){
+      var oIds=[...new Set(pendReqs.map(function(a){return a.owner_id;}).filter(Boolean))];
+      var carIds=[...new Set(pendReqs.map(function(a){return a.car_id;}).filter(Boolean))];
+      var [opR2,ocR2,ownerCarsR2]=await Promise.all([
+        oIds.length?sb.from('profiles').select('id,full_name,location,phone,whatsapp').in('id',oIds):{data:[]},
+        carIds.length?sb.from('cars').select('id,make,model,year,color,transmission,fuel_policy,deposit,insurance,photo_front_url,location,price_per_week').in('id',carIds):{data:[]},
+        oIds.length?sb.from('cars').select('id,owner_id,make,model,year,color,transmission,fuel_policy,deposit,insurance,photo_front_url,location,price_per_week,admin_status').in('owner_id',oIds):{data:[]}
+      ]);
+      var om2={},cm2={},ownerCarMap2={};
+      (opR2.data||[]).forEach(function(o){om2[o.id]=o;});
+      (ocR2.data||[]).forEach(function(c){cm2[c.id]=c;});
+      (ownerCarsR2.data||[]).forEach(function(c){if(!ownerCarMap2[c.owner_id])ownerCarMap2[c.owner_id]=[];ownerCarMap2[c.owner_id].push(c);});
+      html+='<div class="tbox" style="border:2px solid #E8A520;background:#fffbf0">'
+        +'<div class="shd" style="color:#7a5200">&#128276; Owner Requests ('+pendReqs.length+')</div>'
+        +pendReqs.map(function(a){
+          var o=om2[a.owner_id]||{};
+          var car=cm2[a.car_id]||null;
+          var oCars2=ownerCarMap2[a.owner_id]||[];
+          var carBlock='';
+          function renderCarDetail(c){
+            var b='<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:10px">';
+            if(c.photo_front_url) b+='<img src="'+esc(c.photo_front_url)+'" style="width:100%;height:160px;object-fit:cover;display:block">';
+            b+='<div style="padding:10px 12px">';
+            b+='<div style="font-size:16px;font-weight:800;color:var(--g);margin-bottom:8px">'+esc(c.make)+' '+esc(c.model)+' '+c.year+(c.color?' &middot; '+esc(c.color):'')+'</div>';
+            b+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">';
+            b+='<div><span style="color:var(--muted)">Weekly Rental</span><br><strong style="color:var(--gm);font-size:15px">R'+(c.price_per_week||'—')+'/wk</strong></div>';
+            b+='<div><span style="color:var(--muted)">Location</span><br><strong>&#128205; '+esc(c.location||'—')+'</strong></div>';
+            if(c.transmission) b+='<div><span style="color:var(--muted)">Transmission</span><br><strong>'+esc(c.transmission)+'</strong></div>';
+            if(c.deposit) b+='<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+esc(String(c.deposit))+'</strong></div>';
+            if(c.insurance) b+='<div><span style="color:var(--muted)">Insurance</span><br><strong>'+esc(c.insurance)+'</strong></div>';
+            if(c.fuel_policy) b+='<div><span style="color:var(--muted)">Fuel Policy</span><br><strong>'+esc(c.fuel_policy)+'</strong></div>';
+            b+='</div></div></div>';
+            return b;
+          }
+          if(car){
+            carBlock=renderCarDetail(car);
+          } else if(oCars2.length){
+            carBlock='<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Available Cars from this Owner</div>';
+            carBlock+=oCars2.slice(0,3).map(renderCarDetail).join('');
+          }
+          return '<div style="background:#fff;border:1px solid #f0d080;border-radius:10px;padding:14px;margin-bottom:10px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+            +'<div>'
+            +'<div style="font-size:15px;font-weight:800;color:var(--g)">'+(o.full_name||'Owner')+'</div>'
+            +(o.location?'<div style="font-size:11px;color:var(--muted)">&#128205; '+esc(o.location)+'</div>':'')
+            +'</div>'
+            +'<span style="font-size:10px;font-weight:700;background:#fff8e1;color:#7a5200;padding:3px 8px;border-radius:999px;border:1px solid #E8A520">&#127968; Owner Request</span>'
+            +'</div>'
+            +carBlock
+            +(a.message?'<div style="font-size:12px;color:#555;padding:7px 9px;background:var(--cream);border-radius:6px;font-style:italic;margin-bottom:10px">"'+esc(a.message)+'"</div>':'')
+            +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Received '+fmtD(a.created_at)+'</div>'
+            +'<div style="display:flex;gap:8px">'
+            +'<button class="btn btn-gm" style="flex:1;padding:11px;font-size:14px;font-weight:700" data-aid="'+a.id+'" data-s="approved" onclick="drvRespOv(this)">&#10003; Accept</button>'
+            +'<button class="btn btn-red" style="flex:1;padding:11px;font-size:14px;font-weight:700" data-aid="'+a.id+'" data-s="rejected" onclick="drvRespOv(this)">&#10005; Decline</button>'
+            +'</div>'
+            +'</div>';
+        }).join('')
+        +'</div>';
+    }
   }
   if(isO){
     var ar=await sb.from('applications').select('id,status,unmatched_at,driver_id').eq('owner_id',U.id);
@@ -2227,6 +2337,9 @@ async function pLc(){
         +(c.admin_status==='rejected'?'<div style="font-size:11px;color:#dc2626;margin-top:3px">Declined by admin. Please re-submit or contact support.</div>':'')
         +(c.admin_status==='pending'?'<div style="font-size:11px;color:#E8A520;margin-top:3px">&#8987; Awaiting admin approval</div>':'')
         +'</div></div>'
+        +'<div style="display:flex;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);margin-top:8px">'
+        +'<button class="btn btn-red btn-sm" data-cid="'+c.id+'" data-cmake="'+esc(c.make)+' '+esc(c.model)+'" onclick="ownerRemoveCar(this.dataset.cid,this.dataset.cmake)">&#128465; Remove Car</button>'
+        +'</div>'
         +'</div>';
     }).join('');
   }
@@ -2262,6 +2375,20 @@ async function submitNewCar(){
   if(r.error){toast('Error: '+r.error.message);return;}
   _carCache=null;
   toast('Car submitted for review!');
+  pLc();
+}
+async function ownerRemoveCar(cid, cmake){
+  if(!confirm('Remove '+cmake+' from the platform? This cannot be undone.')) return;
+  // Block removal if car is part of an active match
+  var chk=await sb.from('applications').select('id').eq('car_id',cid).eq('status','approved').is('unmatched_at',null);
+  if(chk.data&&chk.data.length){
+    toast('Cannot remove — this car is currently matched with a driver. Unmatch first.');
+    return;
+  }
+  var r=await sb.from('cars').delete().eq('id',cid).eq('owner_id',U.id);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  _carCache=null;
+  toast(cmake+' removed.');
   pLc();
 }
 async function pAp() {
@@ -2310,8 +2437,8 @@ async function pAp() {
       var statusBadge='<span class="atag tag-'+(a.status==='approved'?'a':a.status==='rejected'?'r':'p')+'">'+
         (isMatched?'Matched':a.status==='rejected'?'Declined':(ownerInitiated&&a.status==='pending')?'Waiting for driver':'Pending')+'</span>';
       var acts=statusBadge;
-      if(a.status==='pending'&&!ownerInitiated) acts+=' <button class="btn btn-gm btn-sm" onclick="ownerResp(\''+a.id+'\',\'approved\')">Accept</button>'
-        +' <button class="btn btn-red btn-sm" onclick="ownerResp(\''+a.id+'\',\'rejected\')">Decline</button>';
+      if(a.status==='pending'&&!ownerInitiated) acts+=' <button class="btn btn-gm btn-sm" data-iby="'+esc(a.initiated_by||'')+'" onclick="ownerResp(\''+a.id+'\',\'approved\',this)">Accept</button>'
+        +' <button class="btn btn-red btn-sm" data-iby="'+esc(a.initiated_by||'')+'" onclick="ownerResp(\''+a.id+'\',\'rejected\',this)">Decline</button>';
       if(isMatched) acts+=' <button class="btn btn-red btn-sm" data-aid="'+a.id+'" onclick="doUnmatch(this)">Unmatch</button>';
 
       // Car section
@@ -2337,9 +2464,9 @@ async function pAp() {
         docRow='<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px">DOCUMENTS</div><div style="display:flex;gap:5px;flex-wrap:wrap">';
         if(dp.doc_id_url) docRow+='<a href="'+dp.doc_id_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; ID</a>';
         if(dp.doc_license_url) docRow+='<a href="'+dp.doc_license_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; Licence</a>';
-        if(dp.screenshot_uber_url) docRow+='<a href="'+dp.screenshot_uber_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#111;border-radius:5px;color:#fff;text-decoration:none">Uber</a>';
-        if(dp.screenshot_bolt_url) docRow+='<a href="'+dp.screenshot_bolt_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#34C759;border-radius:5px;color:#fff;text-decoration:none">Bolt</a>';
-        if(dp.screenshot_indrive_url) docRow+='<a href="'+dp.screenshot_indrive_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#FF6B35;border-radius:5px;color:#fff;text-decoration:none">inDrive</a>';
+        parseShotUrls(dp.screenshot_uber_url).forEach(function(u,i){docRow+='<a href="'+esc(u)+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#111;border-radius:5px;color:#fff;text-decoration:none">Uber '+(i+1)+'</a>';});
+        parseShotUrls(dp.screenshot_bolt_url).forEach(function(u,i){docRow+='<a href="'+esc(u)+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#34C759;border-radius:5px;color:#fff;text-decoration:none">Bolt '+(i+1)+'</a>';});
+        parseShotUrls(dp.screenshot_indrive_url).forEach(function(u,i){docRow+='<a href="'+esc(u)+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#FF6B35;border-radius:5px;color:#fff;text-decoration:none">inDrive '+(i+1)+'</a>';});
         docRow+='</div></div>';
       } else {
         docRow='<div style="padding:6px 10px;background:var(--cream);border-radius:7px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:8px">'
@@ -2463,7 +2590,17 @@ async function pAp() {
     }).join('');
   }
 }
-async function ownerResp(id,s){await sb.from('applications').update({status:s}).eq('id',id);toast(s==='approved'?'Accepted!':'Declined');pAp();}
+async function ownerResp(id,s,btn){
+  // Safety: only allow accepting/declining driver-initiated applications
+  if(btn&&btn.getAttribute('data-iby')==='owner'){toast('This request was sent by you. The driver must accept or decline it.');return;}
+  if(s==='approved') {
+    var chk=await sb.from('applications').select('initiated_by').eq('id',id).maybeSingle();
+    if(chk.data&&chk.data.initiated_by==='owner'){toast('This request was sent by you. The driver must accept or decline it.');return;}
+  }
+  await sb.from('applications').update({status:s}).eq('id',id);
+  toast(s==='approved'?'Accepted!':'Declined');
+  pAp();
+}
 async function drvResp(btn){
   var id=btn.getAttribute('data-aid');
   var s=btn.getAttribute('data-s');
@@ -2471,8 +2608,24 @@ async function drvResp(btn){
   if(s==='approved') update.matched_at=new Date().toISOString();
   var r=await sb.from('applications').update(update).eq('id',id);
   if(r.error){toast('Error: '+r.error.message);return;}
+  if(s==='approved') sendNotifEmail('match_approved', id);
   toast(s==='approved'?'Match accepted! Owner contact details are now visible.':'Request declined.');
   pAp();
+}
+async function drvRespOv(btn){
+  var id=btn.getAttribute('data-aid');
+  var s=btn.getAttribute('data-s');
+  var update={status:s};
+  if(s==='approved') update.matched_at=new Date().toISOString();
+  var r=await sb.from('applications').update(update).eq('id',id);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  if(s==='approved') sendNotifEmail('match_approved', id);
+  toast(s==='approved'?'Match accepted! Owner contact details are now visible.':'Request declined.');
+  var bR=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner');
+  var cnt=bR.count||0;
+  var bdg=eid('sb-ap-badge');
+  if(bdg){bdg.textContent=cnt;bdg.style.display=cnt>0?'inline':'none';}
+  pOv();
 }
 async function doUnmatch(btn) {
   var id=btn.getAttribute('data-aid');
@@ -2518,6 +2671,8 @@ async function subMatch() {
   var ins;
   if(matchMode==='driver'){
     if(!DP||DP.status!=='approved'){toast('Your profile must be approved by admin before you can apply.');btn.disabled=false;btn.textContent='Send Request';return;}
+    var hasTripsOrRating=(DP.uber_trips||DP.uber_rating||DP.bolt_trips||DP.bolt_rating||DP.indrive_trips||DP.indrive_rating);
+    if(!hasTripsOrRating&&!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
     var ex=await sb.from('applications').select('id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null);
     if(ex.data&&ex.data.length){toast('You are already matched with an owner. Unmatch first.');btn.disabled=false;btn.textContent='Send Request';return;}
     if(matchCarId){var carEx=await sb.from('applications').select('id').eq('car_id',matchCarId).eq('status','approved').is('unmatched_at',null);if(carEx.data&&carEx.data.length){toast('This car is already matched with another driver and is not available.');btn.disabled=false;btn.textContent='Send Request';return;}}
@@ -2536,12 +2691,14 @@ async function subMatch() {
     if(dEx.data&&dEx.data.length){toast('This driver is already matched.');btn.disabled=false;btn.textContent='Send Request';return;}
     ins={owner_id:U.id,driver_id:dUid,status:'pending',message:msg||null,initiated_by:'owner'};
   }
-  var r=await sb.from('applications').insert(ins);
+  var r=await sb.from('applications').insert(ins).select('id').maybeSingle();
   btn.disabled=false; btn.textContent='Send Request';
   if(r.error){toast('Error: '+r.error.message);return;}
   if (typeof gtag === 'function') {
     gtag('event', 'generate_lead', { method: matchMode === 'driver' ? 'driver_applied_to_car' : 'owner_matched_driver' });
   }
+  // Notify driver when owner sends request
+  if(matchMode==='owner'&&r.data&&r.data.id) sendNotifEmail('owner_request', r.data.id);
   closeModal('match-modal'); toast('Request sent!');
 }
 
@@ -2875,6 +3032,30 @@ async function adOv(){
   var week=new Date(Date.now()-7*864e5).toISOString();
   var matched=apps.filter(function(a){return a.status==='approved';}).length;
   var avgR=revs.length?(revs.reduce(function(s,r){return s+r.rating;},0)/revs.length).toFixed(1):'-';
+  // Build location breakdowns
+  var driverLocs={}, ownerLocs={};
+  users.forEach(function(u){
+    var loc=(u.location||'').trim();
+    if(!loc)return;
+    if(u.role==='driver'||u.role==='both') driverLocs[loc]=(driverLocs[loc]||0)+1;
+    if(u.role==='owner'||u.role==='both') ownerLocs[loc]=(ownerLocs[loc]||0)+1;
+  });
+  function locTable(map,title){
+    var entries=Object.entries(map).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
+    if(!entries.length) return '';
+    return '<div class="shd">'+title+'</div>'
+      +'<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px">'
+      +'<thead><tr><th style="text-align:left;padding:6px 8px;background:var(--cream);font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">Area</th><th style="text-align:right;padding:6px 8px;background:var(--cream);font-size:11px;color:var(--muted);border-bottom:1px solid var(--border)">Count</th></tr></thead>'
+      +'<tbody>'+entries.map(function(e,i){return '<tr style="background:'+(i%2===0?'#fff':'var(--cream)')+'"><td style="padding:7px 8px;border-bottom:1px solid var(--border)">&#128205; '+esc(e[0])+'</td><td style="padding:7px 8px;border-bottom:1px solid var(--border);text-align:right;font-weight:700;color:var(--gm)">'+e[1]+'</td></tr>';}).join('')
+      +'</tbody></table>';
+  }
+  // Application engagement stats
+  var totalApps=appStatData.length;
+  var driversWhoApplied=Object.keys(drvAppMap).length;
+  var ownersWhoReceived=Object.keys(ownAppMap).length;
+  var ownersWhoViewed=(viewRes.data||[]).reduce(function(s,v){s[v.owner_id]=true;return s;},{});
+  var ownersViewedCount=Object.keys(ownersWhoViewed).length;
+
   el.innerHTML='<div class="ptitle">Dashboard</div><div class="psub">Live platform overview</div>'
     +(total>0?'<div class="alert-warn"><p><strong>'+total+' item'+(total!==1?'s':'')+' pending review</strong>'+(pdrvs?' / '+pdrvs+' drivers':'')+(powns?' / '+powns+' owners':'')+(pcars?' / '+pcars+' cars':'')+'</p><button class="btn btn-amb btn-sm" onclick="adNav(\'reg\')">Review now</button></div>':'')
     +buildAnalyticsTables(logins,viewRes.data||[],appStatData,users)
@@ -2888,7 +3069,17 @@ async function adOv(){
     +'<div class="kcard"><div class="kcard-n g">'+( cars.filter(function(c){return c.admin_status==='approved';}).length)+'</div><div class="kcard-l">Cars Approved</div></div>'
     +'<div class="kcard"><div class="kcard-n g">'+matched+'</div><div class="kcard-l">Active Matches</div></div>'
     +'<div class="kcard"><div class="kcard-n g">'+avgR+' &#9733;</div><div class="kcard-l">Avg Rating</div></div>'
-    +'</div>';
+    +'</div>'
+    +'<div class="shd">Application Engagement</div><div class="kgrid">'
+    +'<div class="kcard"><div class="kcard-n g">'+totalApps+'</div><div class="kcard-l">Total Applications</div></div>'
+    +'<div class="kcard"><div class="kcard-n g">'+driversWhoApplied+'</div><div class="kcard-l">Drivers Who Applied</div></div>'
+    +'<div class="kcard"><div class="kcard-n">'+ownersWhoReceived+'</div><div class="kcard-l">Owners Received Apps</div></div>'
+    +'<div class="kcard"><div class="kcard-n">'+ownersViewedCount+'</div><div class="kcard-l">Owners Viewed Apps</div></div>'
+    +'<div class="kcard"><div class="kcard-n">'+avgDrvApps+'</div><div class="kcard-l">Avg Apps / Driver</div></div>'
+    +'<div class="kcard"><div class="kcard-n">'+avgOwnApps+'</div><div class="kcard-l">Avg Apps / Owner</div></div>'
+    +'</div>'
+    +locTable(driverLocs,'Driver Locations')
+    +locTable(ownerLocs,'Owner Locations');
 }
 
 // ── INCOMPLETE REGISTRATIONS ─────────────────────────
@@ -3045,7 +3236,7 @@ async function adReg(){
         +'<div class="rcard-body">'+igrid(['Email: <strong>'+(p.email||'-')+'</strong>','Phone: <strong>'+(p.phone||'-')+'</strong>',p.whatsapp?'WhatsApp: <strong>'+p.whatsapp+'</strong>':'','Location: <strong>'+(p.location||'-')+'</strong>','ID No: <strong>'+(d.id_number||'-')+'</strong>','Licence: <strong>'+(d.license_number||'-')+'</strong>','Driving: <strong>'+d.years_driving+'+ yrs</strong>',d.age?'Age: <strong>'+d.age+'</strong>':'','Platforms: <strong>'+((d.platforms||[]).join(', ')||'-')+'</strong>','Score: <strong style="color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</strong>','Docs: <strong style="color:'+(docValid?'var(--gm)':'#dc2626')+'">'+(docValid?'Valid to '+fmtD(d.doc_expires_at):d.doc_uploaded_at?'EXPIRED':'Not uploaded')+'</strong>'])
         +(d.bio?'<div style="margin-top:8px;font-size:12px;color:#555;background:var(--cream);padding:7px 9px;border-radius:6px">'+d.bio+'</div>':'')+'</div>'
         +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumb(d.photo_fullbody_url,'Full Body')+dthumb(d.photo_headshot_url,'Headshot')+dthumb(d.photo_holding_id_url,'Holding ID')+dthumb(d.doc_license_url,'Licence')+dthumb(d.doc_id_url,'ID/Passport')+'</div>'
-        +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+dthumb(d.screenshot_uber_url,'Uber')+dthumb(d.screenshot_bolt_url,'Bolt')+dthumb(d.screenshot_indrive_url,'inDrive')+'</div>':'')
+        +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+parseShotUrls(d.screenshot_uber_url).map(function(u,i){return dthumb(u,'Uber '+(i+1));}).join('')+parseShotUrls(d.screenshot_bolt_url).map(function(u,i){return dthumb(u,'Bolt '+(i+1));}).join('')+parseShotUrls(d.screenshot_indrive_url).map(function(u,i){return dthumb(u,'inDrive '+(i+1));}).join('')+'</div>':'')
         +adDocUploads(d.id)
         +'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Rejection reason (required when declining):</label><textarea id="rej-reason-'+d.id+'" placeholder="e.g. Blurry ID photo, expired licence..." style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;height:54px;resize:vertical"></textarea></div>'
         +'<div style="padding:10px 14px;border-top:1px solid var(--border);background:#fafaf8">'
@@ -3271,7 +3462,7 @@ async function adDrv(){
         +'</div></div>'
         +'<div style="font-size:11px"><span style="color:'+(docValid?'var(--gm)':'#dc2626')+'">Docs: '+(docValid?'Valid to '+fmtD(d.doc_expires_at):d.doc_uploaded_at?'EXPIRED':'None')+'</span></div></div>'
         +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumb(d.photo_fullbody_url,'Full Body')+dthumb(d.photo_headshot_url,'Headshot')+dthumb(d.photo_holding_id_url,'Holding ID')+dthumb(d.doc_license_url,'Licence')+dthumb(d.doc_id_url,'ID/Passport')+'</div>'
-        +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+dthumb(d.screenshot_uber_url,'Uber')+dthumb(d.screenshot_bolt_url,'Bolt')+dthumb(d.screenshot_indrive_url,'inDrive')+'</div>':'')
+        +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+parseShotUrls(d.screenshot_uber_url).map(function(u,i){return dthumb(u,'Uber '+(i+1));}).join('')+parseShotUrls(d.screenshot_bolt_url).map(function(u,i){return dthumb(u,'Bolt '+(i+1));}).join('')+parseShotUrls(d.screenshot_indrive_url).map(function(u,i){return dthumb(u,'inDrive '+(i+1));}).join('')+'</div>':'')
         +adDocUploads(d.id)
         +'<div class="rcard-acts">'
         +(d.status!=='approved'?'<button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button>':'')
@@ -3430,8 +3621,15 @@ async function adOwn(){
   var carR=await sb.from('cars').select('id,owner_id,make,model,year,admin_status,photo_front_url,price_per_week,location,transmission,deposit,insurance,fuel_policy').in('owner_id',oids);
   var carMap={};(carR.data||[]).forEach(function(c){if(!carMap[c.owner_id])carMap[c.owner_id]=[];carMap[c.owner_id].push(c);});
 
-  el.innerHTML='<div class="ptitle">Manage Owners</div><div class="psub">'+owners.length+' owner'+(owners.length!==1?'s':'')+'</div>'
-    +owners.map(function(o){
+  var adOwnQ=window._adOwnQ||'';
+  var filteredOwners=adOwnQ?owners.filter(function(o){
+    return ((o.full_name||'')+(o.email||'')+(o.location||'')).toLowerCase().indexOf(adOwnQ.toLowerCase())>-1;
+  }):owners;
+
+  el.innerHTML='<div class="ptitle">Manage Owners</div>'
+    +'<div style="margin-bottom:10px"><input id="adm-own-q" type="text" placeholder="&#128269; Search owner name, email or location..." value="'+esc(adOwnQ)+'" style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adOwnSearch()"/></div>'
+    +'<div class="psub">'+filteredOwners.length+' of '+owners.length+' owner'+(owners.length!==1?'s':'')+'</div>'
+    +filteredOwners.map(function(o){
       var oCars=carMap[o.id]||[];
       var isInc=!o.admin_status||o.admin_status==='pending';
       return '<div class="rcard" style="border-left:4px solid '+(isInc?'var(--amber)':o.admin_status==='approved'?'var(--gm)':'#dc2626')+'">'
@@ -3490,6 +3688,19 @@ async function adOwn(){
               +(c.admin_status!=='approved'?'&nbsp;<button class="btn btn-gm btn-sm" data-cid="'+c.id+'" onclick="adSetCar(this.dataset.cid,this.dataset.s)">Approve Car</button>':'')
               +'</div>'
               +'</div>'
+              // Photos
+              +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;margin-top:6px">Photos</div>'
+              +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">'
+              +[['photo_front_url','Front'],['photo_side_url','Side'],['photo_back_url','Back'],['photo_interior_url','Interior']].map(function(ph){
+                var existing=c[ph[0]];
+                return '<div style="border:1.5px solid var(--border);border-radius:7px;overflow:hidden;background:var(--cream)">'
+                  +(existing?'<img src="'+esc(existing)+'" style="width:100%;height:55px;object-fit:cover;display:block">':'<div style="height:55px;display:flex;align-items:center;justify-content:center;font-size:18px">&#128663;</div>')
+                  +'<label style="display:block;cursor:pointer;padding:3px 5px;background:#fff;border-top:1px solid var(--border);text-align:center">'
+                  +'<input type="file" accept="image/*" style="display:none" data-cid="'+c.id+'" data-field="'+ph[0]+'" onchange="adUploadCarPhoto(this)">'
+                  +'<span style="font-size:9px;font-weight:600;color:var(--gm)">&#128247; '+ph[1]+'</span>'
+                  +'</label></div>';
+              }).join('')
+              +'</div>'
               +'<button class="btn btn-g btn-sm" data-cid="'+c.id+'" onclick="ownSaveCar(this.dataset.cid)">Save Car</button>'
               +'</div>';
           }).join('')
@@ -3505,6 +3716,23 @@ async function adOwn(){
         +'</div>'
         +'</div>';
     }).join('');
+}
+function adDrvSearch(){
+  var q=(document.getElementById('adm-drv-q')||{}).value||'';
+  window._adDrvQ=q;
+  var cards=document.querySelectorAll('#ap-drv .rcard[id^="dc-"]');
+  cards.forEach(function(card){
+    var text=card.textContent.toLowerCase();
+    card.style.display=(!q||text.indexOf(q.toLowerCase())>-1)?'':'none';
+  });
+  var vis=Array.from(cards).filter(function(c){return c.style.display!=='none';}).length;
+  var sub=document.querySelector('#ap-drv .psub');
+  if(sub) sub.textContent=vis+(q?' match'+(vis!==1?'es':''):' shown');
+}
+function adOwnSearch(){
+  var q=(document.getElementById('adm-own-q')||{}).value||'';
+  window._adOwnQ=q;
+  adOwn();
 }
 async function adApproveOwnerAndCars(oid){
   var c=document.getElementById('ro-'+oid);
@@ -3567,6 +3795,19 @@ async function adCar(){
         +'<div><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Deposit (R)</label><input type="number" id="ce-deposit-'+c.id+'" value="'+(c.deposit||'')+'\" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit" placeholder="e.g. 5000"/></div>'
         +'</div>'
         +'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Description</label><textarea id="ce-desc-'+c.id+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;height:60px">'+esc(c.description||'')+'</textarea></div>'
+        // Car photos upload
+        +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px">Car Photos</div>'
+        +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px">'
+        +[['photo_front_url','Front'],['photo_side_url','Side'],['photo_back_url','Back'],['photo_interior_url','Interior']].map(function(ph){
+          var existing=c[ph[0]];
+          return '<div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;background:var(--cream)">'
+            +(existing?'<img src="'+esc(existing)+'" style="width:100%;height:80px;object-fit:cover;display:block">':'<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:24px">&#128663;</div>')
+            +'<label style="display:block;cursor:pointer;padding:5px 8px;background:#fff;border-top:1px solid var(--border)">'
+            +'<input type="file" accept="image/*" style="display:none" data-cid="'+c.id+'" data-field="'+ph[0]+'" onchange="adUploadCarPhoto(this)">'
+            +'<span style="font-size:10px;font-weight:600;color:var(--gm)">&#128247; '+(existing?'Replace ':'Upload ')+ph[1]+'</span>'
+            +'</label></div>';
+        }).join('')
+        +'</div>'
         +'<div style="display:flex;gap:8px">'
         +'<button class="btn btn-gm btn-sm" data-cid="'+c.id+'" onclick="adSaveCar(this.dataset.cid)">Save Changes</button>'
         +'<button class="btn btn-out btn-sm" data-cid="'+c.id+'" onclick="adToggleCarEdit(this.dataset.cid)">Cancel</button>'
@@ -3574,6 +3815,7 @@ async function adCar(){
     }).join('');
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function parseShotUrls(val){if(!val)return[];try{var a=JSON.parse(val);return Array.isArray(a)?a:[val];}catch(e){return [val];}}
 function adToggleCarEdit(cid){
   var box=document.getElementById('car-edit-'+cid);
   if(box)box.style.display=box.style.display==='none'?'block':'none';
@@ -3597,6 +3839,20 @@ async function adSaveCar(cid){
   if(r.error){toast('Error: '+r.error.message);return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');return;}
   toast('Car details saved!');
+  adCar();
+}
+async function adUploadCarPhoto(inp){
+  var cid=inp.dataset.cid, field=inp.dataset.field, file=inp.files[0];
+  if(!file)return;
+  toast('Uploading...');
+  var ext=file.name.split('.').pop()||'jpg';
+  var path='cars/'+cid+'/'+field+'-'+Date.now()+'.'+ext;
+  var url=await upFile('car-photos',path,file);
+  if(!url){toast('Upload failed. Check storage bucket permissions.');return;}
+  var upd={};upd[field]=url;
+  var r=await sb.from('cars').update(upd).eq('id',cid);
+  if(r.error){toast('Error saving photo: '+r.error.message);return;}
+  toast('Photo uploaded!');
   adCar();
 }
 async function adSetCar(cid,status){
@@ -3759,8 +4015,23 @@ async function adMatch(){
         +'</div>'
         +'</div>'
         +'<div style="font-size:11px;color:var(--muted);margin-top:8px">Matched: '+fmtD(a.created_at)+'</div>'
+        +'<div style="margin-top:10px"><button class="btn btn-red" style="font-size:12px;padding:7px 16px" data-aid="'+a.id+'" onclick="adAdminUnmatch(this)">&#10006; Unmatch</button></div>'
         +'</div></div></div>';
     }).join('');
+}
+
+async function adAdminUnmatch(btn){
+  if(!confirm('Unmatch this driver and owner? This will end their current rental arrangement.'))return;
+  var id=btn.getAttribute('data-aid');
+  btn.disabled=true;btn.textContent='Unmatching...';
+  var appR=await sb.from('applications').select('driver_id').eq('id',id).maybeSingle();
+  await sb.from('applications').update({status:'rejected',unmatched_at:new Date().toISOString(),unmatched_by:'admin'}).eq('id',id);
+  if(appR.data&&appR.data.driver_id){
+    var dpR=await sb.from('driver_profiles').select('id,rentals_completed').eq('user_id',appR.data.driver_id).maybeSingle();
+    if(dpR.data)await sb.from('driver_profiles').update({rentals_completed:(dpR.data.rentals_completed||0)+1}).eq('id',dpR.data.id);
+  }
+  toast('Match ended.');
+  adMatch();
 }
 
 // ── ALL APPLICATIONS ───────────────────────────────────
