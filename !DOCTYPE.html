@@ -709,6 +709,9 @@ nav div::-webkit-scrollbar{display:none}
       </div>
       <div id="shot-bolt" style="display:none" class="fg">
         <label>Bolt profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
+        <div style="font-weight:700;color:var(--g);font-size:13px;margin-bottom:10px;padding:11px 13px;background:#f0fdf4;border-radius:8px;border-left:3px solid var(--gm);line-height:1.55">
+          &#128222; <strong>Bolt drivers:</strong> Contact <strong>Bolt Support</strong> and request your <strong>total number of trips completed since you started on Bolt</strong> (e.g. since 2023). Ask them for your all-time trip total and mention it in your profile. <strong>Including your total trip history greatly increases your chances of being matched with a vehicle owner.</strong>
+        </div>
         <div id="example-bolt-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Bolt screenshot:</div>
           <img id="example-bolt-img" src="" alt="Example Bolt screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
@@ -1032,6 +1035,16 @@ var sb = window.supabase.createClient(
 
 // Global state
 var U = null, P = null, DP = null;
+
+async function sendNotifEmail(type, appId) {
+  try {
+    await fetch('https://qyyflivkmnwikagnvstv.supabase.co/functions/v1/send-match-email', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'},
+      body: JSON.stringify({type: type, application_id: appId})
+    });
+  } catch(e) { console.warn('Email notification failed', e); }
+}
 var rRole = 'driver', rName = '', rEmail = '', rPass = '';
 var oCarData = {};
 var docFiles = {};
@@ -2585,6 +2598,7 @@ async function drvResp(btn){
   if(s==='approved') update.matched_at=new Date().toISOString();
   var r=await sb.from('applications').update(update).eq('id',id);
   if(r.error){toast('Error: '+r.error.message);return;}
+  if(s==='approved') sendNotifEmail('match_approved', id);
   toast(s==='approved'?'Match accepted! Owner contact details are now visible.':'Request declined.');
   pAp();
 }
@@ -2595,6 +2609,7 @@ async function drvRespOv(btn){
   if(s==='approved') update.matched_at=new Date().toISOString();
   var r=await sb.from('applications').update(update).eq('id',id);
   if(r.error){toast('Error: '+r.error.message);return;}
+  if(s==='approved') sendNotifEmail('match_approved', id);
   toast(s==='approved'?'Match accepted! Owner contact details are now visible.':'Request declined.');
   var bR=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner');
   var cnt=bR.count||0;
@@ -2646,6 +2661,7 @@ async function subMatch() {
   var ins;
   if(matchMode==='driver'){
     if(!DP||DP.status!=='approved'){toast('Your profile must be approved by admin before you can apply.');btn.disabled=false;btn.textContent='Send Request';return;}
+    if(!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
     var ex=await sb.from('applications').select('id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null);
     if(ex.data&&ex.data.length){toast('You are already matched with an owner. Unmatch first.');btn.disabled=false;btn.textContent='Send Request';return;}
     if(matchCarId){var carEx=await sb.from('applications').select('id').eq('car_id',matchCarId).eq('status','approved').is('unmatched_at',null);if(carEx.data&&carEx.data.length){toast('This car is already matched with another driver and is not available.');btn.disabled=false;btn.textContent='Send Request';return;}}
@@ -2664,12 +2680,14 @@ async function subMatch() {
     if(dEx.data&&dEx.data.length){toast('This driver is already matched.');btn.disabled=false;btn.textContent='Send Request';return;}
     ins={owner_id:U.id,driver_id:dUid,status:'pending',message:msg||null,initiated_by:'owner'};
   }
-  var r=await sb.from('applications').insert(ins);
+  var r=await sb.from('applications').insert(ins).select('id').maybeSingle();
   btn.disabled=false; btn.textContent='Send Request';
   if(r.error){toast('Error: '+r.error.message);return;}
   if (typeof gtag === 'function') {
     gtag('event', 'generate_lead', { method: matchMode === 'driver' ? 'driver_applied_to_car' : 'owner_matched_driver' });
   }
+  // Notify driver when owner sends request
+  if(matchMode==='owner'&&r.data&&r.data.id) sendNotifEmail('owner_request', r.data.id);
   closeModal('match-modal'); toast('Request sent!');
 }
 
