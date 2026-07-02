@@ -692,31 +692,46 @@ nav div::-webkit-scrollbar{display:none}
           <label class="chk"><input type="checkbox" value="inDrive" class="dpc" onchange="togglePlatShot('indrive',this)"> inDrive</label>
         </div></div>
       <div id="shot-uber" style="display:none" class="fg">
-        <label>Uber profile screenshot *<span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">Shows your rating &amp; no. of trips</span></label>
+        <label>Uber profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
         <div id="example-uber-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Uber screenshot:</div>
           <img id="example-uber-img" src="" alt="Example Uber screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
           <div style="font-size:10px;color:var(--muted);margin-top:4px">Your screenshot must show your name, rating and trip count like this example.</div>
         </div>
-        <div class="dbox" id="dbox-uber"><input type="file" accept="image/*" onchange="mPlatShot('uber',this)"><div style="font-size:18px">&#128247;</div><div style="font-size:10px;font-weight:600">Upload Uber Screenshot</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="dbox" id="dbox-uber-1"><input type="file" accept="image/*" onchange="mPlatShot('uber',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
+          <div class="dbox" id="dbox-uber-2"><input type="file" accept="image/*" onchange="mPlatShot('uber',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
+          <div class="dbox" id="dbox-uber-3"><input type="file" accept="image/*" onchange="mPlatShot('uber',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
+        </div>
+        <div id="plat-count-uber" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
       <div id="shot-bolt" style="display:none" class="fg">
-        <label>Bolt profile screenshot *<span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">Shows your rating &amp; no. of trips</span></label>
+        <label>Bolt profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
         <div id="example-bolt-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Bolt screenshot:</div>
           <img id="example-bolt-img" src="" alt="Example Bolt screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
           <div style="font-size:10px;color:var(--muted);margin-top:4px">Your screenshot must show your name, rating and trip count like this example.</div>
         </div>
-        <div class="dbox" id="dbox-bolt"><input type="file" accept="image/*" onchange="mPlatShot('bolt',this)"><div style="font-size:18px">&#128247;</div><div style="font-size:10px;font-weight:600">Upload Bolt Screenshot</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="dbox" id="dbox-bolt-1"><input type="file" accept="image/*" onchange="mPlatShot('bolt',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
+          <div class="dbox" id="dbox-bolt-2"><input type="file" accept="image/*" onchange="mPlatShot('bolt',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
+          <div class="dbox" id="dbox-bolt-3"><input type="file" accept="image/*" onchange="mPlatShot('bolt',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
+        </div>
+        <div id="plat-count-bolt" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
       <div id="shot-indrive" style="display:none" class="fg">
-        <label>inDrive profile screenshot *<span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:6px">Shows your rating &amp; no. of trips</span></label>
+        <label>inDrive profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
         <div id="example-indrive-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example inDrive screenshot:</div>
           <img id="example-indrive-img" src="" alt="Example inDrive screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
           <div style="font-size:10px;color:var(--muted);margin-top:4px">Your screenshot must show your name, rating and trip count like this example.</div>
         </div>
-        <div class="dbox" id="dbox-indrive"><input type="file" accept="image/*" onchange="mPlatShot('indrive',this)"><div style="font-size:18px">&#128247;</div><div style="font-size:10px;font-weight:600">inDrive Screenshot</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="dbox" id="dbox-indrive-1"><input type="file" accept="image/*" onchange="mPlatShot('indrive',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
+          <div class="dbox" id="dbox-indrive-2"><input type="file" accept="image/*" onchange="mPlatShot('indrive',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
+          <div class="dbox" id="dbox-indrive-3"><input type="file" accept="image/*" onchange="mPlatShot('indrive',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
+        </div>
+        <div id="plat-count-indrive" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
       <div class="fg"><label>SA ID Number *</label><input id="d-id" placeholder="ID number" required/></div>
       <div class="fg"><label>Licence Number *</label><input id="d-lic" placeholder="Licence number" required/></div>
@@ -1016,7 +1031,7 @@ var U = null, P = null, DP = null;
 var rRole = 'driver', rName = '', rEmail = '', rPass = '';
 var oCarData = {};
 var docFiles = {};
-var platFiles={};
+var platFiles={uber:[],bolt:[],indrive:[]};
 function tmSetEx(img){
   var plat=img.dataset.plat;
   var src=img.dataset.src;
@@ -1030,16 +1045,22 @@ function togglePlatShot(plat,cb){
   var box=document.getElementById('shot-'+plat);
   if(box)box.style.display=cb.checked?'block':'none';
   if(cb.checked) loadPlatExamples();
-  if(!cb.checked){platFiles[plat]=null;var db=document.getElementById('dbox-'+plat);if(db){db.classList.remove('up');db.style.borderColor='';}}
+  if(!cb.checked){platFiles[plat]=[];['1','2','3'].forEach(function(i){var db=document.getElementById('dbox-'+plat+'-'+i);if(db){db.classList.remove('up');db.style.borderColor='';}});}
 }
-function mPlatShot(plat,inp){
+function mPlatShot(plat,idx,inp){
   if(!inp.files||!inp.files[0])return;
   var file=inp.files[0];
   if(!file.type.startsWith('image/')){toast('Please upload an image file.');inp.value='';return;}
   if(file.size>5*1024*1024){toast('Screenshot must be under 5MB.');inp.value='';return;}
-  platFiles[plat]=file;
-  var db=document.getElementById('dbox-'+plat);
+  platFiles[plat][idx]=file;
+  var db=document.getElementById('dbox-'+plat+'-'+( idx+1));
   if(db){db.style.borderColor='var(--gm)';db.classList.add('up');}
+  updatePlatCount(plat);
+}
+function updatePlatCount(plat){
+  var count=(platFiles[plat]||[]).filter(Boolean).length;
+  var lbl=document.getElementById('plat-count-'+plat);
+  if(lbl)lbl.textContent=count+'/3 uploaded'+(count>=2?' ✓':'');
 }
 var _drvCache=null,_drvCacheTs=0,_carCache=null,_carCacheTs=0;
 var curStar = 0, incSel = null;
@@ -1572,18 +1593,16 @@ function reg2d() {
   if(!lo){showErr('reg-err','City / Location is required.');return;}
   if(!idNo){showErr('reg-err','SA ID Number is required.');return;}
   if(!lic){showErr('reg-err','Licence Number is required.');return;}
-  if(!plats.length){showErr('reg-err','Please select at least one platform (Uber, Bolt or inDrive) and upload your profile screenshot.');return;}
+  if(!plats.length){showErr('reg-err','Please select at least one platform (Uber, Bolt or inDrive) and upload your profile screenshots.');return;}
   var platVals=plats.map(function(c){return c.value;});
-  var anyScreenshot=false;
   for(var pi=0;pi<platVals.length;pi++){
     var pk=platVals[pi]==='inDrive'?'indrive':platVals[pi].toLowerCase();
-    if(!platFiles[pk]){
-      showErr('reg-err','You selected '+platVals[pi]+' but did not upload a screenshot. Please upload your '+platVals[pi]+' profile screenshot showing your rating and trip count, then continue.');
+    var uploaded=(platFiles[pk]||[]).filter(Boolean).length;
+    if(uploaded<2){
+      showErr('reg-err','Please upload at least 2 screenshots for '+platVals[pi]+' (you have '+uploaded+'/2). Screenshots must show your name, rating and trip count.');
       return;
     }
-    anyScreenshot=true;
   }
-  if(!anyScreenshot){showErr('reg-err','At least one platform screenshot is required to continue. Please select a platform and upload your profile screenshot.');return;}
   eid('reg-s2-d').style.display='none'; eid('reg-s3').style.display='block';
   eid('rs2').className='sbi done'; eid('rs3').className='sbi on';
 }
@@ -1613,11 +1632,11 @@ async function reg3() {
   // Re-validate platform screenshots at final submit
   if(rRole==='driver'){
     var chkPlats=Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;});
+    if(!chkPlats.length){showErr('reg-err','Please go back and select at least one platform.');return;}
     for(var ci=0;ci<chkPlats.length;ci++){
       var ck=chkPlats[ci]==='inDrive'?'indrive':chkPlats[ci].toLowerCase();
-      if(!platFiles[ck]){showErr('reg-err','Please go back and upload your '+chkPlats[ci]+' profile screenshot.');return;}
+      if((platFiles[ck]||[]).filter(Boolean).length<2){showErr('reg-err','Please go back and upload at least 2 screenshots for '+chkPlats[ci]+'.');return;}
     }
-    if(!chkPlats.length){showErr('reg-err','Please go back and select at least one platform.');return;}
   }
   if(!docFiles.df){showErr('reg-err','Full Body photo is required.');return;}
   if(!docFiles.dh){showErr('reg-err','Headshot photo is required.');return;}
@@ -1663,11 +1682,16 @@ async function doReg() {
     var hasDoc=Object.keys(u).length>0;// pending if ANY doc uploaded
     var shotUrls={uber:null,bolt:null,indrive:null};
     for(var sp in platFiles){
-      if(platFiles[sp]){
-        var sExt=(platFiles[sp].name.split('.').pop()||'jpg').toLowerCase();
-        var sPath='screenshots/'+uid+'-'+sp+'-'+Date.now()+'.'+sExt;
-        var sUp=await sb.storage.from('driver-docs').upload(sPath,platFiles[sp],{upsert:true});
-        if(!sUp.error){shotUrls[sp]=sb.storage.from('driver-docs').getPublicUrl(sPath).data.publicUrl;}
+      var files=(platFiles[sp]||[]).filter(Boolean);
+      if(files.length){
+        var urls=[];
+        for(var fi=0;fi<files.length;fi++){
+          var sExt=(files[fi].name.split('.').pop()||'jpg').toLowerCase();
+          var sPath='screenshots/'+uid+'-'+sp+'-'+fi+'-'+Date.now()+'.'+sExt;
+          var sUp=await sb.storage.from('driver-docs').upload(sPath,files[fi],{upsert:true});
+          if(!sUp.error){urls.push(sb.storage.from('driver-docs').getPublicUrl(sPath).data.publicUrl);}
+        }
+        if(urls.length) shotUrls[sp]=JSON.stringify(urls);
       }
     }
     var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;}),safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:shotUrls.uber,screenshot_bolt_url:shotUrls.bolt,screenshot_indrive_url:shotUrls.indrive},u);
@@ -2296,6 +2320,9 @@ async function pLc(){
         +(c.admin_status==='rejected'?'<div style="font-size:11px;color:#dc2626;margin-top:3px">Declined by admin. Please re-submit or contact support.</div>':'')
         +(c.admin_status==='pending'?'<div style="font-size:11px;color:#E8A520;margin-top:3px">&#8987; Awaiting admin approval</div>':'')
         +'</div></div>'
+        +'<div style="display:flex;justify-content:flex-end;padding-top:8px;border-top:1px solid var(--border);margin-top:8px">'
+        +'<button class="btn btn-red btn-sm" data-cid="'+c.id+'" data-cmake="'+esc(c.make)+' '+esc(c.model)+'" onclick="ownerRemoveCar(this.dataset.cid,this.dataset.cmake)">&#128465; Remove Car</button>'
+        +'</div>'
         +'</div>';
     }).join('');
   }
@@ -2331,6 +2358,20 @@ async function submitNewCar(){
   if(r.error){toast('Error: '+r.error.message);return;}
   _carCache=null;
   toast('Car submitted for review!');
+  pLc();
+}
+async function ownerRemoveCar(cid, cmake){
+  if(!confirm('Remove '+cmake+' from the platform? This cannot be undone.')) return;
+  // Block removal if car is part of an active match
+  var chk=await sb.from('applications').select('id').eq('car_id',cid).eq('status','approved').is('unmatched_at',null);
+  if(chk.data&&chk.data.length){
+    toast('Cannot remove — this car is currently matched with a driver. Unmatch first.');
+    return;
+  }
+  var r=await sb.from('cars').delete().eq('id',cid).eq('owner_id',U.id);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  _carCache=null;
+  toast(cmake+' removed.');
   pLc();
 }
 async function pAp() {
@@ -2406,9 +2447,9 @@ async function pAp() {
         docRow='<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px">DOCUMENTS</div><div style="display:flex;gap:5px;flex-wrap:wrap">';
         if(dp.doc_id_url) docRow+='<a href="'+dp.doc_id_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; ID</a>';
         if(dp.doc_license_url) docRow+='<a href="'+dp.doc_license_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; Licence</a>';
-        if(dp.screenshot_uber_url) docRow+='<a href="'+dp.screenshot_uber_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#111;border-radius:5px;color:#fff;text-decoration:none">Uber</a>';
-        if(dp.screenshot_bolt_url) docRow+='<a href="'+dp.screenshot_bolt_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#34C759;border-radius:5px;color:#fff;text-decoration:none">Bolt</a>';
-        if(dp.screenshot_indrive_url) docRow+='<a href="'+dp.screenshot_indrive_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#FF6B35;border-radius:5px;color:#fff;text-decoration:none">inDrive</a>';
+        parseShotUrls(dp.screenshot_uber_url).forEach(function(u,i){docRow+='<a href="'+esc(u)+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#111;border-radius:5px;color:#fff;text-decoration:none">Uber '+(i+1)+'</a>';});
+        parseShotUrls(dp.screenshot_bolt_url).forEach(function(u,i){docRow+='<a href="'+esc(u)+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#34C759;border-radius:5px;color:#fff;text-decoration:none">Bolt '+(i+1)+'</a>';});
+        parseShotUrls(dp.screenshot_indrive_url).forEach(function(u,i){docRow+='<a href="'+esc(u)+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#FF6B35;border-radius:5px;color:#fff;text-decoration:none">inDrive '+(i+1)+'</a>';});
         docRow+='</div></div>';
       } else {
         docRow='<div style="padding:6px 10px;background:var(--cream);border-radius:7px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:8px">'
@@ -3128,7 +3169,7 @@ async function adReg(){
         +'<div class="rcard-body">'+igrid(['Email: <strong>'+(p.email||'-')+'</strong>','Phone: <strong>'+(p.phone||'-')+'</strong>',p.whatsapp?'WhatsApp: <strong>'+p.whatsapp+'</strong>':'','Location: <strong>'+(p.location||'-')+'</strong>','ID No: <strong>'+(d.id_number||'-')+'</strong>','Licence: <strong>'+(d.license_number||'-')+'</strong>','Driving: <strong>'+d.years_driving+'+ yrs</strong>',d.age?'Age: <strong>'+d.age+'</strong>':'','Platforms: <strong>'+((d.platforms||[]).join(', ')||'-')+'</strong>','Score: <strong style="color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</strong>','Docs: <strong style="color:'+(docValid?'var(--gm)':'#dc2626')+'">'+(docValid?'Valid to '+fmtD(d.doc_expires_at):d.doc_uploaded_at?'EXPIRED':'Not uploaded')+'</strong>'])
         +(d.bio?'<div style="margin-top:8px;font-size:12px;color:#555;background:var(--cream);padding:7px 9px;border-radius:6px">'+d.bio+'</div>':'')+'</div>'
         +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumb(d.photo_fullbody_url,'Full Body')+dthumb(d.photo_headshot_url,'Headshot')+dthumb(d.photo_holding_id_url,'Holding ID')+dthumb(d.doc_license_url,'Licence')+dthumb(d.doc_id_url,'ID/Passport')+'</div>'
-        +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+dthumb(d.screenshot_uber_url,'Uber')+dthumb(d.screenshot_bolt_url,'Bolt')+dthumb(d.screenshot_indrive_url,'inDrive')+'</div>':'')
+        +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+parseShotUrls(d.screenshot_uber_url).map(function(u,i){return dthumb(u,'Uber '+(i+1));}).join('')+parseShotUrls(d.screenshot_bolt_url).map(function(u,i){return dthumb(u,'Bolt '+(i+1));}).join('')+parseShotUrls(d.screenshot_indrive_url).map(function(u,i){return dthumb(u,'inDrive '+(i+1));}).join('')+'</div>':'')
         +adDocUploads(d.id)
         +'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Rejection reason (required when declining):</label><textarea id="rej-reason-'+d.id+'" placeholder="e.g. Blurry ID photo, expired licence..." style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;height:54px;resize:vertical"></textarea></div>'
         +'<div style="padding:10px 14px;border-top:1px solid var(--border);background:#fafaf8">'
@@ -3354,7 +3395,7 @@ async function adDrv(){
         +'</div></div>'
         +'<div style="font-size:11px"><span style="color:'+(docValid?'var(--gm)':'#dc2626')+'">Docs: '+(docValid?'Valid to '+fmtD(d.doc_expires_at):d.doc_uploaded_at?'EXPIRED':'None')+'</span></div></div>'
         +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumb(d.photo_fullbody_url,'Full Body')+dthumb(d.photo_headshot_url,'Headshot')+dthumb(d.photo_holding_id_url,'Holding ID')+dthumb(d.doc_license_url,'Licence')+dthumb(d.doc_id_url,'ID/Passport')+'</div>'
-        +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+dthumb(d.screenshot_uber_url,'Uber')+dthumb(d.screenshot_bolt_url,'Bolt')+dthumb(d.screenshot_indrive_url,'inDrive')+'</div>':'')
+        +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+parseShotUrls(d.screenshot_uber_url).map(function(u,i){return dthumb(u,'Uber '+(i+1));}).join('')+parseShotUrls(d.screenshot_bolt_url).map(function(u,i){return dthumb(u,'Bolt '+(i+1));}).join('')+parseShotUrls(d.screenshot_indrive_url).map(function(u,i){return dthumb(u,'inDrive '+(i+1));}).join('')+'</div>':'')
         +adDocUploads(d.id)
         +'<div class="rcard-acts">'
         +(d.status!=='approved'?'<button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button>':'')
@@ -3683,6 +3724,7 @@ async function adCar(){
     }).join('');
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function parseShotUrls(val){if(!val)return[];try{var a=JSON.parse(val);return Array.isArray(a)?a:[val];}catch(e){return [val];}}
 function adToggleCarEdit(cid){
   var box=document.getElementById('car-edit-'+cid);
   if(box)box.style.display=box.style.display==='none'?'block':'none';
