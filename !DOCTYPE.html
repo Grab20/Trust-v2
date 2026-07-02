@@ -3573,6 +3573,19 @@ async function adOwn(){
               +(c.admin_status!=='approved'?'&nbsp;<button class="btn btn-gm btn-sm" data-cid="'+c.id+'" onclick="adSetCar(this.dataset.cid,this.dataset.s)">Approve Car</button>':'')
               +'</div>'
               +'</div>'
+              // Photos
+              +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px;margin-top:6px">Photos</div>'
+              +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">'
+              +[['photo_front_url','Front'],['photo_side_url','Side'],['photo_back_url','Back'],['photo_interior_url','Interior']].map(function(ph){
+                var existing=c[ph[0]];
+                return '<div style="border:1.5px solid var(--border);border-radius:7px;overflow:hidden;background:var(--cream)">'
+                  +(existing?'<img src="'+esc(existing)+'" style="width:100%;height:55px;object-fit:cover;display:block">':'<div style="height:55px;display:flex;align-items:center;justify-content:center;font-size:18px">&#128663;</div>')
+                  +'<label style="display:block;cursor:pointer;padding:3px 5px;background:#fff;border-top:1px solid var(--border);text-align:center">'
+                  +'<input type="file" accept="image/*" style="display:none" data-cid="'+c.id+'" data-field="'+ph[0]+'" onchange="adUploadCarPhoto(this)">'
+                  +'<span style="font-size:9px;font-weight:600;color:var(--gm)">&#128247; '+ph[1]+'</span>'
+                  +'</label></div>';
+              }).join('')
+              +'</div>'
               +'<button class="btn btn-g btn-sm" data-cid="'+c.id+'" onclick="ownSaveCar(this.dataset.cid)">Save Car</button>'
               +'</div>';
           }).join('')
@@ -3650,6 +3663,19 @@ async function adCar(){
         +'<div><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Deposit (R)</label><input type="number" id="ce-deposit-'+c.id+'" value="'+(c.deposit||'')+'\" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit" placeholder="e.g. 5000"/></div>'
         +'</div>'
         +'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Description</label><textarea id="ce-desc-'+c.id+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;height:60px">'+esc(c.description||'')+'</textarea></div>'
+        // Car photos upload
+        +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px">Car Photos</div>'
+        +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px">'
+        +[['photo_front_url','Front'],['photo_side_url','Side'],['photo_back_url','Back'],['photo_interior_url','Interior']].map(function(ph){
+          var existing=c[ph[0]];
+          return '<div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;background:var(--cream)">'
+            +(existing?'<img src="'+esc(existing)+'" style="width:100%;height:80px;object-fit:cover;display:block">':'<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:24px">&#128663;</div>')
+            +'<label style="display:block;cursor:pointer;padding:5px 8px;background:#fff;border-top:1px solid var(--border)">'
+            +'<input type="file" accept="image/*" style="display:none" data-cid="'+c.id+'" data-field="'+ph[0]+'" onchange="adUploadCarPhoto(this)">'
+            +'<span style="font-size:10px;font-weight:600;color:var(--gm)">&#128247; '+(existing?'Replace ':'Upload ')+ph[1]+'</span>'
+            +'</label></div>';
+        }).join('')
+        +'</div>'
         +'<div style="display:flex;gap:8px">'
         +'<button class="btn btn-gm btn-sm" data-cid="'+c.id+'" onclick="adSaveCar(this.dataset.cid)">Save Changes</button>'
         +'<button class="btn btn-out btn-sm" data-cid="'+c.id+'" onclick="adToggleCarEdit(this.dataset.cid)">Cancel</button>'
@@ -3680,6 +3706,20 @@ async function adSaveCar(cid){
   if(r.error){toast('Error: '+r.error.message);return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');return;}
   toast('Car details saved!');
+  adCar();
+}
+async function adUploadCarPhoto(inp){
+  var cid=inp.dataset.cid, field=inp.dataset.field, file=inp.files[0];
+  if(!file)return;
+  toast('Uploading...');
+  var ext=file.name.split('.').pop()||'jpg';
+  var path='cars/'+cid+'/'+field+'-'+Date.now()+'.'+ext;
+  var url=await upFile('car-photos',path,file);
+  if(!url){toast('Upload failed. Check storage bucket permissions.');return;}
+  var upd={};upd[field]=url;
+  var r=await sb.from('cars').update(upd).eq('id',cid);
+  if(r.error){toast('Error saving photo: '+r.error.message);return;}
+  toast('Photo uploaded!');
   adCar();
 }
 async function adSetCar(cid,status){
