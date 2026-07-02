@@ -2437,8 +2437,8 @@ async function pAp() {
       var statusBadge='<span class="atag tag-'+(a.status==='approved'?'a':a.status==='rejected'?'r':'p')+'">'+
         (isMatched?'Matched':a.status==='rejected'?'Declined':(ownerInitiated&&a.status==='pending')?'Waiting for driver':'Pending')+'</span>';
       var acts=statusBadge;
-      if(a.status==='pending'&&!ownerInitiated) acts+=' <button class="btn btn-gm btn-sm" onclick="ownerResp(\''+a.id+'\',\'approved\')">Accept</button>'
-        +' <button class="btn btn-red btn-sm" onclick="ownerResp(\''+a.id+'\',\'rejected\')">Decline</button>';
+      if(a.status==='pending'&&!ownerInitiated) acts+=' <button class="btn btn-gm btn-sm" data-iby="'+esc(a.initiated_by||'')+'" onclick="ownerResp(\''+a.id+'\',\'approved\',this)">Accept</button>'
+        +' <button class="btn btn-red btn-sm" data-iby="'+esc(a.initiated_by||'')+'" onclick="ownerResp(\''+a.id+'\',\'rejected\',this)">Decline</button>';
       if(isMatched) acts+=' <button class="btn btn-red btn-sm" data-aid="'+a.id+'" onclick="doUnmatch(this)">Unmatch</button>';
 
       // Car section
@@ -2590,7 +2590,17 @@ async function pAp() {
     }).join('');
   }
 }
-async function ownerResp(id,s){await sb.from('applications').update({status:s}).eq('id',id);toast(s==='approved'?'Accepted!':'Declined');pAp();}
+async function ownerResp(id,s,btn){
+  // Safety: only allow accepting/declining driver-initiated applications
+  if(btn&&btn.getAttribute('data-iby')==='owner'){toast('This request was sent by you. The driver must accept or decline it.');return;}
+  if(s==='approved') {
+    var chk=await sb.from('applications').select('initiated_by').eq('id',id).maybeSingle();
+    if(chk.data&&chk.data.initiated_by==='owner'){toast('This request was sent by you. The driver must accept or decline it.');return;}
+  }
+  await sb.from('applications').update({status:s}).eq('id',id);
+  toast(s==='approved'?'Accepted!':'Declined');
+  pAp();
+}
 async function drvResp(btn){
   var id=btn.getAttribute('data-aid');
   var s=btn.getAttribute('data-s');
