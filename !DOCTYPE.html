@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
-<title>TrustMate - SA E-Hailing Fleet Platform</title>
+<title>TrustMate - Driver & Owner Marketplace</title>
 <!-- Google Analytics (GA4) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-43Y9FW8FMP"></script>
 <script>
@@ -1278,22 +1278,23 @@ async function fetchCars(lim) {
       .eq('status','available').eq('admin_status','approved')
       .order('created_at',{ascending:false}).limit(lim||100),
     sb.from('applications')
-      .select('car_id,driver_id,profiles(full_name)')
+      .select('car_id,driver_id,owner_id,profiles(full_name)')
       .eq('status','approved').is('unmatched_at',null)
   ]);
   if(!carsRes.data||!carsRes.data.length) return [];
-  // Build matched car lookup
-  var matchedSet=new Set(), matchedDriver={};
+  // Build matched car lookup — by car_id AND by owner_id (owner-initiated matches have no car_id)
+  var matchedSet=new Set(), matchedDriver={}, matchedOwners=new Set();
   (matchRes.data||[]).forEach(function(a){
     if(a.car_id){
       matchedSet.add(a.car_id);
       if(a.profiles&&a.profiles.full_name) matchedDriver[a.car_id]=a.profiles.full_name;
     }
+    if(a.owner_id) matchedOwners.add(a.owner_id);
   });
   var _rc=carsRes.data.map(function(c){
     c.owner=c.profiles||{};
     delete c.profiles;
-    c.isMatched=matchedSet.has(c.id);
+    c.isMatched=matchedSet.has(c.id)||matchedOwners.has(c.owner_id);
     c.matchedDriver=matchedDriver[c.id]||null;
     return c;
   });
@@ -2604,7 +2605,12 @@ async function ownerResp(id,s,btn){
     var chk=await sb.from('applications').select('initiated_by').eq('id',id).maybeSingle();
     if(chk.data&&chk.data.initiated_by==='owner'){toast('This request was sent by you. The driver must accept or decline it.');return;}
   }
-  await sb.from('applications').update({status:s}).eq('id',id);
+  var upd={status:s};
+  if(s==='rejected'){
+    var reason=prompt('Please state a reason for declining (optional):');
+    if(reason&&reason.trim()) upd.owner_notes=reason.trim();
+  }
+  await sb.from('applications').update(upd).eq('id',id);
   toast(s==='approved'?'Accepted!':'Declined');
   pAp();
 }
@@ -2842,53 +2848,77 @@ function igrid(rows){return '<div class="igrid">'+rows.filter(Boolean).map(funct
 // ── OVERVIEW ───────────────────────────────────────────
 // ── ADMIN ANALYTICS HELPER ──────────────────────────────
 function buildAnalyticsTables(logins,views,apps,users){
-  var today=new Date().toISOString().slice(0,10);
+  var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var pm={};users.forEach(function(u){pm[u.id]=u;});
-  var ownerLogins=logins.filter(function(l){return l.role==='owner'||l.role==='both';}).length;
-  var driverLogins=logins.filter(function(l){return l.role==='driver';}).length;
-  var todayLogins=logins.filter(function(l){return l.created_at&&l.created_at.slice(0,10)===today;}).length;
-  var drvMap={},ownMap={};
-  apps.forEach(function(a){
-    if(a.driver_id)drvMap[a.driver_id]=(drvMap[a.driver_id]||0)+1;
-    if(a.owner_id)ownMap[a.owner_id]=(ownMap[a.owner_id]||0)+1;
-  });
+
+  // Build last 7 days array
+  var days7=[];
+  for(var i=6;i>=0;i--){
+    var d=new Date(Date.now()-i*864e5);
+    days7.push({date:d.toISOString().slice(0,10),label:DAYS[d.getDay()]+' '+(d.getDate())+'/'+(d.getMonth()+1)});
+  }
+  var today=days7[days7.length-1].date;
+  var day30ago=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
+
   function sc(n,l,c){return '<div class="kcard"><div class="kcard-n" style="color:'+(c||'var(--g)')+'">'+n+'</div><div class="kcard-l">'+l+'</div></div>';}
-  function tbl(title,hdrs,rows,empty){
-    if(!rows.length)return '<div style="margin-bottom:16px"><div class="shd">'+title+'</div><p style="font-size:12px;color:var(--muted);padding:8px 0">'+empty+'</p></div>';
+  function tbl(title,hdrs,rows,emptyMsg){
+    if(!rows.length)return '<div style="margin-bottom:16px"><div class="shd">'+title+'</div><p style="font-size:12px;color:var(--muted);padding:8px 0">'+emptyMsg+'</p></div>';
     return '<div style="margin-bottom:16px"><div class="shd">'+title+'</div><div style="overflow-x:auto"><table class="atbl"><thead><tr>'+hdrs.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody>'+rows.map(function(r){return '<tr>'+r.map(function(c){return '<td>'+c+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div></div>';
   }
-  var html='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:8px">Activity Summary</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:16px">'
-    +sc(ownerLogins,'Owner Logins','var(--gm)')+sc(driverLogins,'Driver Logins','var(--gm)')+sc(todayLogins,'Today','#E8A520')
-    +sc(views.length,'App Panel Views','')+sc(Object.keys(drvMap).length,'Active Drivers','')+sc(Object.keys(ownMap).length,'Active Owners','')
-    +'</div></div>';
-  // Login table
-  var lr=logins.slice(0,50).map(function(l){
-    var u=pm[l.user_id]||{};
-    var rc=l.role==='owner'||l.role==='both'?'#0369a1':'var(--gm)';
-    var dt=l.created_at?new Date(l.created_at).toLocaleString('en-ZA',{dateStyle:'short',timeStyle:'short'}):'-';
-    return ['<strong>'+(u.full_name||'Unknown')+'</strong>','<span style="font-size:11px">'+(u.email||'-')+'</span>','<span style="font-size:11px;font-weight:600;color:'+rc+'">'+( l.role||'-')+'</span>','<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'];
+
+  // ── Summary cards ──
+  var todayLogins=logins.filter(function(l){return l.created_at&&l.created_at.slice(0,10)===today;}).length;
+  var ownerLoginsAll=logins.filter(function(l){return l.role==='owner'||l.role==='both';}).length;
+  var driverLoginsAll=logins.filter(function(l){return l.role==='driver';}).length;
+  var html='<div class="shd">Activity Summary</div><div class="kgrid" style="margin-bottom:16px">'
+    +sc(driverLoginsAll,'Total Driver Logins','var(--gm)')
+    +sc(ownerLoginsAll,'Total Owner Logins','var(--gm)')
+    +sc(todayLogins,'Today\'s Logins','#E8A520')
+    +sc(apps.length,'Total Applications','')
+    +'</div>';
+
+  // ── 7-day login breakdown per day ──
+  html+='<div class="shd">Daily Logins — Last 7 Days</div>';
+  html+='<div style="overflow-x:auto;margin-bottom:16px"><table class="atbl"><thead><tr><th>Day</th><th>Drivers</th><th>Owners</th><th>Total</th><th>Who logged in</th></tr></thead><tbody>';
+  days7.forEach(function(day){
+    var dayLogins=logins.filter(function(l){return l.created_at&&l.created_at.slice(0,10)===day.date;});
+    var drvL=dayLogins.filter(function(l){return l.role==='driver';});
+    var ownL=dayLogins.filter(function(l){return l.role==='owner'||l.role==='both';});
+    // Unique people per day
+    var seen={};
+    var names=dayLogins.map(function(l){
+      if(seen[l.user_id])return null;seen[l.user_id]=true;
+      var u=pm[l.user_id]||{};
+      var col=l.role==='driver'?'var(--gm)':'#0369a1';
+      return '<span style="font-size:11px;background:'+(l.role==='driver'?'#d4edd8':'#e0f2fe')+';color:'+col+';padding:1px 6px;border-radius:999px;white-space:nowrap">'+(u.full_name||'?')+'</span>';
+    }).filter(Boolean);
+    html+='<tr><td><strong>'+day.label+'</strong></td>'
+      +'<td style="color:var(--gm);font-weight:700">'+drvL.length+'</td>'
+      +'<td style="color:#0369a1;font-weight:700">'+ownL.length+'</td>'
+      +'<td style="font-weight:700">'+dayLogins.length+'</td>'
+      +'<td style="max-width:280px;white-space:normal">'+(names.length?names.join(' '):'<span style="color:var(--muted);font-size:11px">None</span>')+'</td>'
+      +'</tr>';
   });
-  html+=tbl('Who Logged In (last 50)',['Name','Email','Role','Time'],lr,'No logins yet.');
-  // App views table
-  var vr=views.slice(0,50).map(function(v){
-    var u=pm[v.owner_id]||{};
-    var dt=v.created_at?new Date(v.created_at).toLocaleString('en-ZA',{dateStyle:'short',timeStyle:'short'}):'-';
-    return ['<strong>'+(u.full_name||'Unknown')+'</strong>','<span style="font-size:11px">'+(u.email||'-')+'</span>','<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'];
+  html+='</tbody></table></div>';
+
+  // ── 7-day applications per day ──
+  html+='<div class="shd">Applications Sent — Last 7 Days</div>';
+  html+='<div style="overflow-x:auto;margin-bottom:16px"><table class="atbl"><thead><tr><th>Day</th><th>Applications</th></tr></thead><tbody>';
+  days7.forEach(function(day){
+    var cnt=apps.filter(function(a){return a.created_at&&a.created_at.slice(0,10)===day.date;}).length;
+    html+='<tr><td><strong>'+day.label+'</strong></td><td style="font-weight:700;color:var(--gm)">'+cnt+'</td></tr>';
   });
-  html+=tbl('Who Viewed Applications',['Owner Name','Email','Time'],vr,'No views yet.');
-  // Apps sent per driver
-  var dr=Object.entries(drvMap).sort(function(a,b){return b[1]-a[1];}).slice(0,50).map(function(kv){
-    var u=pm[kv[0]]||{};
-    return ['<strong>'+(u.full_name||'Unknown')+'</strong>','<span style="font-size:11px">'+(u.email||'-')+'</span>','<span style="font-weight:700;color:var(--gm)">'+kv[1]+'</span>'];
+  html+='</tbody></table></div>';
+
+  // ── Who hasn't logged in (last 30 days) ──
+  var activeUserIds=new Set(logins.filter(function(l){return l.created_at&&l.created_at.slice(0,10)>=day30ago;}).map(function(l){return l.user_id;}));
+  var inactive=users.filter(function(u){return !activeUserIds.has(u.id);});
+  var inactiveRows=inactive.map(function(u){
+    var roleCol=u.role==='driver'?'var(--gm)':u.role==='owner'?'#0369a1':'var(--muted)';
+    return ['<strong>'+esc(u.full_name||'Unknown')+'</strong>','<span style="font-size:11px">'+esc(u.email||'-')+'</span>','<span style="font-size:11px;font-weight:600;color:'+roleCol+'">'+esc(u.role||'-')+'</span>'];
   });
-  html+=tbl('Applications Sent per Driver',['Driver','Email','# Sent'],dr,'No applications yet.');
-  // Apps received per owner
-  var or2=Object.entries(ownMap).sort(function(a,b){return b[1]-a[1];}).slice(0,50).map(function(kv){
-    var u=pm[kv[0]]||{};
-    return ['<strong>'+(u.full_name||'Unknown')+'</strong>','<span style="font-size:11px">'+(u.email||'-')+'</span>','<span style="font-weight:700;color:#0369a1">'+kv[1]+'</span>'];
-  });
-  html+=tbl('Applications Received per Owner',['Owner','Email','# Received'],or2,'No applications yet.');
+  html+=tbl('Inactive Users (no login in 30 days) — '+inactive.length+' users',['Name','Email','Role'],inactiveRows,'Everyone has logged in recently!');
+
   return html;
 }
 
@@ -3002,7 +3032,7 @@ async function adOv(){
   var res=await Promise.all([
     sb.from('profiles').select('id,full_name,email,role,admin_status,created_at'),
     sb.from('driver_profiles').select('id,status,trust_score,suspended'),
-    sb.from('cars').select('id,status,admin_status'),
+    sb.from('cars').select('id,status,admin_status,location'),
     sb.from('applications').select('id,status,created_at'),
     sb.from('reviews').select('id,rating'),
     sb.from('trust_actions').select('id,points')
@@ -3012,7 +3042,7 @@ async function adOv(){
   var today=new Date().toISOString().slice(0,10);
   var logRes=await sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false});
   var viewRes=await sb.from('application_views').select('id,owner_id,created_at').order('created_at',{ascending:false});
-  var appStatRes=await sb.from('applications').select('id,driver_id,owner_id');
+  var appStatRes=await sb.from('applications').select('id,driver_id,owner_id,created_at');
   // profiles already include full_name+email from main fetch above
   var logins=logRes.data||[];
   var ownerLogins=logins.filter(function(l){return l.role==='owner'||l.role==='both';}).length;
@@ -3086,7 +3116,12 @@ async function adOv(){
     +'<div class="kcard"><div class="kcard-n">'+avgOwnApps+'</div><div class="kcard-l">Avg Apps / Owner</div></div>'
     +'</div>'
     +locTable(driverLocs,'Driver Locations')
-    +locTable(ownerLocs,'Owner Locations');
+    +locTable(ownerLocs,'Owner Locations')
+    +(function(){
+      var carLocs={};
+      cars.forEach(function(c){var loc=(c.location||'').trim();if(!loc)return;carLocs[loc]=(carLocs[loc]||0)+1;});
+      return locTable(carLocs,'Car Locations');
+    })();
 }
 
 // ── INCOMPLETE REGISTRATIONS ─────────────────────────
