@@ -428,6 +428,12 @@ nav div::-webkit-scrollbar{display:none}
 </div>
 
 <!-- PROFILE -->
+<div id="page-profile" class="page">
+  <div class="sec"><div class="sec-inner" style="max-width:680px;margin:0 auto;padding:32px 16px 60px">
+    <button class="btn btn-out btn-sm" onclick="history.back()" style="margin-bottom:18px">&#8592; Back</button>
+    <div id="prof-wrap"></div>
+  </div></div>
+</div>
 
 <div id="page-how-it-works" class="page">
   <div style="max-width:820px;margin:0 auto;padding:40px 20px 60px">
@@ -1449,7 +1455,7 @@ function filterCars(){
   var avail=_allCars.filter(function(c){return !c.isMatched;}).length;
   var matchedC=_allCars.filter(function(c){return c.isMatched;}).length;
   var carsFiltered=status||q||trans;
-  if(eid('cars-sub'))eid('cars-sub').innerHTML=carsFiltered?(cars.length+' car'+(cars.length!==1?'s':'')+' shown &middot; '+avail+' available &middot; '+matchedC+' matched'):(_allCars.length+' listed');
+  if(eid('cars-sub'))eid('cars-sub').innerHTML=carsFiltered?(cars.length+' car'+(cars.length!==1?'s':'')+' shown &middot; '+avail+' available &middot; '+matchedC+' matched'):'';
   eid('cars-grid').innerHTML=cars.length?cars.map(carHTML).join(''):empty('&#128663;','No cars match your search.');
 }
 function loadDrivers() {
@@ -1471,10 +1477,11 @@ function filterDrivers(){
   });
   if(sort==='score')drvs=drvs.slice().sort(function(a,b){return (b.trust_score||0)-(a.trust_score||0);});
   else if(sort==='rentals')drvs=drvs.slice().sort(function(a,b){return (b.rentals_completed||0)-(a.rentals_completed||0);});
+  else if(sort==='newest')drvs=drvs.slice().sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
   var dMatched=_allDrvs.filter(function(d){return d.isMatched;}).length;
   var dAvail=_allDrvs.filter(function(d){return !d.isMatched;}).length;
   var drvsFiltered=status||q||plat;
-  if(eid('drvs-sub'))eid('drvs-sub').innerHTML=drvsFiltered?(drvs.length+' driver'+(drvs.length!==1?'s':'')+' shown &middot; '+dAvail+' unmatched &middot; '+dMatched+' matched'):(_allDrvs.length+'');
+  if(eid('drvs-sub'))eid('drvs-sub').innerHTML=drvsFiltered?(drvs.length+' driver'+(drvs.length!==1?'s':'')+' shown &middot; '+dAvail+' unmatched &middot; '+dMatched+' matched'):'';
   eid('drvs-grid').innerHTML=drvs.length?drvs.map(drvHTML).join(''):empty('&#128100;','No drivers match your search.');
 }
 async function loadProfPage(dpId) {
