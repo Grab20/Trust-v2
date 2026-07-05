@@ -390,9 +390,8 @@ nav div::-webkit-scrollbar{display:none}
         <option value="Automatic">Automatic</option>
       </select>
       <select id="cars-status" onchange="filterCars()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
-        <option value="">Available &amp; Matched</option>
+        <option value="">All cars</option>
         <option value="available">Available only</option>
-        <option value="matched">Matched only</option>
       </select>
     </div>
     <div id="cars-grid" class="grid2"><div class="loading"><div class="spin"></div>Loading...</div></div>
@@ -419,8 +418,7 @@ nav div::-webkit-scrollbar{display:none}
       </select>
       <select id="drvs-status" onchange="filterDrivers()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
         <option value="">All drivers</option>
-        <option value="available">Unmatched only</option>
-        <option value="matched">Matched only</option>
+        <option value="available">Available only</option>
       </select>
     </div>
     <div id="drvs-grid" class="grid2"><div class="loading"><div class="spin"></div>Loading...</div></div>
@@ -602,10 +600,10 @@ nav div::-webkit-scrollbar{display:none}
         <div style="font-size:13px;color:var(--gm);font-weight:600">info@trustmate.co.za</div>
         <div style="font-size:12px;color:var(--muted);margin-top:6px">We reply within 24 hours on business days.</div>
       </a>
-      <a href="https://wa.me/27847092814" target="_blank" style="display:block;text-decoration:none;background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:28px 24px;transition:border-color .2s" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='var(--border)'">
+      <a href="https://wa.me/27847098414?text=Hi%2C%20I%20need%20help%20with%20TrustMate" target="_blank" style="display:block;text-decoration:none;background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:28px 24px;transition:border-color .2s" onmouseover="this.style.borderColor='#25D366'" onmouseout="this.style.borderColor='var(--border)'">
         <div style="font-size:36px;margin-bottom:14px">&#128241;</div>
         <div style="font-size:15px;font-weight:800;color:var(--g);margin-bottom:4px">WhatsApp</div>
-        <div style="font-size:13px;color:#25D366;font-weight:600">+27 84 709 2814</div>
+        <div style="font-size:13px;color:#25D366;font-weight:600">+27 84 709 8414</div>
         <div style="font-size:12px;color:var(--muted);margin-top:6px">Quick responses for urgent enquiries.</div>
       </a>
     </div>
@@ -1468,10 +1466,8 @@ function filterCars(){
   });
   if(sort==='price_asc')cars=cars.slice().sort(function(a,b){return (a.price_per_week||0)-(b.price_per_week||0);});
   else if(sort==='price_desc')cars=cars.slice().sort(function(a,b){return (b.price_per_week||0)-(a.price_per_week||0);});
-  var avail=_allCars.filter(function(c){return !c.isMatched;}).length;
-  var matchedC=_allCars.filter(function(c){return c.isMatched;}).length;
   var carsFiltered=status||q||trans;
-  if(eid('cars-sub'))eid('cars-sub').innerHTML=carsFiltered?(cars.length+' car'+(cars.length!==1?'s':'')+' shown &middot; '+avail+' available &middot; '+matchedC+' matched'):'';
+  if(eid('cars-sub'))eid('cars-sub').innerHTML=carsFiltered?(cars.length+' result'+(cars.length!==1?'s':'')):'';
   eid('cars-grid').innerHTML=cars.length?cars.map(carHTML).join(''):empty('&#128663;','No cars match your search.');
 }
 function loadDrivers() {
@@ -1494,10 +1490,9 @@ function filterDrivers(){
   if(sort==='score')drvs=drvs.slice().sort(function(a,b){return (b.trust_score||0)-(a.trust_score||0);});
   else if(sort==='rentals')drvs=drvs.slice().sort(function(a,b){return (b.rentals_completed||0)-(a.rentals_completed||0);});
   else if(sort==='newest')drvs=drvs.slice().sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
-  var dMatched=_allDrvs.filter(function(d){return d.isMatched;}).length;
-  var dAvail=_allDrvs.filter(function(d){return !d.isMatched;}).length;
   var drvsFiltered=status||q||plat;
-  if(eid('drvs-sub'))eid('drvs-sub').innerHTML=drvsFiltered?(drvs.length+' driver'+(drvs.length!==1?'s':'')+' shown &middot; '+dAvail+' unmatched &middot; '+dMatched+' matched'):'';
+  if(eid('drvs-sub'))eid('drvs-sub').innerHTML=drvsFiltered?(drvs.length+' result'+(drvs.length!==1?'s':'')+''):'';
+
   eid('drvs-grid').innerHTML=drvs.length?drvs.map(drvHTML).join(''):empty('&#128100;','No drivers match your search.');
 }
 async function loadProfPage(dpId) {
@@ -2198,6 +2193,23 @@ function loadOwnerRec(){
     return best;
   }
 
+  // Determine SA province from location string
+  function getProvince(loc){
+    if(!loc) return null;
+    var s=loc.toLowerCase();
+    var GP=['johannesburg','joburg','jhb','soweto','sandton','randburg','roodepoort','midrand','centurion','alberton','germiston','kempton','benoni','boksburg','springs','edenvale','bedfordview','fourways','tembisa','thembisa','ivory park','alexandra','cosmo city','fleurhof','protea glen','braamfontein','yeoville','orange farm','lenasia','thokoza','ekurhuleni','heidelberg','vereeniging','vanderbijlpark','sebokeng','daveyton','brakpan','tsakane','pretoria','tshwane','hatfield','sunnyside','mamelodi','atteridgeville','soshanguve','mabopane','ga-rankuwa','temba','irene','garsfontein','menlyn','krugersdorp','westrand','randpark ridge'];
+    var KZN=['durban','ethekwini','pietermaritzburg','umhlanga','pinetown','chatsworth','umlazi','inanda'];
+    var WC=['cape town','kaapstad','stellenbosch','bellville','mitchells plain','khayelitsha','paarl','george'];
+    var EC=['port elizabeth','gqeberha','east london','mthatha'];
+    var LP=['polokwane','pietersburg','mokopane','bela bela','tzaneen','giyani'];
+    var MP=['nelspruit','mbombela','witbank','emalahleni','middelburg mpumalanga','secunda'];
+    var NW=['rustenburg','mafikeng','mahikeng','potchefstroom'];
+    var FS=['bloemfontein','mangaung','welkom'];
+    var NC=['kimberley','upington'];
+    var check=function(list,name){return list.some(function(c){return s.indexOf(c)>=0;})?name:null;};
+    return check(GP,'GP')||check(KZN,'KZN')||check(WC,'WC')||check(EC,'EC')||check(LP,'LP')||check(MP,'MP')||check(NW,'NW')||check(FS,'FS')||check(NC,'NC');
+  }
+
   var ownerLoc=(P&&P.location||'').trim();
 
   // Get owner's car locations + owner location for reference
@@ -2209,6 +2221,7 @@ function loadOwnerRec(){
 
     fetchDrivers().then(function(drvs){
       var avail=drvs.filter(function(d){return !d.isMatched;});
+      var ownerProvince=getProvince(ownerLoc);
 
       // Calculate distance score for each driver
       avail.forEach(function(d){
@@ -2252,9 +2265,23 @@ function loadOwnerRec(){
         return (b.trust_score||0)-(a.trust_score||0);
       });
 
-      var rec=avail.slice(0,7);
+      // Filter out drivers from far provinces or > 150km away (when location is known)
+      var nearby=avail.filter(function(d){
+        if(d._dist===999) return true; // unknown location — include
+        return d._dist<=150;
+      });
+      // Also filter out different province if owner province is known
+      if(ownerProvince){
+        var sameProvince=nearby.filter(function(d){
+          var dLoc=(d.profile&&d.profile.location||'');
+          var dProv=getProvince(dLoc);
+          return !dProv||dProv===ownerProvince;
+        });
+        if(sameProvince.length>=3) nearby=sameProvince;
+      }
+      var rec=nearby.slice(0,10);
       if(!rec.length){
-        wrap.innerHTML='<p style="font-size:13px;color:var(--muted)">No available drivers found.</p>';
+        wrap.innerHTML='<p style="font-size:13px;color:var(--muted)">No available drivers found nearby.</p>';
         return;
       }
 
@@ -2647,11 +2674,13 @@ async function ownerResp(id,s,btn){
   }
   var upd={status:s};
   if(s==='rejected'){
-    var reason=prompt('Please state a reason for declining (optional):');
-    if(reason&&reason.trim()) upd.owner_notes=reason.trim();
+    var reason=prompt('Reason for declining (optional — driver will see this):');
+    upd.owner_notes=(reason&&reason.trim())?reason.trim():null;
   }
   await sb.from('applications').update(upd).eq('id',id);
-  toast(s==='approved'?'Accepted!':'Declined');
+  if(s==='approved'){sendNotifEmail('match_approved',id);_carCache=null;_drvCache=null;}
+  if(s==='rejected') sendNotifEmail('application_rejected',id);
+  toast(s==='approved'?'Accepted! Match confirmed.':'Declined.');
   pAp();
 }
 async function drvResp(btn){
@@ -4483,7 +4512,7 @@ function mobActive(id){}
 </div>
 
 <!-- FLOATING WHATSAPP SUPPORT BUTTON -->
-<a id="wa-support-btn" href="https://wa.me/27YOUR_NUMBER?text=Hi%2C%20I%20need%20help%20with%20TrustMate" target="_blank" rel="noopener"
+<a id="wa-support-btn" href="https://wa.me/27847098414?text=Hi%2C%20I%20need%20help%20with%20TrustMate" target="_blank" rel="noopener"
   style="display:none;position:fixed;bottom:24px;right:20px;z-index:9999;width:54px;height:54px;background:#25D366;border-radius:50%;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.45);text-decoration:none;transition:transform .15s"
   onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"
   title="Chat with TrustMate Support on WhatsApp">
