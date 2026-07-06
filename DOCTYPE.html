@@ -656,10 +656,10 @@ nav div::-webkit-scrollbar{display:none}
     <h1 style="font-family:'Playfair Display',serif;color:#fff;font-size:clamp(22px,4vw,36px);font-weight:800;margin-bottom:10px">TrustMate Reviews</h1>
     <p style="color:rgba(255,255,255,.6);font-size:15px;max-width:480px;margin:0 auto">Hear what owners and drivers are saying about TrustMate.</p>
   </div>
-  <div style="max-width:900px;margin:0 auto;padding:32px 16px 60px">
-    <div id="pub-reviews-stats" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;justify-content:center"></div>
-    <div id="pub-reviews-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
-      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading reviews...</div>
+  <div style="max-width:780px;margin:0 auto;padding:32px 16px 60px">
+    <div id="pub-review-form"></div>
+    <div id="pub-reviews-grid" style="display:flex;flex-direction:column;gap:16px">
+      <div style="text-align:center;padding:40px;color:var(--muted)">Loading reviews...</div>
     </div>
   </div>
 </div>
@@ -1515,42 +1515,93 @@ function loadHome() {
     }).join('');
   });
 }
+var _pubRvStar=0;
+function setPubRvStar(n){
+  _pubRvStar=n;
+  var labels=['','Poor','Fair','Good','Great','Excellent!'];
+  for(var i=1;i<=5;i++){var s=eid('pub-rv-s'+i);if(s)s.style.color=i<=n?'#E8A520':'#ccc';}
+  var lbl=eid('pub-rv-star-lbl');if(lbl)lbl.textContent=labels[n]||'';
+  var btn=eid('pub-rv-btn');if(btn)btn.disabled=n===0;
+}
+async function submitPubReview(){
+  if(!U||!P){toast('Please sign in to leave a review.');go('login');return;}
+  var n=_pubRvStar;
+  var txt=(eid('pub-rv-txt')||{}).value||'';
+  if(!n){toast('Please select a star rating.');return;}
+  if(!txt.trim()){toast('Please write your review.');return;}
+  var btn=eid('pub-rv-btn');if(btn){btn.disabled=true;btn.textContent='Submitting...';}
+  var reviewerName=P.full_name?P.full_name.split(' ')[0]:null;
+  var carLabel=null;
+  var isMatched=false, matchedName='';
+  if(P.role==='owner'||P.role==='both'){
+    var carChk=await sb.from('applications').select('car_id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
+    if(carChk.data&&carChk.data.car_id){
+      isMatched=true;
+      var cR=await sb.from('cars').select('make,model').eq('id',carChk.data.car_id).maybeSingle();
+      if(cR.data)carLabel=(cR.data.make||'')+' '+(cR.data.model||'');
+      var dChk=await sb.from('applications').select('driver_id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
+      if(dChk.data){var dpR=await sb.from('profiles').select('full_name').eq('id',dChk.data.driver_id).maybeSingle();matchedName=dpR.data?dpR.data.full_name:'';}
+    }
+  } else if(P.role==='driver'){
+    var mChk=await sb.from('applications').select('owner_id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
+    if(mChk.data){isMatched=true;var opR2=await sb.from('profiles').select('full_name').eq('id',mChk.data.owner_id).maybeSingle();matchedName=opR2.data?opR2.data.full_name:'';}
+  }
+  var ins={user_id:U.id,role:P.role||'driver',rating:n,comment:txt.trim(),is_matched:isMatched,matched_name:matchedName||null,reviewer_name:reviewerName,car_label:carLabel||null};
+  var r=await sb.from('platform_reviews').insert(ins);
+  if(btn){btn.disabled=false;btn.textContent='Submit Review';}
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast('Thank you! Your review is pending approval.');
+  _pubRvStar=0;
+  loadReviews();
+}
 async function loadReviews(){
-  var grid=eid('pub-reviews-grid'), stats=eid('pub-reviews-stats');
+  var formEl=eid('pub-review-form'), grid=eid('pub-reviews-grid');
   if(!grid)return;
-  grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading...</div>';
+  // Write form
+  if(formEl){
+    if(U&&P){
+      var myR=await sb.from('platform_reviews').select('id,is_approved').eq('user_id',U.id).maybeSingle();
+      if(myR.data){
+        formEl.innerHTML='<div style="background:var(--gs);border:1.5px solid var(--gm);border-radius:14px;padding:18px 20px;margin-bottom:28px;font-size:13px;color:var(--g)">'
+          +'&#9989; <strong>You already submitted a review.</strong> '+(myR.data.is_approved?'It\'s live below.':'It\'s pending admin approval.')
+          +'</div>';
+      } else {
+        formEl.innerHTML='<div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px 20px;margin-bottom:28px">'
+          +'<div style="font-size:15px;font-weight:800;color:var(--g);margin-bottom:4px">&#9997;&#65039; Write a Review</div>'
+          +'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Share your experience with TrustMate. Reviews go live after approval.</div>'
+          +'<textarea id="pub-rv-txt" placeholder="Tell us about your experience..." style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;height:100px;resize:vertical;line-height:1.6;outline:none"></textarea>'
+          +'<div style="display:flex;align-items:center;gap:6px;margin:12px 0 4px">'
+          +[1,2,3,4,5].map(function(i){return '<span id="pub-rv-s'+i+'" onclick="setPubRvStar('+i+')" style="font-size:32px;cursor:pointer;color:#ccc;transition:color .1s;line-height:1">&#9733;</span>';}).join('')
+          +'<span id="pub-rv-star-lbl" style="font-size:12px;color:var(--muted);margin-left:6px">Tap a star to rate</span>'
+          +'</div>'
+          +'<button id="pub-rv-btn" class="btn btn-gm btn-w" onclick="submitPubReview()" disabled style="margin-top:12px">Submit Review</button>'
+          +'</div>';
+      }
+    } else {
+      formEl.innerHTML='<div style="background:var(--sand);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:28px;text-align:center">'
+        +'<div style="font-size:14px;font-weight:700;color:var(--g);margin-bottom:6px">Want to leave a review?</div>'
+        +'<div style="font-size:13px;color:var(--muted);margin-bottom:12px">Sign in to share your experience with TrustMate.</div>'
+        +'<button class="btn btn-gm" onclick="go(\'login\')">Sign In</button>'
+        +'</div>';
+    }
+  }
+  // Load approved reviews
+  grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">Loading...</div>';
   var r=await sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false});
   var revs=r.data||[];
-  if(stats){
-    var avg=revs.length?Math.round(revs.reduce(function(s,rv){return s+rv.rating;},0)/revs.length*10)/10:0;
-    var fiveStars=revs.filter(function(rv){return rv.rating===5;}).length;
-    stats.innerHTML='<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 24px;text-align:center;min-width:110px">'
-      +'<div style="font-size:28px;font-weight:900;color:var(--g)">'+avg+'</div>'
-      +'<div style="color:#E8A520;font-size:16px;margin:2px 0">'+('&#9733;').repeat(Math.round(avg))+('&#9734;').repeat(5-Math.round(avg))+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);font-weight:600">Average Rating</div>'
-      +'</div>'
-      +'<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 24px;text-align:center;min-width:110px">'
-      +'<div style="font-size:28px;font-weight:900;color:var(--g)">'+revs.length+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px">Total Reviews</div>'
-      +'</div>'
-      +'<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 24px;text-align:center;min-width:110px">'
-      +'<div style="font-size:28px;font-weight:900;color:var(--gm)">'+fiveStars+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px">5-Star Reviews</div>'
-      +'</div>';
-  }
-  if(!revs.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">&#11088;</div><p>No reviews yet. Be the first!</p></div>';return;}
+  if(!revs.length){grid.innerHTML='<div style="text-align:center;padding:60px 20px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">&#11088;</div><p>No reviews yet — be the first!</p></div>';return;}
   grid.innerHTML=revs.map(function(rv){
-    var stars='<span style="color:#E8A520;font-size:17px;letter-spacing:1px">'+('&#9733;').repeat(rv.rating)+('<span style="opacity:.25">&#9733;</span>').repeat(5-rv.rating)+'</span>';
-    var badge=rv.is_matched?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border-radius:999px;padding:2px 8px;border:1px solid #a7f3c1">&#9989; Verified Match</span>':'';
-    var roleLbl=rv.role==='driver'?'Driver':'Vehicle Owner';
+    var starsNum=rv.rating+'/5';
+    var starsHtml='<span style="color:#E8A520;font-size:20px;letter-spacing:2px">'+('&#9733;').repeat(rv.rating)+('<span style="opacity:.2">&#9733;</span>').repeat(5-rv.rating)+'</span>'
+      +' <span style="font-size:13px;font-weight:700;color:var(--g);margin-left:4px">'+starsNum+'</span>';
+    var badge=rv.is_matched?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border-radius:999px;padding:2px 8px;border:1px solid #a7f3c1;margin-left:8px">&#9989; Verified Match</span>':'';
+    var roleLbl=rv.role==='driver'?'Driver':'Owner';
     var name=rv.reviewer_name||'TrustMate User';
-    var attribution=name+(rv.car_label?', '+rv.car_label:'');
-    return '<div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:22px 20px;display:flex;flex-direction:column;gap:12px;transition:box-shadow .2s" onmouseover="this.style.boxShadow=\'0 4px 18px rgba(0,0,0,.09)\'" onmouseout="this.style.boxShadow=\'none\'">'
-      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+stars+badge+'</div>'
-      +'<div style="font-size:14px;color:var(--text);line-height:1.7;font-style:italic">&ldquo;'+rv.comment+'&rdquo;</div>'
-      +'<div style="font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;margin-top:auto">'
-      +'&ndash; <strong style="color:var(--g)">'+attribution+'</strong> <span style="margin-left:4px">('+roleLbl+')</span>'
-      +'</div>'
+    var attribution='&ndash; <strong>'+name+'</strong>'+(rv.car_label?', <em>'+rv.car_label+'</em>':'')+' ('+roleLbl+')';
+    return '<div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:24px 22px">'
+      +'<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:12px">'+starsHtml+badge+'</div>'
+      +'<div style="font-size:15px;color:var(--text);line-height:1.75;font-style:italic;margin-bottom:14px">&ldquo;'+rv.comment+'&rdquo;</div>'
+      +'<div style="font-size:13px;color:var(--muted)">'+attribution+'</div>'
       +'</div>';
   }).join('');
 }
