@@ -180,6 +180,8 @@ nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;flex-dire
 .pill{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px}
 .p-a{background:var(--gs);color:var(--gm)}.p-p{background:#fef3c7;color:#7c5c00}.p-r{background:#fee2e2;color:#8b2020}
 .alert-warn{background:#fef3c7;border:1px solid #fde68a;border-radius:var(--r);padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.btn-link{background:none;border:none;padding:0;margin:0;font:inherit;color:var(--gm);font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.btn-link:hover{color:var(--g)}
 .atbl{width:100%;border-collapse:collapse;font-size:12px}
 .atbl th{background:var(--cream);padding:7px 9px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border)}
 .atbl td{padding:8px 9px;border-bottom:1px solid var(--border);vertical-align:top}
@@ -972,6 +974,17 @@ nav div::-webkit-scrollbar{display:none}
   </div>
 </div>
 
+<!-- CONTACT POPUP -->
+<div class="overlay" id="contact-modal">
+  <div class="modal" style="max-width:380px">
+    <button class="mx" onclick="closeModal('contact-modal')">&#10005;</button>
+    <h3 id="cm-title" style="margin-bottom:4px">Contact Details</h3>
+    <p id="cm-role" style="font-size:11px;color:var(--muted);margin-bottom:14px"></p>
+    <div id="cm-body"></div>
+    <button class="btn btn-out btn-w" style="margin-top:14px" onclick="closeModal('contact-modal')">Close</button>
+  </div>
+</div>
+
 <!-- TERMS MODAL -->
 <div class="overlay" id="terms-modal">
   <div class="modal modal-lg" style="max-height:92vh;display:flex;flex-direction:column">
@@ -1516,7 +1529,18 @@ async function loadProfPage(dpId) {
   var isOwn=P&&(P.role==='owner'||P.role==='both')&&U&&U.id!==d.user_id;
   var btns=isOwn?'<button class="btn btn-gm btn-sm" data-dpid="'+d.id+'" data-dn="'+name+'" onclick="ownerMatchBtn(this)">Request Match</button> ':'';
   if(!U) btns='<button class="btn btn-g btn-sm" onclick="go(\'login\')">Login to connect</button>';
-  var revHTML=revs.length?revs.map(function(r){return '<div class="rev-item"><div class="rev-top"><span class="rev-name">'+(r.reviewer_name_override||'Owner')+'</span>'+starRow(r.rating/5*100,12)+'</div>'+(r.comment?'<div class="rev-txt">"'+r.comment+'"</div>':'')+'<div class="rev-date">'+fmtD(r.created_at)+'</div></div>';}).join(''):'<p style="font-size:13px;color:var(--muted)">No reviews yet.</p>';
+  // Fetch reviewer names for verified match badges on public card
+  var revwerIds2=revs.map(function(rv){return rv.reviewer_id;}).filter(Boolean);
+  var revwerMap2={};
+  if(revwerIds2.length){var rpr2=await sb.from('profiles').select('id,full_name').in('id',revwerIds2);(rpr2.data||[]).forEach(function(p2){revwerMap2[p2.id]=p2.full_name;});}
+  // Fetch all approved apps for this driver to know which reviewers are verified matches
+  var drvAppMap2={};
+  if(revs.length){var dAppR=await sb.from('applications').select('owner_id,matched_at').eq('driver_id',d.user_id).eq('status','approved');(dAppR.data||[]).forEach(function(a){drvAppMap2[a.owner_id]=true;});}
+  var revHTML=revs.length?revs.map(function(rv){
+    var rname=rv.reviewer_name_override||(revwerMap2[rv.reviewer_id]||'Owner');
+    var badge=rv.reviewer_id&&drvAppMap2[rv.reviewer_id]?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 7px;margin-left:7px">&#9989; Verified Match</span>':'';
+    return '<div class="rev-item"><div class="rev-top"><span class="rev-name">'+rname+'</span>'+badge+starRow(rv.rating/5*100,12)+'</div>'+(rv.comment?'<div class="rev-txt">"'+rv.comment+'"</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
+  }).join(''):'<p style="font-size:13px;color:var(--muted)">No reviews yet.</p>';
   elb.innerHTML='<div style="display:flex;gap:18px;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap">'
     +'<div class="av" style="width:86px;height:86px;font-size:26px;flex-shrink:0">'+av+'</div>'
     +'<div style="flex:1"><h2 style="font-family:\'Playfair Display\',serif;font-size:20px;margin-bottom:4px">'+name+'</h2>'
@@ -2734,15 +2758,41 @@ async function pRv() {
     var r=await sb.from('reviews').select('*').eq('driver_id',DP.id).order('created_at',{ascending:false});
     var ta=await sb.from('trust_actions').select('action_type,created_at').eq('driver_id',DP.id).order('created_at',{ascending:false});
     var revs=r.data||[], actions=ta.data||[];
+    // Fetch reviewer names for verified match badge
+    var revwerIds=revs.map(function(rv){return rv.reviewer_id;}).filter(Boolean);
+    var revwerMap={};
+    if(revwerIds.length){var rpr=await sb.from('profiles').select('id,full_name').in('id',revwerIds);(rpr.data||[]).forEach(function(p){revwerMap[p.id]=p.full_name;});}
+    // Fetch approved applications to show verified match
+    var appMap={};
+    if(revs.length){var appR=await sb.from('applications').select('id,owner_id,matched_at').eq('driver_id',U.id).eq('status','approved');(appR.data||[]).forEach(function(a){appMap[a.owner_id]=a;});}
     var alab={payment_ontime:'Payment on time',excellent_care:'Excellent vehicle care',review_5star:'5-star review',review_4star:'4-star review',six_months:'6+ months with owner',reference:'Verified reference',late_payment:'Late payment',accident_minor:'Minor accident',accident_major:'Major accident',reckless_driving:'Reckless driving',vehicle_abuse:'Vehicle abuse',missed_payment:'Missed payment',vehicle_theft:'Vehicle theft'};
     el.innerHTML='<div class="shd">Reviews ('+revs.length+')</div>'
-      +(revs.length?revs.map(function(r){return '<div class="rev-item"><div class="rev-top"><span class="rev-name">'+(r.reviewer_name_override||'Owner')+'</span>'+starRow(r.rating/5*100,12)+'</div>'+(r.comment?'<div class="rev-txt">"'+r.comment+'"</div>':'')+'<div class="rev-date">'+fmtD(r.created_at)+'</div></div>';}).join(''):empty('&#11088;','No reviews yet.'))
+      +(revs.length?revs.map(function(rv){
+        var rname=rv.reviewer_name_override||(revwerMap[rv.reviewer_id]||'Owner');
+        var hasMatch=rv.reviewer_id&&appMap[rv.reviewer_id];
+        var badge=hasMatch?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 7px;margin-left:7px">&#9989; Verified Match</span>':'';
+        return '<div class="rev-item"><div class="rev-top"><span class="rev-name">'+rname+'</span>'+badge+starRow(rv.rating/5*100,12)+'</div>'+(rv.comment?'<div class="rev-txt">"'+rv.comment+'"</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
+      }).join(''):empty('&#11088;','No reviews yet.'))
       +(actions.length?'<div class="shd" style="margin-top:14px">Rating Actions ('+actions.length+')</div>'+actions.map(function(a){return '<div style="display:flex;justify-content:space-between;padding:7px 10px;background:#fff;border:1px solid var(--border);border-radius:7px;margin-bottom:5px;font-size:12px"><span>'+(alab[a.action_type]||a.action_type.replace(/_/g,' '))+'</span><span style="font-size:10px;color:var(--muted)">'+fmtD(a.created_at)+'</span></div>';}).join(''):'');
   } else {
     var r=await sb.from('reviews').select('*').eq('reviewer_id',U.id).order('created_at',{ascending:false});
     var ta=await sb.from('trust_actions').select('*').eq('owner_id',U.id).order('created_at',{ascending:false});
+    // Fetch driver names + verified match for reviews given
+    var drvUids=(r.data||[]).map(function(rv){return rv.driver_id;}).filter(Boolean);
+    var drvNameMap={};
+    if(drvUids.length){var dpr=await sb.from('driver_profiles').select('id,user_id,photo_headshot_url').in('id',drvUids);var dUids=(dpr.data||[]).map(function(d){return d.user_id;});if(dUids.length){var dpNames=await sb.from('profiles').select('id,full_name').in('id',dUids);var uidToName={};(dpNames.data||[]).forEach(function(p){uidToName[p.id]=p.full_name;});(dpr.data||[]).forEach(function(d){drvNameMap[d.id]=uidToName[d.user_id]||'Driver';});}}
+    // Fetch approved applications for owner
+    var ownerAppMap={};
+    if((r.data||[]).length){var oar=await sb.from('applications').select('id,driver_id,matched_at').eq('owner_id',U.id).eq('status','approved');(oar.data||[]).forEach(function(a){ownerAppMap[a.driver_id]=a;});}
     el.innerHTML='<div class="shd">Reviews You Gave ('+(r.data||[]).length+')</div>'
-      +((r.data||[]).length?(r.data||[]).map(function(rv){return '<div class="rev-item"><div class="rev-top"><span class="rev-name">Driver</span>'+starRow(rv.rating/5*100,12)+'</div>'+(rv.comment?'<div class="rev-txt">"'+rv.comment+'"</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';}).join(''):empty('&#11088;','No reviews given.'))
+      +((r.data||[]).length?(r.data||[]).map(function(rv){
+        var dname=drvNameMap[rv.driver_id]||'Driver';
+        // find driver user_id for app lookup
+        var drvUid=null;// we'll use driver_id (dp.id) → user_id mapping
+        var hasMatch=ownerAppMap[rv.driver_id]||false;// driver_id in reviews is driver_profiles.id, apps use user_id — may not match; we do best-effort
+        var badge=hasMatch?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 7px;margin-left:7px">&#9989; Verified Match</span>':'';
+        return '<div class="rev-item"><div class="rev-top"><span class="rev-name">'+dname+'</span>'+badge+starRow(rv.rating/5*100,12)+'</div>'+(rv.comment?'<div class="rev-txt">"'+rv.comment+'"</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
+      }).join(''):empty('&#11088;','No reviews given.'))
       +((ta.data||[]).length?'<div class="shd" style="margin-top:14px">Actions Submitted ('+(ta.data.length)+')</div>'+(ta.data||[]).map(function(a){return '<div style="display:flex;justify-content:space-between;padding:7px 10px;background:#fff;border:1px solid var(--border);border-radius:7px;margin-bottom:5px;font-size:12px"><span>'+(a.points>0?'+ ':'- ')+(a.action_type||'').replace(/_/g,' ')+'</span><span style="font-size:10px;color:var(--muted)">'+fmtD(a.created_at)+'</span></div>';}).join(''):'');
   }
 }
@@ -4125,10 +4175,12 @@ async function adHist(){
         var isPending=a.status==='pending';
         var rowBg=isActive?'background:#f0faf2':isCompleted?'background:#f0f9ff':isPending?'background:#fff8e1':'';
         var unmatchedBy=a.unmatched_by?(a.unmatched_by==='driver'?'&#128100; Driver':a.unmatched_by==='owner'?'&#127968; Owner':'&#9998; Admin'):'-';
+        var dName=pm[a.driver_id]||'Unknown';
+        var oName=pm[a.owner_id]||'Unknown';
         return '<tr style="'+rowBg+'">'
           +'<td style="font-size:11px;color:var(--muted);white-space:nowrap">'+fmtD(a.created_at)+'</td>'
-          +'<td style="font-size:12px;font-weight:600">'+(pm[a.driver_id]||'<span style="color:#ccc">Unknown</span>')+'</td>'
-          +'<td style="font-size:12px">'+(pm[a.owner_id]||'<span style="color:#ccc">Unknown</span>')+'</td>'
+          +'<td style="font-size:12px;font-weight:600"><button class="btn-link" onclick="adShowContact(\''+a.driver_id+'\',\'driver\')">'+dName+'</button></td>'
+          +'<td style="font-size:12px"><button class="btn-link" onclick="adShowContact(\''+a.owner_id+'\',\'owner\')">'+oName+'</button></td>'
           +'<td style="font-size:11px;color:var(--muted)">'+(a.car_id?(cm[a.car_id]?'<span style="font-size:11px">'+cm[a.car_id]+'</span>':'Car #'+a.car_id.substring(0,6)):'-')+'</td>'
           +'<td style="font-size:11px">'+(a.initiated_by==='driver'?'&#128100;':'&#127968;')+'</td>'
           +'<td style="font-size:11px;color:var(--gm);white-space:nowrap">'+(a.matched_at?'&#9989; '+fmtD(a.matched_at):a.status==='pending'?'<span style="color:#E8A520">Pending</span>':a.status==='rejected'&&!a.unmatched_at?'<span style="color:#dc2626">Declined</span>':'-')+'</td>'
@@ -4181,8 +4233,8 @@ function adHistFilter(type){
       var unmatchedBy=a.unmatched_by?(a.unmatched_by==='driver'?'&#128100; Driver':a.unmatched_by==='owner'?'&#127968; Owner':'&#9998; Admin'):'-';
       return '<tr style="'+rowBg+'">'
         +'<td style="font-size:11px;color:var(--muted);white-space:nowrap">'+fmtD(a.created_at)+'</td>'
-        +'<td style="font-size:12px;font-weight:600">'+(pm[a.driver_id]||'-')+'</td>'
-        +'<td style="font-size:12px">'+(pm[a.owner_id]||'-')+'</td>'
+        +'<td style="font-size:12px;font-weight:600"><button class="btn-link" onclick="adShowContact(\''+a.driver_id+'\',\'driver\')">'+(pm[a.driver_id]||'-')+'</button></td>'
+        +'<td style="font-size:12px"><button class="btn-link" onclick="adShowContact(\''+a.owner_id+'\',\'owner\')">'+(pm[a.owner_id]||'-')+'</button></td>'
         +'<td style="font-size:11px">'+(cm[a.car_id]||'-')+'</td>'
         +'<td style="font-size:11px">'+(a.initiated_by==='driver'?'&#128100;':'&#127968;')+'</td>'
         +'<td style="font-size:11px;color:var(--gm);white-space:nowrap">'+(a.matched_at?'&#9989; '+fmtD(a.matched_at):a.status==='pending'?'<span style="color:#E8A520">Pending</span>':a.status==='rejected'&&!a.unmatched_at?'<span style="color:#dc2626">Declined</span>':'-')+'</td>'
@@ -4191,6 +4243,26 @@ function adHistFilter(type){
         +'</tr>';
     }).join('')
     +'</tbody></table></div>';
+}
+
+async function adShowContact(uid, role) {
+  if(!uid||uid==='null'||uid==='undefined') return;
+  eid('cm-title').textContent='Loading...';
+  eid('cm-role').textContent='';
+  eid('cm-body').innerHTML=adSpin();
+  openModal('contact-modal');
+  var pr=await sb.from('profiles').select('full_name,email,phone,whatsapp,location,role').eq('id',uid).maybeSingle();
+  var p=pr.data||{};
+  var name=p.full_name||'Unknown';
+  eid('cm-title').textContent=name;
+  eid('cm-role').textContent=(role==='driver'?'&#128100; Driver':'&#127968; Vehicle Owner');
+  var rows=[
+    p.email?'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:18px">&#9993;</span><div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Email</div><div style="font-size:13px;font-weight:600">'+p.email+'</div></div></div>':'',
+    p.phone?'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:18px">&#128222;</span><div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Phone</div><div style="font-size:13px;font-weight:600">'+p.phone+'</div></div></div>':'',
+    p.whatsapp?'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)"><span style="font-size:18px">&#128241;</span><div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">WhatsApp</div><div style="font-size:13px;font-weight:600"><a href="https://wa.me/'+p.whatsapp.replace(/\D/g,'')+'" target="_blank" rel="noopener" style="color:var(--gm)">'+p.whatsapp+'</a></div></div></div>':'',
+    p.location?'<div style="display:flex;align-items:center;gap:8px;padding:8px 0"><span style="font-size:18px">&#128205;</span><div><div style="font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase">Location</div><div style="font-size:13px;font-weight:600">'+p.location+'</div></div></div>':''
+  ].filter(Boolean).join('');
+  eid('cm-body').innerHTML=rows||'<p style="font-size:13px;color:var(--muted)">No contact details on file.</p>';
 }
 
 // ── MATCHED CARS ─────────────────────────────────────
