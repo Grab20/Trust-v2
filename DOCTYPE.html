@@ -324,6 +324,7 @@ nav div::-webkit-scrollbar{display:none}
     <span class="ntab" id="nt-home"       onclick="go('home')">Home</span>
     <span class="ntab" id="nt-drivers"    onclick="go('drivers')">Drivers</span>
     <span class="ntab" id="nt-cars"       onclick="go('cars')">Cars</span>
+    <span class="ntab" id="nt-reviews"    onclick="go('reviews')">&#11088; Reviews</span>
     <span class="ntab" id="nt-how"        onclick="go('how-it-works')">How It Works</span>
     <span class="ntab" id="nt-fordrivers" onclick="go('for-drivers')">For Drivers</span>
     <span class="ntab" id="nt-contact"    onclick="go('contact')">Contact</span>
@@ -373,13 +374,14 @@ nav div::-webkit-scrollbar{display:none}
   </div>
 
   <!-- TESTIMONIALS -->
-  <div class="sec" style="background:var(--g);padding:40px 0">
+  <div class="sec" style="background:var(--g);padding:48px 0">
     <div class="sec-inner">
-      <div style="text-align:center;margin-bottom:22px">
-        <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px">Trusted by our community</div>
-        <h2 style="font-family:'Playfair Display',serif;color:#fff;font-size:clamp(18px,3vw,26px)">What Our Users Say</h2>
+      <div style="text-align:center;margin-bottom:28px">
+        <div style="font-size:22px;margin-bottom:6px">&#11088;</div>
+        <h2 style="font-family:'Playfair Display',serif;color:#fff;font-size:clamp(20px,3.5vw,30px);margin-bottom:8px">TrustMate Reviews</h2>
+        <p style="font-size:14px;color:rgba(255,255,255,.55);max-width:420px;margin:0 auto">Hear what owners and drivers are saying about TrustMate.</p>
       </div>
-      <div id="home-testimonials" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">
+      <div id="home-testimonials" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
         <div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px">Loading reviews...</div>
       </div>
     </div>
@@ -646,6 +648,21 @@ nav div::-webkit-scrollbar{display:none}
   </div>
 </div>
 
+
+<!-- REVIEWS -->
+<div id="page-reviews" class="page">
+  <div style="background:var(--g);padding:48px 20px 40px;text-align:center">
+    <div style="font-size:24px;margin-bottom:8px">&#11088;</div>
+    <h1 style="font-family:'Playfair Display',serif;color:#fff;font-size:clamp(22px,4vw,36px);font-weight:800;margin-bottom:10px">TrustMate Reviews</h1>
+    <p style="color:rgba(255,255,255,.6);font-size:15px;max-width:480px;margin:0 auto">Hear what owners and drivers are saying about TrustMate.</p>
+  </div>
+  <div style="max-width:900px;margin:0 auto;padding:32px 16px 60px">
+    <div id="pub-reviews-stats" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:28px;justify-content:center"></div>
+    <div id="pub-reviews-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading reviews...</div>
+    </div>
+  </div>
+</div>
 
 <!-- LOGIN -->
 <div id="page-login" class="page">
@@ -1235,12 +1252,12 @@ function setNav() {
 function go(page, arg, noPush) {
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); });
   document.querySelectorAll('.ntab').forEach(function(t){t.classList.remove('on');});
-  var _tabIds={'home':'nt-home','drivers':'nt-drivers','cars':'nt-cars','how-it-works':'nt-how','for-drivers':'nt-fordrivers','contact':'nt-contact'};
+  var _tabIds={'home':'nt-home','drivers':'nt-drivers','cars':'nt-cars','reviews':'nt-reviews','how-it-works':'nt-how','for-drivers':'nt-fordrivers','contact':'nt-contact'};
   var _at=document.getElementById(_tabIds[page]||'');if(_at)_at.classList.add('on');
   var pg = eid('page-'+page);
   // Active tab
   document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
-  var _tm={'home':'nt-home','drivers':'nt-drivers','cars':'nt-cars','how-it-works':'nt-how','for-drivers':'nt-fordrivers','contact':'nt-contact','dashboard':'nt-dash'};
+  var _tm={'home':'nt-home','drivers':'nt-drivers','cars':'nt-cars','reviews':'nt-reviews','how-it-works':'nt-how','for-drivers':'nt-fordrivers','contact':'nt-contact','dashboard':'nt-dash'};
   var _ta=document.getElementById(_tm[page]||''); if(_ta)_ta.classList.add('active');
   if (!pg) { go('home'); return; }
   pg.classList.add('on');
@@ -1257,6 +1274,7 @@ function go(page, arg, noPush) {
   if (page==='how-it-works') { window.scrollTo(0,0); }
   if (page==='for-drivers')  { window.scrollTo(0,0); }
   if (page==='contact')      { window.scrollTo(0,0); }
+  if (page==='reviews')      { window.scrollTo(0,0); loadReviews(); }
   if (page==='home')      loadHome();
   if (page==='cars')      loadCars();
   if (page==='drivers')   loadDrivers();
@@ -1389,7 +1407,11 @@ function drvHTML(d) {
   var onTime=d.ontime_payments||0;
   var ren=d.rentals_completed||0;
   var platRow=[{n:'Uber',k:'uber',bg:'#1a1a18'},{n:'Bolt',k:'bolt',bg:'#1cc64e'},{n:'inDrive',k:'indrive',bg:'#ff6600'}]
-    .filter(function(pl){return (d.platforms||[]).some(function(pp){return pp.toLowerCase()===pl.n.toLowerCase()||(pp==='inDrive'&&pl.k==='indrive');});})
+    .filter(function(pl){
+      var inPlatforms=(d.platforms||[]).some(function(pp){return pp.toLowerCase()===pl.n.toLowerCase()||(pp==='inDrive'&&pl.k==='indrive');});
+      var hasData=!!(d[pl.k+'_rating']||d[pl.k+'_trips']);
+      return inPlatforms||hasData;
+    })
     .map(function(pl){
       var t=d[pl.k+'_trips']||'N/V'; var r=d[pl.k+'_rating']||'N/V';
       return '<div style="flex:1;min-width:70px;padding:8px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);text-align:center">'
@@ -1473,21 +1495,64 @@ function loadHome() {
     eid('h-drvs').innerHTML=drvs.length?drvs.map(drvHTML).join(''):empty('&#128100;','No drivers yet.');
   }).catch(function(){eid('h-drvs').innerHTML=empty('&#128100;','Could not load.');});
   // Load testimonials
-  sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(6).then(function(res){
+  sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(6).then(function(res){
     var revs=res.data||[];
     var el=eid('home-testimonials'); if(!el)return;
     if(!revs.length){el.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px;grid-column:1/-1">Be the first to leave a review!</div>';return;}
     el.innerHTML=revs.map(function(rv){
-      var stars='<span style="color:#E8A520;font-size:13px">'+('&#9733;').repeat(rv.rating)+('&#9734;').repeat(5-rv.rating)+'</span>';
-      var badge=rv.is_matched?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border-radius:999px;padding:1px 7px;margin-left:5px">&#9989; Verified Match</span>':'';
-      var roleLbl=rv.role==='driver'?'<span style="font-size:10px;color:rgba(255,255,255,.5)">Driver</span>':'<span style="font-size:10px;color:rgba(255,255,255,.5)">Vehicle Owner</span>';
-      return '<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:16px 18px">'
-        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'+stars+badge+'</div>'
-        +'<div style="font-size:13px;color:rgba(255,255,255,.85);line-height:1.6;margin-bottom:10px">&ldquo;'+rv.comment+'&rdquo;</div>'
-        +'<div style="display:flex;align-items:center;gap:6px">'+roleLbl+(rv.matched_name?'<span style="font-size:10px;color:rgba(255,255,255,.4)">&middot; Matched with '+rv.matched_name+'</span>':'')+'</div>'
+      var stars='<span style="color:#E8A520;font-size:16px;letter-spacing:1px">'+('&#9733;').repeat(rv.rating)+('<span style="opacity:.3">&#9733;</span>').repeat(5-rv.rating)+'</span>';
+      var badge=rv.is_matched?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#4ade80;background:rgba(74,222,128,.15);border-radius:999px;padding:2px 8px;border:1px solid rgba(74,222,128,.3)">&#9989; Verified Match</span>':'';
+      var roleLbl=rv.role==='driver'?'Driver':'Vehicle Owner';
+      var name=rv.reviewer_name||'TrustMate User';
+      var attribution=name+(rv.car_label?', '+rv.car_label:'');
+      return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:12px">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+stars+badge+'</div>'
+        +'<div style="font-size:14px;color:rgba(255,255,255,.88);line-height:1.65;font-style:italic">&ldquo;'+rv.comment+'&rdquo;</div>'
+        +'<div style="font-size:12px;color:rgba(255,255,255,.45);border-top:1px solid rgba(255,255,255,.08);padding-top:10px">'
+        +'&ndash; <strong style="color:rgba(255,255,255,.7)">'+attribution+'</strong> <span style="margin-left:4px">('+roleLbl+')</span>'
+        +'</div>'
         +'</div>';
     }).join('');
   });
+}
+async function loadReviews(){
+  var grid=eid('pub-reviews-grid'), stats=eid('pub-reviews-stats');
+  if(!grid)return;
+  grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">Loading...</div>';
+  var r=await sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false});
+  var revs=r.data||[];
+  if(stats){
+    var avg=revs.length?Math.round(revs.reduce(function(s,rv){return s+rv.rating;},0)/revs.length*10)/10:0;
+    var fiveStars=revs.filter(function(rv){return rv.rating===5;}).length;
+    stats.innerHTML='<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 24px;text-align:center;min-width:110px">'
+      +'<div style="font-size:28px;font-weight:900;color:var(--g)">'+avg+'</div>'
+      +'<div style="color:#E8A520;font-size:16px;margin:2px 0">'+('&#9733;').repeat(Math.round(avg))+('&#9734;').repeat(5-Math.round(avg))+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);font-weight:600">Average Rating</div>'
+      +'</div>'
+      +'<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 24px;text-align:center;min-width:110px">'
+      +'<div style="font-size:28px;font-weight:900;color:var(--g)">'+revs.length+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px">Total Reviews</div>'
+      +'</div>'
+      +'<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px 24px;text-align:center;min-width:110px">'
+      +'<div style="font-size:28px;font-weight:900;color:var(--gm)">'+fiveStars+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);font-weight:600;margin-top:4px">5-Star Reviews</div>'
+      +'</div>';
+  }
+  if(!revs.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">&#11088;</div><p>No reviews yet. Be the first!</p></div>';return;}
+  grid.innerHTML=revs.map(function(rv){
+    var stars='<span style="color:#E8A520;font-size:17px;letter-spacing:1px">'+('&#9733;').repeat(rv.rating)+('<span style="opacity:.25">&#9733;</span>').repeat(5-rv.rating)+'</span>';
+    var badge=rv.is_matched?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border-radius:999px;padding:2px 8px;border:1px solid #a7f3c1">&#9989; Verified Match</span>':'';
+    var roleLbl=rv.role==='driver'?'Driver':'Vehicle Owner';
+    var name=rv.reviewer_name||'TrustMate User';
+    var attribution=name+(rv.car_label?', '+rv.car_label:'');
+    return '<div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:22px 20px;display:flex;flex-direction:column;gap:12px;transition:box-shadow .2s" onmouseover="this.style.boxShadow=\'0 4px 18px rgba(0,0,0,.09)\'" onmouseout="this.style.boxShadow=\'none\'">'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+stars+badge+'</div>'
+      +'<div style="font-size:14px;color:var(--text);line-height:1.7;font-style:italic">&ldquo;'+rv.comment+'&rdquo;</div>'
+      +'<div style="font-size:12px;color:var(--muted);border-top:1px solid var(--border);padding-top:10px;margin-top:auto">'
+      +'&ndash; <strong style="color:var(--g)">'+attribution+'</strong> <span style="margin-left:4px">('+roleLbl+')</span>'
+      +'</div>'
+      +'</div>';
+  }).join('');
 }
 var _allCars=[]; var _allDrvs=[];
 function loadCars() {
@@ -2824,7 +2889,8 @@ async function pRv() {
     ? allRevs.map(function(rv){
         var badge=rv.is_matched?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 7px;margin-left:6px">&#9989; Verified Match</span>':'';
         var roleLbl=rv.role==='driver'?'<span style="font-size:10px;background:#f0f9ff;color:#0369a1;border-radius:999px;padding:1px 7px;font-weight:700;margin-left:6px">Driver</span>':'<span style="font-size:10px;background:var(--gs);color:var(--gm);border-radius:999px;padding:1px 7px;font-weight:700;margin-left:6px">Owner</span>';
-        return '<div class="rev-item"><div class="rev-top" style="flex-wrap:wrap;gap:4px"><span class="rev-name">TrustMate User</span>'+roleLbl+badge+starRow(rv.rating/5*100,12)+'</div><div class="rev-txt">"'+rv.comment+'"</div>'+(rv.matched_name?'<div style="font-size:11px;color:var(--gm);margin-top:3px">Matched with '+rv.matched_name+'</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
+        var displayName=rv.reviewer_name||'TrustMate User';
+        return '<div class="rev-item"><div class="rev-top" style="flex-wrap:wrap;gap:4px"><span class="rev-name">'+displayName+(rv.car_label?', <span style="font-weight:500;color:var(--muted)">'+rv.car_label+'</span>':'')+'</span>'+roleLbl+badge+starRow(rv.rating/5*100,12)+'</div><div class="rev-txt">"'+rv.comment+'"</div>'+(rv.matched_name?'<div style="font-size:11px;color:var(--gm);margin-top:3px">Matched with '+rv.matched_name+'</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
       }).join('')
     : '<p style="font-size:13px;color:var(--muted);padding:8px 0">No reviews yet — be the first!</p>';
 
@@ -2850,7 +2916,18 @@ async function subPrvReview(){
   if(!n){toast('Please select a star rating.');return;}
   if(!txt.trim()){toast('Please write a short review.');return;}
   var btn=eid('prv-btn'); if(btn){btn.disabled=true;btn.textContent='Submitting...';}
-  var ins={user_id:U.id,role:window._prvRole||'driver',rating:n,comment:txt.trim(),is_matched:!!(window._prvIsMatched),matched_name:window._prvMatchedName||null};
+  // Fetch reviewer name
+  var reviewerName=P&&P.full_name?P.full_name.split(' ')[0]:null;
+  // Fetch car label if owner has a matched car
+  var carLabel=null;
+  if(window._prvRole==='owner'||window._prvRole==='both'){
+    var carChk=await sb.from('applications').select('car_id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
+    if(carChk.data&&carChk.data.car_id){
+      var cR=await sb.from('cars').select('make,model').eq('id',carChk.data.car_id).maybeSingle();
+      if(cR.data)carLabel=(cR.data.make||'')+' '+(cR.data.model||'');
+    }
+  }
+  var ins={user_id:U.id,role:window._prvRole||'driver',rating:n,comment:txt.trim(),is_matched:!!(window._prvIsMatched),matched_name:window._prvMatchedName||null,reviewer_name:reviewerName,car_label:carLabel||null};
   var r=await sb.from('platform_reviews').insert(ins);
   if(btn){btn.disabled=false;btn.textContent='Submit Review';}
   if(r.error){toast('Error: '+r.error.message);return;}
@@ -4708,6 +4785,7 @@ function mobActive(id){}
       <button class="pub-mob-link" onclick="go('home');closePubMenu()">&#127968; Home</button>
       <button class="pub-mob-link" onclick="go('drivers');closePubMenu()">&#128100; Drivers</button>
       <button class="pub-mob-link" onclick="go('cars');closePubMenu()">&#128663; Cars</button>
+      <button class="pub-mob-link" onclick="go('reviews');closePubMenu()">&#11088; Reviews</button>
       <div style="height:1px;background:rgba(255,255,255,.08);margin:8px 20px"></div>
       <div style="padding:4px 20px;font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;margin-top:4px">Learn</div>
       <button class="pub-mob-link" onclick="go('how-it-works');closePubMenu()">&#128506; How It Works</button>
