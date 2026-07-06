@@ -3447,6 +3447,30 @@ async function adInc(){
           +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">ID Number</label><input id="ie-idn-'+d.id+'" value="'+esc(d.id_number||'')+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
           +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Licence No.</label><input id="ie-lic-'+d.id+'" value="'+esc(d.license_number||'')+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
           +'</div>'
+          // TrustScore override
+          +'<div class="shd">TrustScore &amp; Platform Stats</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
+          +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">TrustScore (0–100)</label><input id="ie-ts-'+d.id+'" type="number" min="0" max="100" value="'+(d.trust_score||0)+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--gm);border-radius:6px;font-size:13px;font-weight:700;font-family:inherit;color:var(--gm)"/></div>'
+          +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Rentals Completed</label><input id="ie-rc-'+d.id+'" type="number" min="0" value="'+(d.rentals_completed||0)+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
+          +'</div>'
+          // Platform ratings & trips
+          +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">'
+          +'<div style="background:#111;border-radius:8px;padding:8px 10px">'
+          +'<div style="font-size:10px;font-weight:700;color:#fff;opacity:.7;margin-bottom:5px">UBER</div>'
+          +'<input id="ie-ur-'+d.id+'" type="number" step="0.1" min="1" max="5" placeholder="Rating e.g. 4.8" value="'+(d.uber_rating||'')+'" style="width:100%;padding:4px 6px;border-radius:4px;border:none;font-size:11px;margin-bottom:4px">'
+          +'<input id="ie-ut-'+d.id+'" type="number" min="0" placeholder="Trips e.g. 1200" value="'+(d.uber_trips||'')+'" style="width:100%;padding:4px 6px;border-radius:4px;border:none;font-size:11px">'
+          +'</div>'
+          +'<div style="background:#34C759;border-radius:8px;padding:8px 10px">'
+          +'<div style="font-size:10px;font-weight:700;color:#fff;opacity:.85;margin-bottom:5px">BOLT</div>'
+          +'<input id="ie-br-'+d.id+'" type="number" step="0.1" min="1" max="5" placeholder="Rating e.g. 4.9" value="'+(d.bolt_rating||'')+'" style="width:100%;padding:4px 6px;border-radius:4px;border:none;font-size:11px;margin-bottom:4px">'
+          +'<input id="ie-bt-'+d.id+'" type="number" min="0" placeholder="Trips e.g. 850" value="'+(d.bolt_trips||'')+'" style="width:100%;padding:4px 6px;border-radius:4px;border:none;font-size:11px">'
+          +'</div>'
+          +'<div style="background:#FF6B35;border-radius:8px;padding:8px 10px">'
+          +'<div style="font-size:10px;font-weight:700;color:#fff;opacity:.85;margin-bottom:5px">INDRIVE</div>'
+          +'<input id="ie-ir-'+d.id+'" type="number" step="0.1" min="1" max="5" placeholder="Rating e.g. 4.7" value="'+(d.indrive_rating||'')+'" style="width:100%;padding:4px 6px;border-radius:4px;border:none;font-size:11px;margin-bottom:4px">'
+          +'<input id="ie-it-'+d.id+'" type="number" min="0" placeholder="Trips e.g. 320" value="'+(d.indrive_trips||'')+'" style="width:100%;padding:4px 6px;border-radius:4px;border:none;font-size:11px">'
+          +'</div>'
+          +'</div>'
         :'')
         // Document uploads
         +'<div class="shd">Documents</div>'
@@ -3486,19 +3510,29 @@ async function adInc(){
 }
 function incToggle(id){var el=document.getElementById('inc-edit-'+id);if(el)el.style.display=el.style.display==='none'?'block':'none';}
 async function incSave(dpId,uid){
-  var g=function(i){var e=document.getElementById(i);return e?e.value.trim():null;};
+  var g=function(i){var e=document.getElementById(i);return e&&e.value.trim()!==''?e.value.trim():null;};
   var pu={};
   var nm=g('ie-name-'+dpId);if(nm)pu.full_name=nm;
-  var ph=g('ie-phone-'+dpId);if(ph)pu.phone=ph;
-  var wa=g('ie-wa-'+dpId);if(wa)pu.whatsapp=wa;
-  var lo=g('ie-loc-'+dpId);if(lo)pu.location=lo;
+  var ph=g('ie-phone-'+dpId);if(ph!==null)pu.phone=ph;
+  var wa=g('ie-wa-'+dpId);if(wa!==null)pu.whatsapp=wa;
+  var lo=g('ie-loc-'+dpId);if(lo!==null)pu.location=lo;
   if(Object.keys(pu).length)await sb.from('profiles').update(pu).eq('id',uid);
   var du={};
-  var yrs=g('ie-yrs-'+dpId);if(yrs)du.years_driving=parseInt(yrs)||0;
-  var age=g('ie-age-'+dpId);if(age)du.age=parseInt(age)||null;
-  var idn=g('ie-idn-'+dpId);if(idn)du.id_number=idn;
-  var lic=g('ie-lic-'+dpId);if(lic)du.license_number=lic;
-  if(Object.keys(du).length)await sb.from('driver_profiles').update(du).eq('id',dpId);
+  var yrs=g('ie-yrs-'+dpId);if(yrs!==null)du.years_driving=parseInt(yrs)||0;
+  var age=g('ie-age-'+dpId);if(age!==null)du.age=parseInt(age)||null;
+  var idn=g('ie-idn-'+dpId);if(idn!==null)du.id_number=idn;
+  var lic=g('ie-lic-'+dpId);if(lic!==null)du.license_number=lic;
+  // TrustScore & rentals
+  var ts=g('ie-ts-'+dpId);if(ts!==null)du.trust_score=Math.max(0,Math.min(100,parseInt(ts)||0));
+  var rc=g('ie-rc-'+dpId);if(rc!==null)du.rentals_completed=parseInt(rc)||0;
+  // Platform ratings & trips
+  var ur=g('ie-ur-'+dpId);if(ur!==null)du.uber_rating=parseFloat(ur)||null;
+  var ut=g('ie-ut-'+dpId);if(ut!==null)du.uber_trips=parseInt(ut)||null;
+  var br=g('ie-br-'+dpId);if(br!==null)du.bolt_rating=parseFloat(br)||null;
+  var bt=g('ie-bt-'+dpId);if(bt!==null)du.bolt_trips=parseInt(bt)||null;
+  var ir=g('ie-ir-'+dpId);if(ir!==null)du.indrive_rating=parseFloat(ir)||null;
+  var it=g('ie-it-'+dpId);if(it!==null)du.indrive_trips=parseInt(it)||null;
+  if(Object.keys(du).length){var r=await sb.from('driver_profiles').update(du).eq('id',dpId);if(r.error){toast('Error: '+r.error.message);return;}}
   toast('Changes saved!');
 }
 async function incUploadDoc(inp){
@@ -3755,6 +3789,8 @@ async function adDrv(){
         +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><div style="font-size:13px;font-weight:700;color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</div>'+adPill(d.status||'pending')+(d.suspended?'<span class="pill p-r">SUSPENDED</span>':'')+'</div></div>'
         +'<div style="padding:9px 14px;background:var(--cream);border-top:1px solid var(--border)">'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
+        +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">TrustScore</label><input type="number" min="0" max="100" id="stat-ts-'+d.id+'" value="'+(d.trust_score||0)+'" style="width:64px;padding:4px 6px;border:1.5px solid var(--gm);border-radius:6px;font-size:13px;font-weight:700;font-family:inherit;color:var(--gm)"/></div>'
+        +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Exp (yrs)</label><input type="number" min="0" id="stat-exp-'+d.id+'" value="'+(d.years_driving||0)+'" style="width:58px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Rentals</label><input type="number" min="0" id="stat-rentals-'+d.id+'" value="'+(d.rentals_completed||0)+'" style="width:58px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">On-Time</label><input type="number" min="0" id="stat-ontime-'+d.id+'" value="'+(d.ontime_payments||0)+'" style="width:58px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Late</label><input type="number" min="0" id="stat-late-'+d.id+'" value="'+(d.late_payments||0)+'" style="width:58px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
@@ -3905,23 +3941,22 @@ async function adSuspend(dpId,s){
   toast(s?'Driver suspended':'Driver reinstated'); adDrv();
 }
 async function adSaveStats(dpId){
-  var rentalsEl=document.getElementById('stat-rentals-'+dpId);
-  var ontimeEl=document.getElementById('stat-ontime-'+dpId);
-  var lateEl=document.getElementById('stat-late-'+dpId);
-  var missedEl=document.getElementById('stat-missed-'+dpId);
-  var accEl=document.getElementById('stat-accidents-'+dpId);
-  var rentals=parseInt(rentalsEl?rentalsEl.value:0)||0;
-  var ontime=parseInt(ontimeEl?ontimeEl.value:0)||0;
-  var late=parseInt(lateEl?lateEl.value:0)||0;
-  var missed=parseInt(missedEl?missedEl.value:0)||0;
-  var acc=parseInt(accEl?accEl.value:0)||0;
-  if(rentals<0||ontime<0||late<0||missed<0||acc<0){toast('Values cannot be negative');return;}
-  var g=function(id){var el=document.getElementById(id);return el?el.value.trim()||null:null;};
+  var gn=function(id){var el=document.getElementById(id);return el?parseInt(el.value)||0:0;};
+  var gs=function(id){var el=document.getElementById(id);return el?el.value.trim()||null:null;};
+  var ts=gn('stat-ts-'+dpId);
+  var exp=gn('stat-exp-'+dpId);
+  var rentals=gn('stat-rentals-'+dpId);
+  var ontime=gn('stat-ontime-'+dpId);
+  var late=gn('stat-late-'+dpId);
+  var missed=gn('stat-missed-'+dpId);
+  var acc=gn('stat-accidents-'+dpId);
   var update={
+    trust_score:Math.max(0,Math.min(100,ts)),
+    years_driving:exp,
     rentals_completed:rentals,ontime_payments:ontime,late_payments:late,missed_payments:missed,accidents:acc,
-    uber_trips:g('plat-uber-trips-'+dpId),uber_rating:g('plat-uber-rating-'+dpId),
-    bolt_trips:g('plat-bolt-trips-'+dpId),bolt_rating:g('plat-bolt-rating-'+dpId),
-    indrive_trips:g('plat-indrive-trips-'+dpId),indrive_rating:g('plat-indrive-rating-'+dpId)
+    uber_trips:gs('plat-uber-trips-'+dpId),uber_rating:gs('plat-uber-rating-'+dpId),
+    bolt_trips:gs('plat-bolt-trips-'+dpId),bolt_rating:gs('plat-bolt-rating-'+dpId),
+    indrive_trips:gs('plat-indrive-trips-'+dpId),indrive_rating:gs('plat-indrive-rating-'+dpId)
   };
   var r=await sb.from('driver_profiles').update(update).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
