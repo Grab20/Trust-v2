@@ -1334,24 +1334,29 @@ async function fetchCars(lim) {
       .eq('status','available').eq('admin_status','approved')
       .order('created_at',{ascending:false}).limit(lim||100),
     sb.from('applications')
-      .select('car_id,driver_id,owner_id,profiles(full_name)')
+      .select('car_id,driver_id,owner_id')
       .eq('status','approved').is('unmatched_at',null)
   ]);
   if(!carsRes.data||!carsRes.data.length) return [];
   // Build matched car lookup — by car_id AND by owner_id (owner-initiated matches have no car_id)
-  var matchedSet=new Set(), matchedDriver={}, matchedOwners=new Set();
+  var matchedSet=new Set(), matchedOwners=new Set(), matchedDriverIds={};
   (matchRes.data||[]).forEach(function(a){
-    if(a.car_id){
-      matchedSet.add(a.car_id);
-      if(a.profiles&&a.profiles.full_name) matchedDriver[a.car_id]=a.profiles.full_name;
-    }
+    if(a.car_id){matchedSet.add(a.car_id); matchedDriverIds[a.car_id]=a.driver_id;}
     if(a.owner_id) matchedOwners.add(a.owner_id);
   });
+  // Fetch driver names for matched cars
+  var driverIdList=Object.values(matchedDriverIds).filter(Boolean);
+  var driverNameMap={};
+  if(driverIdList.length){
+    var dnRes=await sb.from('profiles').select('id,full_name').in('id',driverIdList);
+    (dnRes.data||[]).forEach(function(p){driverNameMap[p.id]=p.full_name||'Driver';});
+  }
   var _rc=carsRes.data.map(function(c){
     c.owner=c.profiles||{};
     delete c.profiles;
     c.isMatched=matchedSet.has(c.id)||matchedOwners.has(c.owner_id);
-    c.matchedDriver=matchedDriver[c.id]||null;
+    var did=matchedDriverIds[c.id];
+    c.matchedDriver=did?driverNameMap[did]||'Driver':null;
     return c;
   });
   if(!lim){_carCache=_rc;_carCacheTs=Date.now();}
