@@ -4347,9 +4347,27 @@ async function adOwn(){
         +'<input type="file" accept="image/*,.pdf" data-oid="'+o.id+'" onchange="ownUploadId(this)">'
         +'<div style="font-size:11px;font-weight:600">&#128196; '+(o.doc_id_url?'Replace':'Upload')+' ID</div>'
         +'</div></div>'
-        // Car details (for each car)
-        +(oCars.length?'<div class="shd">Cars ('+(oCars.length)+')</div>'
-          +oCars.map(function(c,ci){
+        // Car details (for each car) + Add Car form
+        +'<div class="shd" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">Cars ('+oCars.length+')<button class="btn btn-gm btn-sm" style="font-size:10px" onclick="ownToggleAddCar(\''+o.id+'\')">&#43; Add Car</button></div>'
+        +'<div id="add-car-own-'+o.id+'" style="display:none;background:var(--cream);border-radius:8px;padding:12px;margin-bottom:10px;border:1px solid var(--gm)">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--g);margin-bottom:8px">&#128663; New Car for '+esc(o.full_name||'Owner')+'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px">'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Make *</label><input id="oa-make-'+o.id+'" placeholder="e.g. Toyota" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Model *</label><input id="oa-model-'+o.id+'" placeholder="e.g. Corolla" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Year *</label><input id="oa-year-'+o.id+'" type="number" placeholder="2020" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Colour</label><input id="oa-color-'+o.id+'" placeholder="e.g. White" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Weekly Rate (R) *</label><input id="oa-price-'+o.id+'" type="number" placeholder="3000" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Location *</label><input id="oa-loc-'+o.id+'" placeholder="City / Area" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Transmission</label><select id="oa-trans-'+o.id+'" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;background:#fff"><option value="manual">Manual</option><option value="automatic">Automatic</option></select></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Fuel Policy</label><select id="oa-fuel-'+o.id+'" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;background:#fff"><option value="driver_pays">Driver Pays</option><option value="owner_pays">Owner Pays</option><option value="split">Split</option></select></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Deposit (R)</label><input id="oa-dep-'+o.id+'" type="number" placeholder="0 = none" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Insurance</label><select id="oa-ins-'+o.id+'" style="width:100%;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;background:#fff"><option value="true">Included</option><option value="false">Not included</option></select></div>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px">'
+        +'<button class="btn btn-gm btn-sm" style="flex:1" data-oid="'+o.id+'" onclick="ownAdminAddCar(this.dataset.oid)">&#10003; Save Car</button>'
+        +'<button class="btn btn-out btn-sm" onclick="ownToggleAddCar(\''+o.id+'\')">Cancel</button>'
+        +'</div></div>'
+        +(oCars.length?oCars.map(function(c,ci){
             return '<div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--border)">'
               +'<div style="font-size:12px;font-weight:700;margin-bottom:8px">'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</div>'
               +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px">'
@@ -4390,6 +4408,37 @@ async function adOwn(){
         +'</div>'
         +'</div>';
     }).join('');
+}
+function ownToggleAddCar(oid){
+  var f=eid('add-car-own-'+oid);
+  if(f) f.style.display=f.style.display==='none'?'block':'none';
+}
+async function ownAdminAddCar(oid){
+  var g=function(id){return (eid(id)||{}).value||'';};
+  var make=g('oa-make-'+oid).trim();
+  var model=g('oa-model-'+oid).trim();
+  var year=parseInt(g('oa-year-'+oid))||0;
+  var price=parseInt(g('oa-price-'+oid))||0;
+  var loc=g('oa-loc-'+oid).trim();
+  if(!make||!model||!year||!price||!loc){toast('Make, Model, Year, Price and Location are required.');return;}
+  var dep=g('oa-dep-'+oid);dep=dep.trim()?parseInt(dep)||null:null;
+  var r=await sb.from('cars').insert({
+    owner_id:oid,
+    make:make, model:model, year:year,
+    color:g('oa-color-'+oid).trim()||null,
+    price_per_week:price,
+    location:loc,
+    transmission:g('oa-trans-'+oid)||'manual',
+    fuel_policy:g('oa-fuel-'+oid)||'driver_pays',
+    deposit:dep,
+    insurance:g('oa-ins-'+oid)==='true',
+    admin_status:'approved',
+    status:'available'
+  });
+  if(r.error){toast('Error: '+r.error.message);return;}
+  _carCache=null;
+  toast('Car added and approved!');
+  adOwn();
 }
 function adDrvSearch(){
   var q=(document.getElementById('adm-drv-q')||{}).value||'';
