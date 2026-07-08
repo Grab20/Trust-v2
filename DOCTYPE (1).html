@@ -2036,6 +2036,8 @@ async function pOv() {
   var el=eid('panel-ov'), html='';
   var isD=P&&(P.role==='driver'||P.role==='both');
   var isO=P&&(P.role==='owner'||P.role==='both');
+  // Always refresh DP so admin approvals are reflected without a full page reload
+  if(isD&&U){var _r=await sb.from('driver_profiles').select('*').eq('user_id',U.id).maybeSingle();if(_r.data)DP=_r.data;}
   if(isD&&DP) {
     var s=DP.trust_score||0, si=scoreInfo(s);
     var docValid=DP.doc_expires_at&&new Date(DP.doc_expires_at)>new Date();
@@ -3177,6 +3179,8 @@ async function subMatch() {
   var btn=eid('match-btn'); btn.disabled=true; btn.textContent='Sending...';
   var ins;
   if(matchMode==='driver'){
+    // Re-fetch DP live so an admin approval during this session is reflected immediately
+    if(U){var _dpR=await sb.from('driver_profiles').select('*').eq('user_id',U.id).maybeSingle();if(_dpR.data)DP=_dpR.data;}
     if(!DP||DP.status!=='approved'){toast('Your profile must be approved by admin before you can apply.');btn.disabled=false;btn.textContent='Send Request';return;}
     var hasTripsOrRating=(DP.uber_trips||DP.uber_rating||DP.bolt_trips||DP.bolt_rating||DP.indrive_trips||DP.indrive_rating);
     if(!hasTripsOrRating&&!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
