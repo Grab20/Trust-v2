@@ -1947,16 +1947,13 @@ async function doReg() {
       }
     }
     var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;}),safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:shotUrls.uber,screenshot_bolt_url:shotUrls.bolt,screenshot_indrive_url:shotUrls.indrive},u);
-    // Update the driver_profiles row (created by handle_new_user trigger with status=incomplete)
-    // Our RLS policy allows updating incomplete rows even without auth session
-    var dpR=await sb.from('driver_profiles').update(dpPayload).eq('user_id',uid);
+    // Use SECURITY DEFINER RPC to bypass RLS (anon users can't update via direct query)
+    var dpR=await sb.rpc('complete_driver_registration',{payload:dpPayload});
     if(dpR.error){
-      console.error('dp update error:',dpR.error);
-      // Fallback: try upsert
-      await sb.from('driver_profiles').upsert(dpPayload,{onConflict:'user_id'});
+      console.error('dp rpc error:',dpR.error);
+      // Fallback: direct update
+      await sb.from('driver_profiles').update(dpPayload).eq('user_id',uid);
     }
-    // Also save to localStorage as backup in case update failed
-    try{localStorage.setItem('tm_pending_reg',JSON.stringify({uid:uid,role:'driver',dpPayload:dpPayload}));}catch(e){}
   } else {
     // Owner ID already uploaded pre-signup via ownerIdUrl and saved by handle_new_user trigger
     var cu={};
