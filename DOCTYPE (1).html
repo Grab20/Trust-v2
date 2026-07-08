@@ -776,7 +776,8 @@ nav div::-webkit-scrollbar{display:none}
         </div>
         <div id="plat-count-indrive" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
-      <div class="fg"><label>SA ID Number *</label><input id="d-id" placeholder="ID number" required/></div>
+      <div class="fg"><label>Document Type *</label><select id="d-idtype" onchange="var t=this.value;eid('d-id').placeholder=t==='passport'?'Passport number':t==='temp'?'Temporary ID number':'SA ID number (13 digits)';" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg)"><option value="said">SA ID (Green/Smart Card)</option><option value="temp">Temporary ID</option><option value="passport">Passport</option></select></div>
+      <div class="fg"><label>ID / Document Number *</label><input id="d-id" placeholder="SA ID number (13 digits)" required/></div>
       <div class="fg"><label>Licence Number *</label><input id="d-lic" placeholder="Licence number" required/></div>
       <div class="fg"><label>About yourself</label><textarea id="d-bio" placeholder="Brief intro..."></textarea></div>
       <div style="display:flex;gap:8px"><button class="btn btn-out" onclick="backS1()">Back</button><button class="btn btn-g" style="flex:1" onclick="reg2d()">Continue</button></div>
@@ -1090,7 +1091,15 @@ nav div::-webkit-scrollbar{display:none}
 // Supabase client - window.supabase is loaded from CDN before this script
 var sb = window.supabase.createClient(
   'https://qyyflivkmnwikagnvstv.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storageKey: 'tm_auth'
+    }
+  }
 );
 
 // Global state
@@ -1745,29 +1754,25 @@ async function loadProfPage(dpId) {
     +'<div class="pgrid"><div class="pf"><label>Driving experience</label><span>'+d.years_driving+'+ years</span></div><div class="pf"><label>Safe parking</label><span>'+(d.safe_parking?'Yes':'No')+'</span></div>'+(d.age?'<div class="pf"><label>Age</label><span>'+d.age+'</span></div>':'')+'<div class="pf"><label>Platforms</label><span>'+((d.platforms||[]).join(', ')||'-')+'</span></div></div></div>'
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Platform History</h3>'
     +'<div style="display:flex;flex-direction:column;gap:8px">'
-    +[{name:'Uber',key:'uber',col:'#1a1a18',bg:'#f5f5f5'},{name:'Bolt',key:'bolt',col:'#1cc64e',bg:'#f0faf2'},{name:'inDrive',key:'indrive',col:'#e05c00',bg:'#fff7f0'}].map(function(plat){
-      var trips=d[plat.key+'_trips']||null;
-      var rating=d[plat.key+'_rating']||null;
-      var active=(d.platforms||[]).some(function(p){return p.toLowerCase()===plat.name.toLowerCase()||p==='inDrive'&&plat.key==='indrive';});
-      var tripsStr=trips?trips+' trips':'Trips not verified';
-      var ratingStr=rating?rating+' rating':'Rating not verified';
-      return '<div style="display:flex;align-items:center;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'
-        +'<div style="background:'+plat.bg+';padding:12px 16px;min-width:80px;text-align:center;border-right:1px solid var(--border)">'
-        +'<div style="font-size:13px;font-weight:800;color:'+plat.col+'">'+plat.name+'</div>'
-        +(active?'<div style="font-size:9px;font-weight:600;color:var(--gm);margin-top:2px">Active</div>':'<div style="font-size:9px;color:var(--muted);margin-top:2px">Not listed</div>')
-        +'</div>'
-        +'<div style="padding:10px 16px;flex:1;display:flex;flex-direction:column;gap:3px">'
-        +'<div style="display:flex;align-items:center;gap:6px;font-size:13px">'
-        +'<span style="font-size:16px">&#11088;</span>'
-        +'<span style="font-weight:600;color:'+(rating?'#1a1a18':'var(--muted)')+'">'+ratingStr+'</span>'
-        +'</div>'
-        +'<div style="display:flex;align-items:center;gap:6px;font-size:13px">'
-        +'<span style="font-size:16px">&#128663;</span>'
-        +'<span style="font-weight:600;color:'+(trips?'#1a1a18':'var(--muted)')+'">'+tripsStr+'</span>'
-        +'</div>'
-        +'</div>'
-        +'</div>';
-    }).join('')
+    +(function(){
+      var rows=[{name:'Uber',key:'uber',col:'#1a1a18',bg:'#f5f5f5'},{name:'Bolt',key:'bolt',col:'#1cc64e',bg:'#f0faf2'},{name:'inDrive',key:'indrive',col:'#e05c00',bg:'#fff7f0'}]
+        .filter(function(plat){return d[plat.key+'_trips']||d[plat.key+'_rating'];})
+        .map(function(plat){
+          var trips=d[plat.key+'_trips']||null;
+          var rating=d[plat.key+'_rating']||null;
+          return '<div style="display:flex;align-items:center;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'
+            +'<div style="background:'+plat.bg+';padding:12px 16px;min-width:80px;text-align:center;border-right:1px solid var(--border)">'
+            +'<div style="font-size:13px;font-weight:800;color:'+plat.col+'">'+plat.name+'</div>'
+            +'<div style="font-size:9px;font-weight:600;color:var(--gm);margin-top:2px">&#10003; Verified</div>'
+            +'</div>'
+            +'<div style="padding:10px 16px;flex:1;display:flex;flex-direction:column;gap:3px">'
+            +(rating?'<div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="font-size:16px">&#11088;</span><span style="font-weight:600;color:#1a1a18">'+rating+' rating</span></div>':'')
+            +(trips?'<div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="font-size:16px">&#128663;</span><span style="font-weight:600;color:#1a1a18">'+trips+' trips</span></div>':'')
+            +'</div>'
+            +'</div>';
+        });
+      return rows.length?rows.join(''):'<p style="font-size:13px;color:var(--muted)">No verified platform history yet.</p>';
+    })()
     +'</div></div>'
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Track Record</h3>'
     +'<div class="sgrid">'
@@ -2529,7 +2534,7 @@ function loadOwnerRec(){
           if((d.rentals_completed||0)>0) reasons.push('&#10003; '+d.rentals_completed+' rentals');
           if(!reasons.length) reasons.push('&#10003; Clean record');
           var borderColor=i===0?'var(--gm)':d._dist<=30?'#22c55e':'var(--border)';
-          return '<div style="min-width:240px;max-width:260px;scroll-snap-align:start;flex-shrink:0;background:#fff;border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;cursor:pointer" onclick="go(\'profile\');loadProfPage(\''+d.id+'\')">'
+          return '<div style="min-width:240px;max-width:260px;scroll-snap-align:start;flex-shrink:0;background:#fff;border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;cursor:pointer" onclick="go(\'profile\',\''+d.id+'\')">'
             +'<div style="padding:12px">'
             +(i<3?'<div style="font-size:10px;font-weight:700;color:var(--gm);margin-bottom:6px">'+medals[i]+' '+(i===0?'Best Match':i===1?'2nd Match':'3rd Match')+'</div>':'')
             +(d._distLabel?'<div style="font-size:10px;font-weight:700;background:var(--gs);color:var(--gm);padding:2px 7px;border-radius:999px;display:inline-block;margin-bottom:8px">'+d._distLabel+'</div>':'')
@@ -2547,7 +2552,7 @@ function loadOwnerRec(){
             +'<div style="font-size:11px;color:var(--gm);line-height:1.8;margin-bottom:8px">'+reasons.slice(0,3).join('<br>')+'</div>'
             +(platTrips?'<div style="display:flex;gap:4px;margin-bottom:10px">'+platTrips+'</div>':'')
             +'<div style="display:flex;gap:6px">'
-            +'<button class="btn btn-out btn-sm" style="flex:1;font-size:11px" onclick="event.stopPropagation();go(\'profile\');loadProfPage(\''+d.id+'\')">View Profile</button>'
+            +'<button class="btn btn-out btn-sm" style="flex:1;font-size:11px" onclick="event.stopPropagation();go(\'profile\',\''+d.id+'\')">View Profile</button>'
             +'<button class="btn btn-gm btn-sm" style="flex:1;font-size:11px" data-dpid="'+d.id+'" data-uid="'+d.user_id+'" data-dn="'+esc(p.full_name||'Driver')+'" onclick="event.stopPropagation();ownerMatchBtn(this)">Connect</button>'
             +'</div>'
             +'</div></div>';
