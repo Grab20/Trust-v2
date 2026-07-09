@@ -2072,7 +2072,20 @@ async function pOv() {
       +(DP.status==='approved'?'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'ap\')">&#128203; View My Applications</button>':'')
       +'<button class="btn btn-red btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px;font-weight:600" onclick="doSignOut()">&#128682; Sign Out</button>'
       +'</div></div>';
-    if(DP.status==='pending')html+='<div class="warn-box"><strong>Pending Admin Approval</strong><p style="font-size:13px;margin-top:4px">Your profile is under review. You will go live once admin approves. This typically takes 1-2 business days.</p></div>';
+    if(DP.status==='pending')html+='<div class="warn-box"><strong>&#9203; Pending Admin Approval</strong><p style="font-size:13px;margin-top:4px">Your profile is under review. You will go live once admin approves. This typically takes 1–2 business days.</p></div>';
+    if(DP.status==='incomplete')html+='<div style="background:#fff8e1;border:1.5px solid #E8A520;border-radius:10px;padding:16px 18px;margin-bottom:16px">'
+      +'<div style="font-weight:700;color:#7a5200;font-size:15px;margin-bottom:6px">&#9888; Profile Incomplete</div>'
+      +'<p style="font-size:13px;color:#7a5200;margin-bottom:12px">Your profile is missing required documents. Please upload all documents to complete your registration and submit for approval.</p>'
+      +'<button class="btn btn-gm btn-sm" onclick="dpanel(\'dc\')">&#128196; Upload Documents Now</button>'
+      +'</div>';
+    if(DP.status==='rejected')html+='<div style="background:#fef2f2;border:1.5px solid #dc2626;border-radius:10px;padding:16px 18px;margin-bottom:16px">'
+      +'<div style="font-weight:700;color:#dc2626;font-size:15px;margin-bottom:6px">&#10060; Application Declined</div>'
+      +(DP.rejection_reason?'<div style="font-size:13px;color:#7f1d1d;background:#fff;border:1px solid #fca5a5;border-radius:6px;padding:10px 12px;margin-bottom:12px"><strong>Reason:</strong> '+esc(DP.rejection_reason)+'</div>':'')
+      +'<p style="font-size:13px;color:#7f1d1d;margin-bottom:12px">Please fix the issues above, re-upload your documents, and resubmit for approval.</p>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn btn-out btn-sm" onclick="dpanel(\'dc\')">&#128196; Re-upload Documents</button>'
+      +'<button class="btn btn-gm btn-sm" id="resubmit-btn" onclick="drvResubmit()">&#128228; Resubmit for Approval</button>'
+      +'</div></div>';
 
     // ── PENDING OWNER REQUESTS ──
     var apR=await sb.from('applications').select('*').eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner').order('created_at',{ascending:false});
@@ -2788,16 +2801,54 @@ async function submitNewCar(){
   toast('Car submitted for review!');
   pLc();
 }
-async function ownerRemoveCar(cid, cmake){
-  if(!confirm('Remove '+cmake+' from the platform?')) return;
+function ownerRemoveCar(cid, cmake){
+  // Show inline reason modal
+  var existing=eid('remove-car-modal');
+  if(existing)existing.remove();
+  var modal=document.createElement('div');
+  modal.id='remove-car-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML='<div style="background:#fff;border-radius:14px;padding:24px;max-width:380px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.18)">'
+    +'<div style="font-size:16px;font-weight:700;margin-bottom:6px">&#128683; Remove '+esc(cmake)+'?</div>'
+    +'<p style="font-size:13px;color:#555;margin-bottom:14px">Please tell us why you are removing this vehicle. This will be recorded and visible to the admin.</p>'
+    +'<select id="remove-reason-select" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;margin-bottom:10px">'
+    +'<option value="">— Select a reason —</option>'
+    +'<option value="Selling the car">Selling the car</option>'
+    +'<option value="Car needs repairs">Car needs repairs</option>'
+    +'<option value="Personal use">Personal use for now</option>'
+    +'<option value="Driver mismatch">Couldn\'t find a suitable driver</option>'
+    +'<option value="Temporary break">Taking a temporary break</option>'
+    +'<option value="Other">Other (specify below)</option>'
+    +'</select>'
+    +'<textarea id="remove-reason-other" placeholder="Additional details (required if Other)..." style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;height:70px;resize:vertical;display:none;margin-bottom:10px"></textarea>'
+    +'<div style="display:flex;gap:8px;margin-top:4px">'
+    +'<button class="btn btn-red" style="flex:1" id="confirm-remove-btn" data-cid="'+cid+'" data-cmake="'+esc(cmake)+'" onclick="ownerRemoveCarConfirm(this)">Remove Vehicle</button>'
+    +'<button class="btn btn-out" onclick="eid(\'remove-car-modal\').remove()">Cancel</button>'
+    +'</div></div>';
+  document.body.appendChild(modal);
+  eid('remove-reason-select').onchange=function(){
+    eid('remove-reason-other').style.display=this.value==='Other'?'block':'none';
+  };
+}
+async function ownerRemoveCarConfirm(btn){
+  var cid=btn.getAttribute('data-cid');
+  var cmake=btn.getAttribute('data-cmake');
+  var sel=eid('remove-reason-select').value;
+  var other=(eid('remove-reason-other').value||'').trim();
+  if(!sel){toast('Please select a reason.');return;}
+  if(sel==='Other'&&!other){toast('Please describe the reason.');return;}
+  var reason=sel==='Other'?other:sel+(other?' — '+other:'');
   // Block removal if car is part of an active match
   var chk=await sb.from('applications').select('id').eq('car_id',cid).eq('status','approved').is('unmatched_at',null);
   if(chk.data&&chk.data.length){
     toast('Cannot remove — this car is currently matched with a driver. Unmatch first.');
+    eid('remove-car-modal').remove();
     return;
   }
-  var r=await sb.from('cars').update({status:'removed',removed_at:new Date().toISOString(),removed_by:U.id}).eq('id',cid).eq('owner_id',U.id);
-  if(r.error){toast('Error: '+r.error.message);return;}
+  btn.disabled=true; btn.textContent='Removing...';
+  var r=await sb.from('cars').update({status:'removed',removed_at:new Date().toISOString(),removed_by:U.id,removal_reason:reason}).eq('id',cid).eq('owner_id',U.id);
+  if(r.error){toast('Error: '+r.error.message);btn.disabled=false;btn.textContent='Remove Vehicle';return;}
+  eid('remove-car-modal').remove();
   _carCache=null;
   toast(cmake+' removed.');
   pLc();
@@ -3063,6 +3114,14 @@ async function drvResp(btn){
   if(s==='approved'){sendNotifEmail('match_approved_owner_only', id);_carCache=null;_drvCache=null;}
   toast(s==='approved'?'Match accepted! Owner contact details are now visible.':'Request declined.');
   pAp();
+}
+async function drvResubmit(){
+  var btn=eid('resubmit-btn'); if(btn){btn.disabled=true;btn.textContent='Submitting...';}
+  var r=await sb.from('driver_profiles').update({status:'pending',rejection_reason:null,rejected_at:null}).eq('user_id',U.id);
+  if(r.error){toast('Error: '+r.error.message);if(btn){btn.disabled=false;btn.textContent='&#128228; Resubmit for Approval';}return;}
+  if(DP)DP.status='pending';
+  toast('Resubmitted! Your profile is now under review again.');
+  pOv();
 }
 async function drvRespOv(btn){
   var id=btn.getAttribute('data-aid');
@@ -4559,7 +4618,7 @@ async function adCar(){
   var removedCars=allCarsA.filter(function(c){return c.status==='removed'&&c.removed_at;});
   if(removedCars.length){
     el.innerHTML+='<div style="margin-top:20px"><div class="shd" style="color:#dc2626">&#128683; Removed Cars ('+removedCars.length+')</div>'
-      +'<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Removed</th><th>Car</th><th>Owner</th><th>Location</th></tr></thead><tbody>'
+      +'<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Removed</th><th>Car</th><th>Owner</th><th>Location</th><th>Reason</th></tr></thead><tbody>'
       +removedCars.map(function(c){
         var op=pm[c.owner_id]||{};
         return '<tr>'
@@ -4567,6 +4626,7 @@ async function adCar(){
           +'<td><strong>'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</strong></td>'
           +'<td>'+(op.full_name||'-')+'<br><span style="font-size:10px;color:var(--muted)">'+(op.phone||op.email||'')+'</span></td>'
           +'<td style="font-size:11px">'+esc(c.location||'-')+'</td>'
+          +'<td style="font-size:12px;color:#7f1d1d">'+(c.removal_reason?esc(c.removal_reason):'<span style="color:var(--muted)">—</span>')+'</td>'
           +'</tr>';
       }).join('')
       +'</tbody></table></div></div>';
