@@ -792,9 +792,10 @@ nav div::-webkit-scrollbar{display:none}
       <div class="fg"><label>WhatsApp *</label><input id="o-wa" type="tel" placeholder="+27..." required/></div>
       <div class="fg"><label>Preferred contact method</label>
         <select id="o-pc"><option value="whatsapp">WhatsApp</option><option value="phone">Phone call</option><option value="email">Email</option><option value="any">Any</option></select></div>
-      <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 8px;padding-top:8px;border-top:1px solid var(--border)">ID / Passport (required)</div>
+      <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 4px;padding-top:8px;border-top:1px solid var(--border)">ID / Passport (required)</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Upload a screenshot or photo copy of your SA ID, Temporary ID, or Passport.</div>
       <div class="doc-grid" style="margin-bottom:12px">
-        <div class="dbox" id="oid"><input type="file" accept=".pdf,application/pdf" onchange="mDoc('oid','oid_f',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID/Passport PDF *</div></div>
+        <div class="dbox" id="oid"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('oid','oid_f',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID / Passport *</div><div style="font-size:9px;color:var(--muted);margin-top:3px">Screenshot or photo copy accepted</div></div>
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px">Car Details</div>
       <div class="frow"><div class="fg"><label>Make *</label><input id="o-mk" placeholder="Toyota"/></div><div class="fg"><label>Model *</label><input id="o-mo" placeholder="Corolla"/></div></div>
@@ -824,7 +825,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="doc-grid">
         <div class="dbox" id="ddf"><input type="file" accept="image/*" onchange="mDoc('ddf','df',this)"><div style="font-size:18px">&#127947;</div><div style="font-size:10px;font-weight:600">Full Body *</div></div>
         <div class="dbox" id="ddh"><input type="file" accept="image/*" onchange="mDoc('ddh','dh',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Headshot *</div></div>
-        <div class="dbox" id="ddhid"><input type="file" accept="image/*" onchange="mDoc('ddhid','dhid',this)"><div style="font-size:18px">&#128683;</div><div style="font-size:10px;font-weight:600">Holding ID *</div></div>
+        <div class="dbox" id="ddhid"><input type="file" accept="image/*" onchange="mDoc('ddhid','dhid',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Holding ID *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Photo of YOU holding your ID</div></div>
         <div class="dbox" id="ddl"><input type="file" accept="image/*,.pdf" onchange="mDoc('ddl','dl',this)"><div style="font-size:18px">&#128203;</div><div style="font-size:10px;font-weight:600">Licence *</div></div>
         <div class="dbox" id="ddid"><input type="file" accept=".pdf,application/pdf" onchange="mDoc('ddid','did',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID/Passport PDF *</div></div>
       </div>
@@ -1750,6 +1751,16 @@ async function loadProfPage(dpId) {
     )+(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after match</p>':'')
     +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:inline-flex;align-items:center;gap:6px"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+btns+'</div></div></div>'
+    +(isMatchedWithDriver&&(d.doc_id_url||d.doc_license_url||d.photo_headshot_url||d.photo_fullbody_url||d.photo_holding_id_url)
+      ?'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">&#128274; Verified Documents</h3>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      +(d.photo_headshot_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_headshot_url)+'\')"><img src="'+esc(d.photo_headshot_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Headshot</div></div>':'')
+      +(d.photo_fullbody_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_fullbody_url)+'\')"><img src="'+esc(d.photo_fullbody_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Full Body</div></div>':'')
+      +(d.photo_holding_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_holding_id_url)+'\')"><img src="'+esc(d.photo_holding_id_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Holding ID</div></div>':'')
+      +(d.doc_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_id_url)+'\')"><img src="'+esc(d.doc_id_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">ID Document</div></div>':'')
+      +(d.doc_license_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_license_url)+'\')"><img src="'+esc(d.doc_license_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Licence</div></div>':'')
+      +'</div></div>'
+      :'')
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Driver Details</h3>'
     +'<div class="pgrid"><div class="pf"><label>Driving experience</label><span>'+d.years_driving+'+ years</span></div><div class="pf"><label>Safe parking</label><span>'+(d.safe_parking?'Yes':'No')+'</span></div>'+(d.age?'<div class="pf"><label>Age</label><span>'+d.age+'</span></div>':'')+'<div class="pf"><label>Platforms</label><span>'+((d.platforms||[]).join(', ')||'-')+'</span></div></div></div>'
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Platform History</h3>'
@@ -3969,6 +3980,7 @@ function adDocUploads(dpId){
   var docs=[
     ['photo_headshot_url','Headshot Photo','image/*'],
     ['photo_fullbody_url','Full Body Photo','image/*'],
+    ['photo_holding_id_url','Holding ID Photo','image/*'],
     ['doc_id_url','ID / Passport','.pdf,image/*'],
     ['doc_license_url','Driver Licence','.pdf,image/*'],
     ['screenshot_uber_url','Uber Screenshot','image/*'],
@@ -4348,7 +4360,7 @@ async function adOwn(){
         // SA ID doc
         +'<div class="shd">SA ID Document</div>'
         +'<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">'
-        +(o.doc_id_url?'<img src="'+esc(o.doc_id_url)+'" style="width:60px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">':'<span style="font-size:12px;color:var(--muted)">No ID uploaded</span>')
+        +(o.doc_id_url?'<img src="'+esc(o.doc_id_url)+'" onclick="showLbox(\''+esc(o.doc_id_url)+'\')" style="width:60px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer" title="Click to view full ID"><button class="btn btn-out btn-sm" onclick="showLbox(\''+esc(o.doc_id_url)+'\')" style="font-size:11px">&#128196; View ID</button>':'<span style="font-size:12px;color:#dc2626;font-weight:600">&#9888; No ID uploaded</span>')
         +'<div class="dbox" style="flex:1;min-height:50px" id="oe-idbox-'+o.id+'">'
         +'<input type="file" accept="image/*,.pdf" data-oid="'+o.id+'" onchange="ownUploadId(this)">'
         +'<div style="font-size:11px;font-weight:600">&#128196; '+(o.doc_id_url?'Replace':'Upload')+' ID</div>'
