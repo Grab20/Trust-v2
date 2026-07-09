@@ -4553,18 +4553,32 @@ async function adCar(){
   if(!allCarsA.length){el.innerHTML='<div class="ptitle">Manage Cars</div><div class="empty"><p>No cars yet.</p></div>';return;}
   var adCarFilter=window._adCarFilter||'all';
   var activeCarsA=allCarsA.filter(function(c){return c.status!=='removed';});
-  var cars=adCarFilter==='all'?activeCarsA:activeCarsA.filter(function(c){return (c.admin_status||'pending')===adCarFilter;});
+  var removedCarsA=allCarsA.filter(function(c){return c.status==='removed';});
+  var cars=adCarFilter==='removed'?removedCarsA:adCarFilter==='all'?activeCarsA:activeCarsA.filter(function(c){return (c.admin_status||'pending')===adCarFilter;});
   var oIds=Array.from(new Set(allCarsA.map(function(c){return c.owner_id;}).filter(Boolean)));
   var pr=oIds.length?await sb.from('profiles').select('id,full_name,phone,email').in('id',oIds):{data:[]};
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
-  var ccounts={all:activeCarsA.length,pending:activeCarsA.filter(function(c){return (c.admin_status||'pending')==='pending';}).length,approved:activeCarsA.filter(function(c){return c.admin_status==='approved';}).length,rejected:activeCarsA.filter(function(c){return c.admin_status==='rejected';}).length};
+  var ccounts={all:activeCarsA.length,pending:activeCarsA.filter(function(c){return (c.admin_status||'pending')==='pending';}).length,approved:activeCarsA.filter(function(c){return c.admin_status==='approved';}).length,rejected:activeCarsA.filter(function(c){return c.admin_status==='rejected';}).length,removed:removedCarsA.length};
   el.innerHTML='<div class="ptitle">Manage Cars</div>'
     +'<div style="margin-bottom:10px"><input id="adm-car-q" type="text" placeholder="&#128269; Search make, model, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adCarSearch()"/></div>'
     +'<div class="tbb-row">'
-    +[['all','All ('+ccounts.all+')'],['pending','Pending ('+ccounts.pending+')'],['approved','Approved ('+ccounts.approved+')'],['rejected','Rejected ('+ccounts.rejected+')']].map(function(t){return '<button class="tbb'+(adCarFilter===t[0]?' on':'')+'" onclick="window._adCarFilter=\''+t[0]+'\';adCar()">'+t[1]+'</button>';}).join('')
+    +[['all','All ('+ccounts.all+')'],['pending','Pending ('+ccounts.pending+')'],['approved','Approved ('+ccounts.approved+')'],['rejected','Rejected ('+ccounts.rejected+')'],['removed','Removed ('+ccounts.removed+')']].map(function(t){return '<button class="tbb'+(adCarFilter===t[0]?' on':'')+'" onclick="window._adCarFilter=\''+t[0]+'\';adCar()">'+t[1]+'</button>';}).join('')
     +'</div>'
     +'<div class="psub">'+cars.length+' shown</div>'
-    +cars.map(function(c){
+    +(adCarFilter==='removed'
+      ?'<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Removed</th><th>Car</th><th>Owner</th><th>Location</th><th>Reason</th></tr></thead><tbody>'
+        +cars.map(function(c){
+          var op=pm[c.owner_id]||{};
+          return '<tr>'
+            +'<td style="white-space:nowrap;color:#dc2626;font-weight:600">'+fmtD(c.removed_at)+'</td>'
+            +'<td><strong>'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</strong></td>'
+            +'<td>'+(op.full_name||'-')+'<br><span style="font-size:10px;color:var(--muted)">'+(op.phone||op.email||'')+'</span></td>'
+            +'<td style="font-size:11px">'+esc(c.location||'-')+'</td>'
+            +'<td style="font-size:12px;color:#7f1d1d">'+(c.removal_reason?esc(c.removal_reason):'<span style="color:var(--muted)">—</span>')+'</td>'
+            +'</tr>';
+        }).join('')
+        +'</tbody></table></div>'
+      :cars.map(function(c){
       var op=pm[c.owner_id]||{};
       var photos=[c.photo_front_url,c.photo_side_url,c.photo_back_url,c.photo_interior_url].filter(Boolean);
       var fuel=c.fuel_policy==='driver_pays'?'Driver pays':c.fuel_policy==='owner_pays'?'Owner pays':'Split';
@@ -4613,24 +4627,7 @@ async function adCar(){
         +'<button class="btn btn-gm btn-sm" data-cid="'+c.id+'" onclick="adSaveCar(this.dataset.cid)">Save Changes</button>'
         +'<button class="btn btn-out btn-sm" data-cid="'+c.id+'" onclick="adToggleCarEdit(this.dataset.cid)">Cancel</button>'
         +'</div></div></div>';
-    }).join('');
-  // ── REMOVED CARS SECTION ──
-  var removedCars=allCarsA.filter(function(c){return c.status==='removed'&&c.removed_at;});
-  if(removedCars.length){
-    el.innerHTML+='<div style="margin-top:20px"><div class="shd" style="color:#dc2626">&#128683; Removed Cars ('+removedCars.length+')</div>'
-      +'<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Removed</th><th>Car</th><th>Owner</th><th>Location</th><th>Reason</th></tr></thead><tbody>'
-      +removedCars.map(function(c){
-        var op=pm[c.owner_id]||{};
-        return '<tr>'
-          +'<td style="white-space:nowrap;color:#dc2626;font-weight:600">'+fmtD(c.removed_at)+'</td>'
-          +'<td><strong>'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</strong></td>'
-          +'<td>'+(op.full_name||'-')+'<br><span style="font-size:10px;color:var(--muted)">'+(op.phone||op.email||'')+'</span></td>'
-          +'<td style="font-size:11px">'+esc(c.location||'-')+'</td>'
-          +'<td style="font-size:12px;color:#7f1d1d">'+(c.removal_reason?esc(c.removal_reason):'<span style="color:var(--muted)">—</span>')+'</td>'
-          +'</tr>';
-      }).join('')
-      +'</tbody></table></div></div>';
-  }
+    }).join(''));
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function parseShotUrls(val){if(!val)return[];try{var a=JSON.parse(val);return Array.isArray(a)?a:[val];}catch(e){return [val];}}
