@@ -720,6 +720,10 @@ nav div::-webkit-scrollbar{display:none}
         <div class="rb on" id="rb-d" onclick="setRole('driver')"><div class="rb-icon">&#128663;</div><div class="rb-lbl">I am a Driver</div></div>
         <div class="rb" id="rb-o" onclick="setRole('owner')"><div class="rb-icon">&#127968;</div><div class="rb-lbl">I am an Owner</div></div>
       </div>
+      <div id="pdp-notice" style="background:#fff8e1;border:1.5px solid #E8A520;border-radius:8px;padding:10px 13px;font-size:12px;color:#7a5200;margin-bottom:12px;display:flex;gap:8px;align-items:flex-start">
+        <span style="font-size:16px;flex-shrink:0">&#128683;</span>
+        <span><strong>Drivers must hold a valid PDP (Professional Driving Permit).</strong> You will be required to upload your PDP during registration. Applications without a valid PDP will not be approved.</span>
+      </div>
       <div class="fg"><label>Full name *</label><input id="r1n" placeholder="Your full name"/></div>
       <div class="fg"><label>Email *</label><input id="r1e" type="email" placeholder="you@example.com"/></div>
       <div class="fg"><label>Password *</label><input id="r1p" type="password" placeholder="Min 6 characters"/></div>
@@ -756,6 +760,7 @@ nav div::-webkit-scrollbar{display:none}
           <label class="chk"><input type="checkbox" value="Uber" class="dpc" onchange="togglePlatShot('uber',this)"> Uber</label>
           <label class="chk"><input type="checkbox" value="Bolt" class="dpc" onchange="togglePlatShot('bolt',this)"> Bolt</label>
           <label class="chk"><input type="checkbox" value="inDrive" class="dpc" onchange="togglePlatShot('indrive',this)"> inDrive</label>
+          <label class="chk"><input type="checkbox" value="None" id="dpc-none" onchange="togglePlatNone(this)"> None (not on any platform)</label>
         </div></div>
       <div id="shot-uber" style="display:none" class="fg">
         <label>Uber profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
@@ -805,6 +810,24 @@ nav div::-webkit-scrollbar{display:none}
       <div class="fg"><label>Document Type *</label><select id="d-idtype" onchange="var t=this.value;eid('d-id').placeholder=t==='passport'?'Passport number':t==='temp'?'Temporary ID number':'SA ID number (13 digits)';" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg)"><option value="said">SA ID (Green/Smart Card)</option><option value="temp">Temporary ID</option><option value="passport">Passport</option></select></div>
       <div class="fg"><label>ID / Document Number *</label><input id="d-id" placeholder="SA ID number (13 digits)" required/></div>
       <div class="fg"><label>Licence Number *</label><input id="d-lic" placeholder="Licence number" required/></div>
+      <div class="fg"><label>Licence Obtained Date *</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <select id="d-licdd"><option value="">Day</option></select>
+          <select id="d-licmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
+          <select id="d-licyy"><option value="">Year</option></select>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Date you first obtained your driver's licence</div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label>Weekly Check-in Amount (R) *</label><input id="d-wci" type="number" placeholder="e.g. 2500"/><div style="font-size:11px;color:var(--muted);margin-top:3px">Amount you will pay the owner per week</div></div>
+        <div class="fg"><label>Security Deposit *</label>
+          <select id="d-dep-type" onchange="eid('d-dep-wrap').style.display=this.value==='amount'?'block':'none'">
+            <option value="none">No deposit</option>
+            <option value="amount">I will pay a deposit</option>
+          </select>
+          <div id="d-dep-wrap" style="display:none;margin-top:6px"><input id="d-dep" type="number" placeholder="Deposit amount (R)"/></div>
+        </div>
+      </div>
       <div class="fg"><label>About yourself</label><textarea id="d-bio" placeholder="Brief intro..."></textarea></div>
       <div style="display:flex;gap:8px"><button class="btn btn-out" onclick="backS1()">Back</button><button class="btn btn-g" style="flex:1" onclick="reg2d()">Continue</button></div>
     </div>
@@ -853,7 +876,8 @@ nav div::-webkit-scrollbar{display:none}
         <div class="dbox" id="ddh"><input type="file" accept="image/*" onchange="mDoc('ddh','dh',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Headshot *</div></div>
         <div class="dbox" id="ddhid"><input type="file" accept="image/*" onchange="mDoc('ddhid','dhid',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Holding ID *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Photo of YOU holding your ID</div></div>
         <div class="dbox" id="ddl"><input type="file" accept="image/*,.pdf" onchange="mDoc('ddl','dl',this)"><div style="font-size:18px">&#128203;</div><div style="font-size:10px;font-weight:600">Licence *</div></div>
-        <div class="dbox" id="ddid"><input type="file" accept=".pdf,application/pdf" onchange="mDoc('ddid','did',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID/Passport PDF *</div></div>
+        <div class="dbox" id="ddid"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddid','did',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID/Passport *</div></div>
+        <div class="dbox" id="ddpor"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddpor','por',this)"><div style="font-size:18px">&#127968;</div><div style="font-size:10px;font-weight:600">Proof of Residence *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Bank/account statement, utility bill</div></div>
       </div>
       <!-- Criminal Check - Optional -->
       <div style="background:var(--cream);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
@@ -1157,9 +1181,24 @@ function tmSetEx(img){
 function togglePlatShot(plat,cb){
   var box=document.getElementById('shot-'+plat);
   if(box)box.style.display=cb.checked?'block':'none';
-  if(cb.checked) loadPlatExamples();
+  if(cb.checked){loadPlatExamples();var nc=document.getElementById('dpc-none');if(nc)nc.checked=false;}
   if(!cb.checked){platFiles[plat]=[];['1','2','3'].forEach(function(i){var db=document.getElementById('dbox-'+plat+'-'+i);if(db){db.classList.remove('up');db.style.borderColor='';}});}
 }
+function togglePlatNone(cb){
+  if(cb.checked){
+    ['uber','bolt','indrive'].forEach(function(p){
+      var c=document.querySelector('.dpc[value="'+({uber:'Uber',bolt:'Bolt',indrive:'inDrive'}[p])+'"]');
+      if(c&&c.checked){c.checked=false;togglePlatShot(p,c);}
+    });
+  }
+}
+(function initLicDateSelects(){
+  var dd=document.getElementById('d-licdd'),yy=document.getElementById('d-licyy');
+  if(!dd||!yy)return;
+  for(var i=1;i<=31;i++){var o=document.createElement('option');o.value=String(i).padStart(2,'0');o.textContent=i;dd.appendChild(o);}
+  var curYr=new Date().getFullYear();
+  for(var y=curYr;y>=1960;y--){var o=document.createElement('option');o.value=y;o.textContent=y;yy.appendChild(o);}
+})();
 function mPlatShot(plat,idx,inp){
   if(!inp.files||!inp.files[0])return;
   var file=inp.files[0];
@@ -1182,9 +1221,7 @@ var rateDpId = null, rateAppId = null;
 var rmDpId = null, rmAppId = null, rmIsAdmin = false;
 
 // ── BOOT ──────────────────────────────────────────────
-// Pre-load public data on page boot (5-min cache)
-function preloadPublicData(){setTimeout(function(){fetchDrivers().catch(function(){});fetchCars().catch(function(){});},500);}
-preloadPublicData();
+// Data loads on demand when user navigates to drivers/cars page (saves data for mobile users)
 function skelCards(n){var s='';for(var i=0;i<n;i++){s+='<div class="skel-card"><div style="display:flex;gap:12px;align-items:center"><div class="skel" style="width:52px;height:52px;border-radius:50%;flex-shrink:0"></div><div style="flex:1"><div class="skel" style="height:14px;width:60%;margin-bottom:8px"></div><div class="skel" style="height:11px;width:40%"></div></div></div></div>';}return s;}
 sb.auth.getSession().then(function(r) {
   var s = r.data && r.data.session ? r.data.session : null;
@@ -1250,6 +1287,7 @@ async function loadP() {
 // ── HELPERS ───────────────────────────────────────────
 function eid(id) { return document.getElementById(id); }
 function ini(n) { return ((n||'?').split(' ').map(function(x){return x[0]||'?';}).join('').toUpperCase().slice(0,2)); }
+function imgUrl(url,w,q){if(!url)return url;var u=url.replace('/storage/v1/object/public/','/storage/v1/render/image/public/');return u+(u.indexOf('?')>=0?'&':'?')+'width='+(w||400)+'&quality='+(q||70);}
 function toast(msg) { var t=eid('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(function(){t.classList.remove('on');},3000); }
 function showErr(id,msg) { var e=eid(id); if(e){e.textContent=msg;e.classList.add('on');} }
 function clearErr(id) { var e=eid(id); if(e)e.classList.remove('on'); }
@@ -1401,7 +1439,7 @@ async function fetchCars(lim) {
 
 // ── CARD HTML ──────────────────────────────────────────
 function carHTML(c) {
-  var img=c.photo_front_url||c.image_url?'<img src="'+(c.photo_front_url||c.image_url)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover"/>':'<div class="card-img-ph">&#128663;</div>';
+  var img=c.photo_front_url||c.image_url?'<img src="'+imgUrl(c.photo_front_url||c.image_url,500,72)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover"/>':'<div class="card-img-ph">&#128663;</div>';
   var fuel=c.fuel_policy==='driver_pays'?'Driver pays':c.fuel_policy==='owner_pays'?'Owner pays':'Split';
   var plats=(c.platforms||[]).map(pb).join('');
   var isD=P&&(P.role==='driver'||P.role==='both');
@@ -1430,7 +1468,7 @@ function applyForCar(btn) {
 
 function drvHTML(d) {
   var p=d.profile||{}, name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
-  var av=d.photo_headshot_url?'<img src="'+d.photo_headshot_url+'" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
+  var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,160,70)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
   var vbadge=(d.doc_id_url&&d.doc_license_url)?'<span class="vbadge">&#10003; Verified</span>':'';
   var plats=(d.platforms||[]).map(pb).join('')||'<span style="font-size:10px;color:var(--muted)">Not set</span>';
   var mbadge=d.isMatched?'<span class="matched">Matched</span>':'<span class="avail">Available</span>';
@@ -1498,7 +1536,8 @@ function drvHTML(d) {
     +'<div style="flex:1;min-width:0">'
     +'<div style="font-size:16px;font-weight:800;color:var(--g)">'+name+'</div>'
     +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+d.years_driving+'+ years experience</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-top:2px">&#128205; '+(p.location||'Not set')+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-top:2px">&#128205; '+(function(){var loc=p.location||'';var parts=loc.split(',');return parts.length>=2?parts[parts.length-2].trim()+', '+parts[parts.length-1].trim():loc||'Not set';})()+'</div>'
+    +(d.weekly_checkin_amount||d.deposit_amount!=null?'<div style="font-size:11px;font-weight:600;color:var(--g);margin-top:3px">&#128176; '+(d.weekly_checkin_amount?'R'+Number(d.weekly_checkin_amount).toLocaleString()+'/wk':'')+((d.weekly_checkin_amount&&d.deposit_amount!=null)?'  ·  ':'')+( d.deposit_amount?'Deposit: R'+Number(d.deposit_amount).toLocaleString():d.deposit_amount===0?'No deposit':'')+'</div>':'')
     +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">'+plats+'</div>'
     +'</div>'
     +'<div style="text-align:center;padding:10px 8px 8px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;flex-shrink:0;min-width:88px;position:relative">'
@@ -1792,7 +1831,7 @@ async function loadProfPage(dpId) {
       +'</div></div>'
       :'')
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Driver Details</h3>'
-    +'<div class="pgrid"><div class="pf"><label>Driving experience</label><span>'+d.years_driving+'+ years</span></div><div class="pf"><label>Safe parking</label><span>'+(d.safe_parking?'Yes':'No')+'</span></div>'+(d.age?'<div class="pf"><label>Age</label><span>'+d.age+'</span></div>':'')+'<div class="pf"><label>Platforms</label><span>'+((d.platforms||[]).join(', ')||'-')+'</span></div></div></div>'
+    +'<div class="pgrid"><div class="pf"><label>Driving experience</label><span>'+d.years_driving+'+ years</span></div><div class="pf"><label>Safe parking</label><span>'+(d.safe_parking?'Yes':'No')+'</span></div>'+(d.age?'<div class="pf"><label>Age</label><span>'+d.age+'</span></div>':'')+'<div class="pf"><label>Platforms</label><span>'+((d.platforms||[]).join(', ')||'-')+'</span></div>'+(d.license_date?'<div class="pf"><label>Licence obtained</label><span>'+esc(d.license_date)+'</span></div>':'')+(d.weekly_checkin_amount?'<div class="pf"><label>Weekly check-in</label><span>R'+Number(d.weekly_checkin_amount).toLocaleString()+'</span></div>':'')+(d.deposit_amount!=null?'<div class="pf"><label>Deposit</label><span>'+(d.deposit_amount?'R'+Number(d.deposit_amount).toLocaleString():'None')+'</span></div>':'')+'</div></div>'
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Platform History</h3>'
     +'<div style="display:flex;flex-direction:column;gap:8px">'
     +(function(){
@@ -1864,6 +1903,7 @@ function setRole(r) {
   rRole=r;
   eid('rb-d').classList.toggle('on',r==='driver');
   eid('rb-o').classList.toggle('on',r==='owner');
+  var pdpN=eid('pdp-notice'); if(pdpN) pdpN.style.display=r==='driver'?'flex':'none';
 }
 function reg1() {
   clearErr('reg-err');
@@ -1890,14 +1930,21 @@ function reg2d() {
   if(!lo){showErr('reg-err','City / Location is required.');return;}
   if(!idNo){showErr('reg-err','SA ID Number is required.');return;}
   if(!lic){showErr('reg-err','Licence Number is required.');return;}
-  if(!plats.length){showErr('reg-err','Please select at least one platform (Uber, Bolt or inDrive) and upload your profile screenshots.');return;}
+  var licdd=eid('d-licdd').value,licmm=eid('d-licmm').value,licyy=eid('d-licyy').value;
+  if(!licdd||!licmm||!licyy){showErr('reg-err','Licence obtained date (day, month and year) is required.');return;}
+  var wci=eid('d-wci').value.trim();
+  if(!wci){showErr('reg-err','Weekly check-in amount is required.');return;}
+  var isNonePlat=document.getElementById('dpc-none')&&document.getElementById('dpc-none').checked;
+  if(!plats.length&&!isNonePlat){showErr('reg-err','Please select at least one platform (Uber, Bolt, inDrive) or choose "None".');return;}
   var platVals=plats.map(function(c){return c.value;});
-  for(var pi=0;pi<platVals.length;pi++){
-    var pk=platVals[pi]==='inDrive'?'indrive':platVals[pi].toLowerCase();
-    var uploaded=(platFiles[pk]||[]).filter(Boolean).length;
-    if(uploaded<2){
-      showErr('reg-err','Please upload at least 2 screenshots for '+platVals[pi]+' (you have '+uploaded+'/2). Screenshots must show your name, rating and trip count.');
-      return;
+  if(!isNonePlat){
+    for(var pi=0;pi<platVals.length;pi++){
+      var pk=platVals[pi]==='inDrive'?'indrive':platVals[pi].toLowerCase();
+      var uploaded=(platFiles[pk]||[]).filter(Boolean).length;
+      if(uploaded<2){
+        showErr('reg-err','Please upload at least 2 screenshots for '+platVals[pi]+' (you have '+uploaded+'/2). Screenshots must show your name, rating and trip count.');
+        return;
+      }
     }
   }
   eid('reg-s2-d').style.display='none'; eid('reg-s3').style.display='block';
@@ -1940,6 +1987,7 @@ async function reg3() {
   if(!docFiles.dhid){showErr('reg-err','Holding ID photo is required.');return;}
   if(!docFiles.dl){showErr('reg-err','Driver licence copy is required.');return;}
   if(!docFiles.did){showErr('reg-err','ID/Passport copy is required.');return;}
+  if(!docFiles.por){showErr('reg-err','Proof of residence is required (bank statement, utility bill, etc).');return;}
   var btn=eid('d-reg-btn'); btn.textContent='Creating...'; btn.disabled=true;
   await doReg(); btn.textContent='Create Account'; btn.disabled=false;
 }
@@ -1976,7 +2024,8 @@ async function doReg() {
     if(docFiles.dhid){var x=await upFile('driver-docs',uid+'/holdingid-'+t,docFiles.dhid);if(x)u.photo_holding_id_url=x;}
     if(docFiles.dl){var x=await upFile('driver-docs',uid+'/license-'+t,docFiles.dl);if(x)u.doc_license_url=x;}
     if(docFiles.did){var x=await upFile('driver-docs',uid+'/idcopy-'+t,docFiles.did);if(x)u.doc_id_url=x;}
-  if(docFiles.crim){var x=await upFile('driver-docs',uid+'/criminal-'+t,docFiles.crim);if(x){u.criminal_check_url=x;u.criminal_check_submitted=true;}}
+    if(docFiles.por){var x=await upFile('driver-docs',uid+'/por-'+t,docFiles.por);if(x)u.proof_of_residence_url=x;}
+    if(docFiles.crim){var x=await upFile('driver-docs',uid+'/criminal-'+t,docFiles.crim);if(x){u.criminal_check_url=x;u.criminal_check_submitted=true;}}
     var hasDoc=Object.keys(u).length>0;// pending if ANY doc uploaded
     var shotUrls={uber:null,bolt:null,indrive:null};
     for(var sp in platFiles){
@@ -1992,7 +2041,13 @@ async function doReg() {
         if(urls.length) shotUrls[sp]=JSON.stringify(urls);
       }
     }
-    var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;}),safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:shotUrls.uber,screenshot_bolt_url:shotUrls.bolt,screenshot_indrive_url:shotUrls.indrive},u);
+    var depType=eid('d-dep-type')?eid('d-dep-type').value:'none';
+    var depAmt=depType==='amount'?parseInt(eid('d-dep').value||0)||null:null;
+    var licdd2=eid('d-licdd').value,licmm2=eid('d-licmm').value,licyy2=eid('d-licyy').value;
+    var licDate=(licdd2&&licmm2&&licyy2)?(licdd2+'/'+licmm2+'/'+licyy2):null;
+    var isNonePlat2=document.getElementById('dpc-none')&&document.getElementById('dpc-none').checked;
+    var platList=isNonePlat2?['None']:Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;});
+    var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,license_date:licDate,weekly_checkin_amount:parseInt(eid('d-wci').value||0)||null,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:isNonePlat2?null:shotUrls.uber,screenshot_bolt_url:isNonePlat2?null:shotUrls.bolt,screenshot_indrive_url:isNonePlat2?null:shotUrls.indrive},u);
     // Use SECURITY DEFINER RPC to bypass RLS (anon users can't update via direct query)
     var dpR=await sb.rpc('complete_driver_registration',{payload:dpPayload});
     if(dpR.error){
@@ -2685,7 +2740,7 @@ async function pDc() {
   if(!DP){el.innerHTML=empty('&#128196;','No driver profile found.');return;}
   var fresh=await sb.from('driver_profiles').select('*').eq('id',DP.id).maybeSingle();
   if(fresh.data)DP=fresh.data;
-  var docs=[{k:'photo_fullbody_url',l:'Full Body',n:'fb'},{k:'photo_headshot_url',l:'Headshot',n:'hs'},{k:'photo_holding_id_url',l:'Holding ID',n:'hid'},{k:'doc_license_url',l:'Licence',n:'lic'},{k:'doc_id_url',l:'ID/Passport',n:'id'}];
+  var docs=[{k:'photo_fullbody_url',l:'Full Body',n:'fb'},{k:'photo_headshot_url',l:'Headshot',n:'hs'},{k:'photo_holding_id_url',l:'Holding ID',n:'hid'},{k:'doc_license_url',l:'Licence',n:'lic'},{k:'doc_id_url',l:'ID/Passport',n:'id'},{k:'proof_of_residence_url',l:'Proof of Residence',n:'por'}];
   el.innerHTML='<div class="shd">Documents</div><div class="doc-grid">'+docs.map(function(d){
     return '<div class="dbox '+(DP[d.k]?'up':'')+'" id="dc-'+d.n+'"><input type="file" accept="image/*,.pdf" onchange="upDocItem(\''+d.n+'\',\''+d.k+'\',this)"/>'
       +(DP[d.k]?'<img src="'+DP[d.k]+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">&#128196;</div>')
@@ -2905,12 +2960,11 @@ async function submitCarEdit(cid){
     location:loc.trim(),
     transmission:(eid('ec-trans-'+cid)||{}).value||'manual',
     fuel_policy:(eid('ec-fuel-'+cid)||{}).value||'driver_pays',
-    deposit:dep,
-    admin_status:'pending'
+    deposit:dep
   }).eq('id',cid).eq('owner_id',U.id);
   if(r.error){toast('Error: '+r.error.message);return;}
   _carCache=null;
-  toast('Car updated! Changes pending admin approval.');
+  toast('Car details updated successfully.');
   pLc();
 }
 async function pAp() {
@@ -4042,6 +4096,11 @@ async function adReg(){
         +'</div>'
         +'</div>'
         +'<button class="btn btn-out btn-sm" data-did="'+d.id+'" onclick="adSavePlatStats(this.dataset.did)" style="margin-bottom:8px">&#128190; Save Platform Stats</button>'
+        +'<div style="display:flex;align-items:center;gap:8px;padding:8px 0 4px">'
+        +'<label style="font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">Trust Score:</label>'
+        +'<input id="ts-'+d.id+'" type="number" min="0" max="100" value="'+(d.trust_score||0)+'" style="width:72px;padding:5px 8px;border:1.5px solid var(--gm);border-radius:6px;font-size:13px;font-weight:700;font-family:inherit;color:var(--gm)">'
+        +'<button class="btn btn-gm btn-sm" data-did="'+d.id+'" onclick="adSaveTrustScore(this.dataset.did)">Save Score</button>'
+        +'</div>'
         +'</div>'
         +'<div class="rcard-acts"><button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button><button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Decline</button><input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
     }).join('');
@@ -4072,6 +4131,7 @@ function adDocUploads(dpId){
     ['photo_holding_id_url','Holding ID Photo','image/*'],
     ['doc_id_url','ID / Passport','.pdf,image/*'],
     ['doc_license_url','Driver Licence','.pdf,image/*'],
+    ['proof_of_residence_url','Proof of Residence','.pdf,image/*'],
     ['screenshot_uber_url','Uber Screenshot','image/*'],
     ['screenshot_bolt_url','Bolt Screenshot','image/*'],
     ['screenshot_indrive_url','inDrive Screenshot','image/*']
@@ -5228,6 +5288,15 @@ async function adSavePlatStats(dpId){
   toast('Platform stats saved!');
 }
 
+async function adSaveTrustScore(dpId){
+  var el=document.getElementById('ts-'+dpId);
+  if(!el){toast('Score input not found.');return;}
+  var score=parseInt(el.value);
+  if(isNaN(score)||score<0||score>100){toast('Trust score must be between 0 and 100.');return;}
+  var r=await sb.from('driver_profiles').update({trust_score:score}).eq('id',dpId);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast('Trust score updated to '+score+'!');
+}
 function ownerUnmatch(aidOrBtn){
   var aid=typeof aidOrBtn==='string'?aidOrBtn:(aidOrBtn.dataset&&aidOrBtn.dataset.aid?aidOrBtn.dataset.aid:aidOrBtn);
   if(!aid){toast('Could not identify application.');return;}
