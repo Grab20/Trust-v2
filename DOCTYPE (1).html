@@ -1439,7 +1439,7 @@ async function fetchCars(lim) {
 
 // ── CARD HTML ──────────────────────────────────────────
 function carHTML(c) {
-  var img=c.photo_front_url||c.image_url?'<img src="'+imgUrl(c.photo_front_url||c.image_url,500,72)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover"/>':'<div class="card-img-ph">&#128663;</div>';
+  var img=c.photo_front_url||c.image_url?'<img src="'+(c.photo_front_url||c.image_url)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover"/>':'<div class="card-img-ph">&#128663;</div>';
   var fuel=c.fuel_policy==='driver_pays'?'Driver pays':c.fuel_policy==='owner_pays'?'Owner pays':'Split';
   var plats=(c.platforms||[]).map(pb).join('');
   var isD=P&&(P.role==='driver'||P.role==='both');
@@ -1468,7 +1468,7 @@ function applyForCar(btn) {
 
 function drvHTML(d) {
   var p=d.profile||{}, name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
-  var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,160,70)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
+  var av=d.photo_headshot_url?'<img src="'+d.photo_headshot_url+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
   var vbadge=(d.doc_id_url&&d.doc_license_url)?'<span class="vbadge">&#10003; Verified</span>':'';
   var plats=(d.platforms||[]).map(pb).join('')||'<span style="font-size:10px;color:var(--muted)">Not set</span>';
   var mbadge=d.isMatched?'<span class="matched">Matched</span>':'<span class="avail">Available</span>';
