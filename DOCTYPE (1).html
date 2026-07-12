@@ -309,7 +309,7 @@ nav div::-webkit-scrollbar{display:none}
   <!-- TOP ROW: logo + auth buttons -->
   <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:50px;flex-shrink:0">
     <span class="logo" onclick="go('home')" style="font-size:clamp(15px,4vw,20px)">TrustMate</span>
-    <span id="nav-auth" style="display:flex;align-items:center;gap:6px">
+    <span id="nav-auth" style="display:none;align-items:center;gap:6px">
       <span class="nl" onclick="go('login')" style="font-size:13px;white-space:nowrap">Sign In</span>
       <button class="btn btn-gm btn-sm" onclick="go('register')" style="font-size:12px;padding:6px 12px;white-space:nowrap">Register</button>
     </span>
@@ -394,7 +394,20 @@ nav div::-webkit-scrollbar{display:none}
   <div class="sec"><div class="sec-inner">
     <div class="sec-head"><div><h2>Available Cars</h2><p id="cars-sub">Loading...</p></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
-      <input id="cars-search" type="text" placeholder="&#128269; Search make, model, location..." oninput="filterCars()" style="flex:1;min-width:180px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff"/>
+      <input id="cars-search" type="text" placeholder="&#128269; Search name, place..." oninput="filterCars()" style="flex:1;min-width:180px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff"/>
+      <select id="cars-city" onchange="filterCars()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
+        <option value="">All locations</option>
+        <option value="johannesburg">Johannesburg</option>
+        <option value="pretoria">Pretoria</option>
+        <option value="cape town">Cape Town</option>
+        <option value="durban">Durban</option>
+        <option value="ekurhuleni">Ekurhuleni</option>
+        <option value="soweto">Soweto</option>
+        <option value="sandton">Sandton</option>
+        <option value="midrand">Midrand</option>
+        <option value="centurion">Centurion</option>
+        <option value="port elizabeth">Gqeberha / PE</option>
+      </select>
       <select id="cars-sort" onchange="filterCars()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
         <option value="newest">Newest first</option>
         <option value="price_asc">Price: Low to High</option>
@@ -420,7 +433,20 @@ nav div::-webkit-scrollbar{display:none}
   <div class="sec"><div class="sec-inner">
     <div class="sec-head"><div><h2>Verified Drivers</h2><p id="drvs-sub">Loading...</p></div></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
-      <input id="drvs-search" type="text" placeholder="&#128269; Search name, location..." oninput="filterDrivers()" style="flex:1;min-width:180px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff"/>
+      <input id="drvs-search" type="text" placeholder="&#128269; Search name, place..." oninput="filterDrivers()" style="flex:1;min-width:180px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff"/>
+      <select id="drvs-city" onchange="filterDrivers()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
+        <option value="">All locations</option>
+        <option value="johannesburg">Johannesburg</option>
+        <option value="pretoria">Pretoria</option>
+        <option value="cape town">Cape Town</option>
+        <option value="durban">Durban</option>
+        <option value="ekurhuleni">Ekurhuleni</option>
+        <option value="soweto">Soweto</option>
+        <option value="sandton">Sandton</option>
+        <option value="midrand">Midrand</option>
+        <option value="centurion">Centurion</option>
+        <option value="port elizabeth">Gqeberha / PE</option>
+      </select>
       <select id="drvs-sort" onchange="filterDrivers()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
         <option value="score">Highest TrustScore</option>
         <option value="nearest">Nearest to Me</option>
@@ -715,8 +741,8 @@ nav div::-webkit-scrollbar{display:none}
     <!-- S2 Driver -->
     <div id="reg-s2-d" style="display:none">
       <div class="frow"><div class="fg"><label>Phone *</label><input id="d-ph" type="tel" placeholder="+27..."/></div><div class="fg"><label>Age *</label><input id="d-ag" type="number" min="18" placeholder="25"/></div></div>
-      <div class="fg"><label>City / Location *</label><input id="d-lo" placeholder="e.g. Sandton, Johannesburg"/>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">&#128204; Be specific — include your suburb or area (e.g. <em>Sandton, Johannesburg</em> or <em>Mitchells Plain, Cape Town</em>). This helps owners find drivers near their vehicle.</div>
+      <div class="fg"><label>Full Address *</label><input id="d-lo" placeholder="e.g. 12 Oak Street, Sandton, Johannesburg, 2196"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">&#128204; Enter your full street address including suburb, city and postal code. This helps owners find drivers near their vehicle.</div>
       </div>
       <div class="fg"><label>WhatsApp *</label><input id="d-wa" type="tel" placeholder="+27..." required/></div>
       <div class="fg"><label>Preferred contact method</label>
@@ -1163,7 +1189,7 @@ function skelCards(n){var s='';for(var i=0;i<n;i++){s+='<div class="skel-card"><
 sb.auth.getSession().then(function(r) {
   var s = r.data && r.data.session ? r.data.session : null;
   if (s) { U = s.user; loadP().then(function() { setNav(); }); }
-  else { setNav(); }
+  else { setNav(); } // setNav will show nav-auth now that session is confirmed absent
   // Page routing handled by boot IIFE below — do NOT call go() here
 });
 sb.auth.onAuthStateChange(function(ev, session) {
@@ -1652,12 +1678,14 @@ function filterCars(){
   var sort=eid('cars-sort')?eid('cars-sort').value:'newest';
   var trans=eid('cars-trans')?eid('cars-trans').value:'';
   var status=eid('cars-status')?eid('cars-status').value:'';
+  var city=eid('cars-city')?eid('cars-city').value.toLowerCase():'';
   var cars=_allCars.filter(function(c){
     var text=((c.make||'')+' '+(c.model||'')+' '+(c.location||'')+(c.owner&&c.owner.location?' '+c.owner.location:'')).toLowerCase();
     var matchQ=!q||text.indexOf(q)>=0;
     var matchT=!trans||c.transmission===trans;
     var matchS=!status||(status==='matched'?!!c.isMatched:!c.isMatched);
-    return matchQ&&matchT&&matchS;
+    var matchC=!city||text.indexOf(city)>=0;
+    return matchQ&&matchT&&matchS&&matchC;
   });
   if(sort==='price_asc')cars=cars.slice().sort(function(a,b){return (a.price_per_week||0)-(b.price_per_week||0);});
   else if(sort==='price_desc')cars=cars.slice().sort(function(a,b){return (b.price_per_week||0)-(a.price_per_week||0);});
@@ -1674,13 +1702,15 @@ function filterDrivers(){
   var sort=eid('drvs-sort')?eid('drvs-sort').value:'score';
   var plat=eid('drvs-plat')?eid('drvs-plat').value:'';
   var status=eid('drvs-status')?eid('drvs-status').value:'';
+  var city=eid('drvs-city')?eid('drvs-city').value.toLowerCase():'';
   var drvs=_allDrvs.filter(function(d){
     var p=d.profile||{};
     var text=((p.full_name||'')+' '+(p.location||'')).toLowerCase();
     var matchQ=!q||text.indexOf(q)>=0;
     var matchP=!plat||(d.platforms||[]).indexOf(plat)>=0;
     var matchS=!status||(status==='matched'?!!d.isMatched:!d.isMatched);
-    return matchQ&&matchP&&matchS;
+    var matchC=!city||text.indexOf(city)>=0;
+    return matchQ&&matchP&&matchS&&matchC;
   });
   if(sort==='score')drvs=drvs.slice().sort(function(a,b){return (b.trust_score||0)-(a.trust_score||0);});
   else if(sort==='rentals')drvs=drvs.slice().sort(function(a,b){return (b.rentals_completed||0)-(a.rentals_completed||0);});
