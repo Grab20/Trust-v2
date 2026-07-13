@@ -841,9 +841,11 @@ nav div::-webkit-scrollbar{display:none}
       <div class="fg"><label>WhatsApp *</label><input id="o-wa" type="tel" placeholder="+27..." required/></div>
       <div class="fg"><label>Preferred contact method</label>
         <select id="o-pc"><option value="whatsapp">WhatsApp</option><option value="phone">Phone call</option><option value="email">Email</option><option value="any">Any</option></select></div>
-      <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 4px;padding-top:8px;border-top:1px solid var(--border)">ID / Passport (required)</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Upload a screenshot or photo copy of your SA ID, Temporary ID, or Passport.</div>
+      <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 4px;padding-top:8px;border-top:1px solid var(--border)">Your Photos &amp; ID (required)</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">These are used to verify your identity. We require a clear headshot, a photo of you holding your ID, and a copy of your ID/Passport.</div>
       <div class="doc-grid" style="margin-bottom:12px">
+        <div class="dbox" id="o-hs"><input type="file" accept="image/*" onchange="mDoc('o-hs','o_hs',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Headshot *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Clear photo of your face</div></div>
+        <div class="dbox" id="o-hid"><input type="file" accept="image/*" onchange="mDoc('o-hid','o_hid',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Holding ID *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Photo of YOU holding your ID</div></div>
         <div class="dbox" id="oid"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('oid','oid_f',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID / Passport *</div><div style="font-size:9px;color:var(--muted);margin-top:3px">Screenshot or photo copy accepted</div></div>
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px">Car Details</div>
@@ -1281,6 +1283,21 @@ async function loadP() {
   P = r1.data || null;
   var r2 = await sb.from('driver_profiles').select('*').eq('user_id', U.id).maybeSingle();
   DP = r2.data || null;
+  // Check profile-level suspension (owners) or driver_profile suspension (drivers)
+  var isSuspended=(P&&P.is_suspended)||(DP&&DP.suspended);
+  var suspReason=(P&&P.suspension_reason)||(DP&&DP.suspension_reason)||null;
+  if(isSuspended){
+    document.body.innerHTML='<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#fff8f8;font-family:sans-serif;padding:24px">'
+      +'<div style="max-width:480px;text-align:center">'
+      +'<div style="font-size:48px;margin-bottom:16px">&#128683;</div>'
+      +'<h2 style="font-size:22px;font-weight:800;color:#7f1d1d;margin-bottom:10px">Account Suspended</h2>'
+      +'<p style="font-size:14px;color:#555;line-height:1.6;margin-bottom:16px">Your TrustMate SA account has been suspended. You cannot access the platform at this time.</p>'
+      +(suspReason?'<div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:10px;padding:14px 16px;margin-bottom:16px;text-align:left"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#991b1b;margin-bottom:5px">Reason</div><div style="font-size:13px;color:#7f1d1d">'+esc(suspReason)+'</div></div>':'')
+      +'<p style="font-size:12px;color:#888">If you believe this is an error, please contact us at <strong>support@trustmatesa.co.za</strong></p>'
+      +'<button onclick="sb.auth.signOut().then(function(){location.reload();})" style="margin-top:18px;padding:10px 24px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">Sign Out</button>'
+      +'</div></div>';
+    return;
+  }
   document.dispatchEvent(new Event('trustmate-auth'));
 }
 
@@ -1960,6 +1977,8 @@ async function upFile(bucket,path,file) {
 }
 async function reg2o() {
   clearErr('reg-err');
+  if(!docFiles.o_hs){showErr('reg-err','A headshot photo of yourself is required.');return;}
+  if(!docFiles.o_hid){showErr('reg-err','A photo of you holding your ID is required.');return;}
   if(!docFiles.oid_f){showErr('reg-err','ID/Passport copy is required.');return;}
   if(!docFiles.cf||!docFiles.cs||!docFiles.cb){showErr('reg-err','Front, Side and Back car photos are required.');return;}
   var ph=eid('o-ph').value.trim(),lo=eid('o-lo').value.trim(),wa=eid('o-wa').value.trim();
@@ -2059,6 +2078,11 @@ async function doReg() {
   } else {
     // Owner ID already uploaded pre-signup via ownerIdUrl and saved by handle_new_user trigger
     var cu={};
+    // Upload owner headshot and holding ID photo
+    var ownerProfUpd={};
+    if(docFiles.o_hs){var x=await upFile('profile-photos',uid+'/owner-headshot-'+t,docFiles.o_hs);if(x)ownerProfUpd.photo_headshot_url=x;}
+    if(docFiles.o_hid){var x=await upFile('profile-photos',uid+'/owner-holdingid-'+t,docFiles.o_hid);if(x)ownerProfUpd.photo_holding_id_url=x;}
+    if(Object.keys(ownerProfUpd).length)await sb.from('profiles').update(ownerProfUpd).eq('id',uid);
     if(docFiles.cf){var x=await upFile('car-photos',uid+'/cf-'+t,docFiles.cf);if(x)cu.photo_front_url=x;}
     if(docFiles.cs){var x=await upFile('car-photos',uid+'/cs-'+t,docFiles.cs);if(x)cu.photo_side_url=x;}
     if(docFiles.cb){var x=await upFile('car-photos',uid+'/cb-'+t,docFiles.cb);if(x)cu.photo_back_url=x;}
@@ -2701,6 +2725,28 @@ async function pPr() {
     +(isD&&DP?'<div class="pf"><label>Years Driving</label><span>'+(DP.years_driving||'Not set')+'</span></div>':'')
     +(isD&&DP?'<div class="pf"><label>Bio</label><span>'+(DP.bio||'Not set')+'</span></div>':'')
     +'</div></div>';
+  // Owner photo upload section
+  var isOwner=P&&(P.role==='owner'||P.role==='both');
+  if(isOwner){
+    html+='<div class="tbox" style="margin-bottom:14px">'
+      +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#128247; My Photos</div>'
+      +'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Upload or update your headshot and holding-ID photo. These go live immediately.</p>'
+      +'<div class="doc-grid">'
+      +'<div class="dbox '+(P.photo_headshot_url?'up':'')+'" id="ow-hs">'
+        +'<input type="file" accept="image/*" onchange="upOwnerPhoto(\'ow-hs\',\'photo_headshot_url\',this)"/>'
+        +(P.photo_headshot_url?'<img src="'+P.photo_headshot_url+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_headshot_url+'\')"/>':'<div style="font-size:18px">&#128247;</div>')
+        +'<div style="font-size:10px;font-weight:600">Headshot</div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_headshot_url?'Uploaded — click to replace':'Click to upload')+'</div>'
+      +'</div>'
+      +'<div class="dbox '+(P.photo_holding_id_url?'up':'')+'" id="ow-hid">'
+        +'<input type="file" accept="image/*" onchange="upOwnerPhoto(\'ow-hid\',\'photo_holding_id_url\',this)"/>'
+        +(P.photo_holding_id_url?'<img src="'+P.photo_holding_id_url+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_holding_id_url+'\')"/>':'<div style="font-size:18px">&#129091;</div>')
+        +'<div style="font-size:10px;font-weight:600">Holding ID</div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_holding_id_url?'Uploaded — click to replace':'Photo of you holding your ID')+'</div>'
+      +'</div>'
+      +'</div>'
+    +'</div>';
+  }
   // Edit form
   if(!pending){
     html+='<div class="tbox">'
@@ -2755,6 +2801,17 @@ async function upDocItem(n,col,inp) {
   var upd={};upd[col]=url;
   await sb.from('driver_profiles').update(upd).eq('id',DP.id);
   DP[col]=url; toast('Uploaded!'); pDc();
+}
+async function upOwnerPhoto(boxId,col,inp){
+  var file=inp.files[0];if(!file)return;
+  var box=eid(boxId);if(box)box.style.opacity='0.5';
+  var url=await upFile('profile-photos',U.id+'/owner-'+col+'-'+Date.now(),file);
+  if(box)box.style.opacity='';
+  if(!url){toast('Upload failed');return;}
+  var upd={};upd[col]=url;
+  var r=await sb.from('profiles').update(upd).eq('id',U.id);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  P[col]=url; toast('Photo updated!'); pPr();
 }
 async function pLc(){
   var el=eid('panel-lc'); el.innerHTML=spin();
@@ -4143,9 +4200,9 @@ async function adReg(){
     html+=pOwns.map(function(o){
       var oCars=ocm[o.id]||[];
       return '<div class="rcard" id="ro-'+o.id+'">'
-        +'<div class="rcard-head"><div style="display:flex;align-items:center;gap:10px"><div class="av">'+adIni(o.full_name)+'</div><div><div style="font-size:15px;font-weight:700">'+(o.full_name||'Unknown')+'</div><div style="font-size:11px;color:var(--muted)">Owner / '+fmtD(o.created_at)+'</div></div></div>'+adPill('pending')+'</div>'
+        +'<div class="rcard-head"><div style="display:flex;align-items:center;gap:10px">'+(o.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+o.photo_headshot_url+'\')"><img src="'+o.photo_headshot_url+'" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(o.full_name)+'</div>')+'<div><div style="font-size:15px;font-weight:700">'+(o.full_name||'Unknown')+'</div><div style="font-size:11px;color:var(--muted)">Owner / '+fmtD(o.created_at)+'</div></div></div>'+adPill('pending')+'</div>'
         +'<div class="rcard-body">'+igrid(['Email: <strong>'+(o.email||'-')+'</strong>','Phone: <strong>'+(o.phone||'-')+'</strong>',o.whatsapp?'WhatsApp: <strong>'+o.whatsapp+'</strong>':'','Location: <strong>'+(o.location||'-')+'</strong>'])
-        +(o.doc_id_url?'<div style="margin-top:8px"><span class="dl" style="color:var(--muted)">ID doc:</span> '+dthumb(o.doc_id_url,'ID/Passport')+'</div>':'')
+        +((o.photo_headshot_url||o.photo_holding_id_url||o.doc_id_url)?'<div style="margin-top:8px"><span class="dl" style="color:var(--muted)">Photos &amp; ID:</span> '+dthumb(o.photo_headshot_url,'Headshot')+dthumb(o.photo_holding_id_url,'Holding ID')+dthumb(o.doc_id_url,'ID/Passport')+'</div>':'')
         +(oCars.length?'<div style="margin-top:10px"><div style="font-size:12px;font-weight:600;margin-bottom:6px">'+oCars.length+' car'+(oCars.length!==1?'s':'')+' listed</div>'
           +oCars.map(function(c){var photos=[c.photo_front_url,c.photo_side_url,c.photo_back_url,c.photo_interior_url].filter(Boolean);return '<div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:7px">'+(photos.length?'<div style="display:flex;gap:5px;padding:8px;border-bottom:1px solid var(--border)">'+photos.map(function(u,i){return dthumb(u,['Front','Side','Back','Interior'][i]||'Photo');}).join('')+'</div>':'')+'<div style="padding:7px 10px;font-size:12px"><strong>'+c.make+' '+c.model+' '+c.year+'</strong> / R'+c.price_per_week+'/wk / '+c.location+'</div></div>';}).join('')+'</div>':'')
         +'</div>'
@@ -4452,9 +4509,24 @@ async function adAddReview(dpId){
   adToggleReviews(dpId, _adRevNames[dpId]||'Driver');
 }
 async function adSuspend(dpId,s){
-  var r=await sb.from('driver_profiles').update({suspended:s,trust_score:s?0:40}).eq('id',dpId).select();
+  var reason=null;
+  if(s){reason=prompt('Reason for suspension (driver will see this):');if(reason===null)return;reason=reason.trim()||null;}
+  var upd={suspended:s,trust_score:s?0:40,suspension_reason:s?reason:null};
+  var r=await sb.from('driver_profiles').update(upd).eq('id',dpId).select('user_id');
   if(r.error){toast('Error: '+r.error.message);return;}
+  // Mirror on profiles table so the boot check catches it
+  if(r.data&&r.data[0]){
+    await sb.from('profiles').update({is_suspended:s,suspension_reason:s?reason:null,suspended_at:s?new Date().toISOString():null}).eq('id',r.data[0].user_id);
+  }
   toast(s?'Driver suspended':'Driver reinstated'); adDrv();
+}
+async function adSuspendOwner(oid,s){
+  var reason=null;
+  if(s){reason=prompt('Reason for suspension (owner will see this):');if(reason===null)return;reason=reason.trim()||null;}
+  var upd={is_suspended:s,suspension_reason:s?reason:null,suspended_at:s?new Date().toISOString():null};
+  var r=await sb.from('profiles').update(upd).eq('id',oid);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast(s?'Owner suspended':'Owner reinstated'); adOwn();
 }
 async function adSaveStats(dpId){
   var gn=function(id){var el=document.getElementById(id);return el?parseInt(el.value)||0:0;};
@@ -4485,7 +4557,7 @@ async function adSaveStats(dpId){
 async function adOwn(){
   var el=document.getElementById('ap-own');
   el.innerHTML='<div class="ptitle">Manage Owners</div>'+adSpin();
-  var r=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,admin_status,admin_note,created_at,doc_id_url').in('role',['owner','both']).order('created_at',{ascending:false});
+  var r=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,admin_status,admin_note,created_at,doc_id_url,photo_headshot_url,photo_holding_id_url,is_suspended,suspension_reason').in('role',['owner','both']).order('created_at',{ascending:false});
   var owners=r.data||[];
   if(!owners.length){el.innerHTML='<div class="ptitle">Manage Owners</div>'+empty('&#127968;','No owners registered yet.');return;}
   var oids=owners.map(function(o){return o.id;});
@@ -4510,7 +4582,7 @@ async function adOwn(){
         +'</div>'
         +'<div style="font-size:12px;color:var(--muted)">'+esc(o.email||'')+' &middot; '+esc(o.phone||'')+(o.location?' &middot; &#128205;'+esc(o.location):'')+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">&#128663; '+oCars.length+' car'+(oCars.length!==1?'s':'')+' listed</div></div>'
-        +'<span class="pill '+(o.admin_status==='approved'?'p-a':o.admin_status==='rejected'?'p-r':'p-p')+'">'+(o.admin_status||'pending')+'</span>'
+        +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap"><span class="pill '+(o.admin_status==='approved'?'p-a':o.admin_status==='rejected'?'p-r':'p-p')+'">'+(o.admin_status||'pending')+'</span>'+(o.is_suspended?'<span class="pill p-r">SUSPENDED</span>':'')+'</div>'
         +'</div>'
         // Car thumbnails
         +(oCars.length?'<div style="padding:6px 14px;display:flex;gap:8px;flex-wrap:wrap">'
@@ -4524,8 +4596,10 @@ async function adOwn(){
           }).join('')
           +'</div>':'')
         // Edit toggle
-        +'<div style="padding:6px 14px 8px">'
+        +'<div style="padding:6px 14px 8px;display:flex;gap:6px;flex-wrap:wrap">'
         +'<button class="btn btn-out btn-sm" data-id="'+o.id+'" onclick="ownToggle(this.dataset.id)">&#9998; Edit Details</button>'
+        +(!o.is_suspended?'<button class="btn btn-red btn-sm" onclick="adSuspendOwner(\''+o.id+'\',true)">&#128683; Suspend Owner</button>':'<button class="btn btn-gm btn-sm" onclick="adSuspendOwner(\''+o.id+'\',false)">&#10003; Reinstate Owner</button>')
+        +(o.is_suspended&&o.suspension_reason?'<span style="font-size:11px;color:#7f1d1d;align-self:center">Reason: '+esc(o.suspension_reason)+'</span>':'')
         +'</div>'
         // Edit panel
         +'<div id="own-edit-'+o.id+'" style="display:none;padding:0 14px 14px">'
