@@ -1445,7 +1445,8 @@ function carHTML(c) {
   var isD=P&&(P.role==='driver'||P.role==='both');
   var drvApproved=isD&&DP&&DP.status==='approved';
   var carMatched=!!c.isMatched;
-  var btn=carMatched?'<span style="font-size:11px;color:#0369a1;font-weight:600">Already matched</span>':drvApproved?'<button class="btn btn-gm btn-sm" data-cid="'+c.id+'" data-oid="'+(c.owner_id||'')+'" data-cn="'+c.make+' '+c.model+'" data-price="'+(c.price_per_week||'')+'" onclick="applyForCar(this)">Apply</button>':isD?'<span style="font-size:11px;color:#dc2626;font-weight:600">Pending approval</span>':(!U?'<button class="btn btn-g btn-sm" onclick="go(\'login\')">Login</button>':'<span style="font-size:11px;color:var(--muted)">Drivers only</span>');
+  var isPaused=!!c.applications_paused;
+  var btn=carMatched?'<span style="font-size:11px;color:#0369a1;font-weight:600">Already matched</span>':isPaused?'<span style="font-size:11px;color:#92400e;font-weight:600;background:#fef3c7;padding:3px 8px;border-radius:5px">&#9646;&#9646; Applications paused</span>':drvApproved?'<button class="btn btn-gm btn-sm" data-cid="'+c.id+'" data-oid="'+(c.owner_id||'')+'" data-cn="'+c.make+' '+c.model+'" data-price="'+(c.price_per_week||'')+'" onclick="applyForCar(this)">Apply</button>':isD?'<span style="font-size:11px;color:#dc2626;font-weight:600">Pending approval</span>':(!U?'<button class="btn btn-g btn-sm" onclick="go(\'login\')">Login</button>':'<span style="font-size:11px;color:var(--muted)">Drivers only</span>');
   return '<div class="card"><div class="card-img">'+img+'<span class="cstat" style="background:'+(c.isMatched?'#bfdbfe':'#d4edd8')+';color:'+(c.isMatched?'#1d4ed8':'#1a5c28')+'">'+(c.isMatched?'Matched':'Available')+'</span></div>'
     +'<div class="card-body"><div class="card-title">'+c.make+' '+c.model+'</div>'
     +'<div class="card-sub">'+c.year+(c.color?' / '+c.color:'')+(c.transmission?' / '+c.transmission:'')+'</div>'
@@ -3174,10 +3175,18 @@ async function ownerResp(id,s,btn){
   // Safety: only allow accepting/declining driver-initiated applications
   if(btn&&btn.getAttribute('data-iby')==='owner'){toast('This request was sent by you. The driver must accept or decline it.');return;}
   if(s==='approved') {
-    var chk=await sb.from('applications').select('initiated_by').eq('id',id).maybeSingle();
-    if(chk.data&&chk.data.initiated_by==='owner'){toast('This request was sent by you. The driver must accept or decline it.');return;}
+    var chk=await sb.from('applications').select('initiated_by,driver_id,owner_id').eq('id',id).maybeSingle();
+    if(!chk.data){toast('Application not found.');return;}
+    if(chk.data.initiated_by==='owner'){toast('This request was sent by you. The driver must accept or decline it.');return;}
+    // Check if owner is already matched
+    var ownerMatch=await sb.from('applications').select('id',{count:'exact',head:true}).eq('owner_id',chk.data.owner_id).eq('status','approved').is('unmatched_at',null);
+    if((ownerMatch.count||0)>0){toast('You are already matched with a driver. Unmatch first before accepting another request.');return;}
+    // Check if the driver is already matched with someone else
+    var driverMatch=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',chk.data.driver_id).eq('status','approved').is('unmatched_at',null);
+    if((driverMatch.count||0)>0){toast('This driver has already matched with another owner and is no longer available.');return;}
   }
   var upd={status:s};
+  if(s==='approved') upd.matched_at=new Date().toISOString();
   if(s==='rejected'){
     var reason=prompt('Reason for declining (optional — driver will see this):');
     upd.owner_notes=(reason&&reason.trim())?reason.trim():null;
@@ -3191,6 +3200,15 @@ async function ownerResp(id,s,btn){
 async function drvResp(btn){
   var id=btn.getAttribute('data-aid');
   var s=btn.getAttribute('data-s');
+  if(s==='approved'){
+    var chk=await sb.from('applications').select('driver_id,owner_id').eq('id',id).maybeSingle();
+    if(chk.data){
+      var drvMatch=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',chk.data.driver_id).eq('status','approved').is('unmatched_at',null);
+      if((drvMatch.count||0)>0){toast('You are already matched with an owner. Unmatch first before accepting another request.');return;}
+      var ownMatch=await sb.from('applications').select('id',{count:'exact',head:true}).eq('owner_id',chk.data.owner_id).eq('status','approved').is('unmatched_at',null);
+      if((ownMatch.count||0)>0){toast('This owner has already matched with another driver and is no longer available.');return;}
+    }
+  }
   var update={status:s};
   if(s==='approved') update.matched_at=new Date().toISOString();
   var r=await sb.from('applications').update(update).eq('id',id);
@@ -3210,6 +3228,15 @@ async function drvResubmit(){
 async function drvRespOv(btn){
   var id=btn.getAttribute('data-aid');
   var s=btn.getAttribute('data-s');
+  if(s==='approved'){
+    var chk=await sb.from('applications').select('driver_id,owner_id').eq('id',id).maybeSingle();
+    if(chk.data){
+      var drvMatch=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',chk.data.driver_id).eq('status','approved').is('unmatched_at',null);
+      if((drvMatch.count||0)>0){toast('You are already matched with an owner. Unmatch first before accepting another request.');return;}
+      var ownMatch=await sb.from('applications').select('id',{count:'exact',head:true}).eq('owner_id',chk.data.owner_id).eq('status','approved').is('unmatched_at',null);
+      if((ownMatch.count||0)>0){toast('This owner has already matched with another driver and is no longer available.');return;}
+    }
+  }
   var update={status:s};
   if(s==='approved') update.matched_at=new Date().toISOString();
   var r=await sb.from('applications').update(update).eq('id',id);
@@ -3352,7 +3379,10 @@ async function subMatch() {
     }
     var ex=await sb.from('applications').select('id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null);
     if(ex.data&&ex.data.length){toast('You are already matched with an owner. Unmatch first.');btn.disabled=false;btn.textContent='Send Request';return;}
-    if(matchCarId){var carEx=await sb.from('applications').select('id').eq('car_id',matchCarId).eq('status','approved').is('unmatched_at',null);if(carEx.data&&carEx.data.length){toast('This car is already matched with another driver and is not available.');btn.disabled=false;btn.textContent='Send Request';return;}}
+    if(matchCarId){
+      var carEx=await sb.from('applications').select('id').eq('car_id',matchCarId).eq('status','approved').is('unmatched_at',null);if(carEx.data&&carEx.data.length){toast('This car is already matched with another driver and is not available.');btn.disabled=false;btn.textContent='Send Request';return;}
+      var pauseChk=await sb.from('cars').select('applications_paused').eq('id',matchCarId).maybeSingle();if(pauseChk.data&&pauseChk.data.applications_paused){toast('Applications for this car are currently paused by the owner.');btn.disabled=false;btn.textContent='Send Request';return;}
+    }
     ins={driver_id:U.id,owner_id:matchOwnerId,car_id:matchCarId,status:'pending',message:msg||null,initiated_by:'driver',counter_price:counterPrice};
   } else {
     var owEx=await sb.from('applications').select('id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null);
@@ -4677,12 +4707,13 @@ async function adCar(){
         +(photos.length?'<img src="'+photos[0]+'" onclick="showLbox(\''+photos[0]+'\')\" style="width:75px;height:54px;object-fit:cover;border-radius:6px;cursor:pointer;flex-shrink:0"/>':'<div style="width:75px;height:54px;background:var(--sand);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">&#128663;</div>')
         +'<div><div style="font-size:14px;font-weight:700">'+c.make+' '+c.model+' '+c.year+(c.color?' / '+c.color:'')+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">R'+c.price_per_week+'/wk / '+c.location+' / '+fuel+'</div>'
-        +'<div style="font-size:11px;color:var(--muted)">Owner: <strong>'+(op.full_name||'-')+'</strong> / '+(op.phone||'-')+'</div></div></div>'+adPill(c.admin_status||'pending')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted)">Owner: <strong>'+(op.full_name||'-')+'</strong> / '+(op.phone||'-')+'</div></div></div><div style="display:flex;gap:5px;align-items:center">'+adPill(c.admin_status||'pending')+(c.applications_paused?'<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid #fcd34d">PAUSED</span>':'')+'</div></div>'
         +(photos.length>1?'<div class="rcard-docs"><span class="dl">Photos:</span>'+photos.map(function(u,i){return dthumb(u,['Front','Side','Back','Interior'][i]||'Photo');}).join('')+'</div>':'')
         +'<div class="rcard-acts">'
         +(c.admin_status!=='approved'?'<button class="btn btn-gm btn-sm" onclick="adSetCar(\''+c.id+'\',\'approved\')">Approve Car</button>':'')
         +(c.admin_status!=='rejected'?'<button class="btn btn-red btn-sm" onclick="adSetCar(\''+c.id+'\',\'rejected\')">Reject</button>':'')
         +(c.admin_status==='approved'?'<button class="btn btn-out btn-sm" onclick="adSetCar(\''+c.id+'\',\'pending\')">Revoke</button>':'')
+        +(c.admin_status==='approved'?(c.applications_paused?'<button class="btn btn-gm btn-sm" onclick="adTogglePauseCar(\''+c.id+'\',false)">&#9654; Resume Applications</button>':'<button class="btn btn-amb btn-sm" onclick="adTogglePauseCar(\''+c.id+'\',true)">&#9646;&#9646; Pause Applications</button>'):'')
         +'<button class="btn btn-amb btn-sm" data-cid="'+c.id+'" onclick="adToggleCarEdit(this.dataset.cid)">&#9998; Edit</button>'
         +'<input id="cnote-'+c.id+'" placeholder="Note..." style="flex:1;min-width:100px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/>'
         +'</div>'
@@ -4758,6 +4789,13 @@ async function adUploadCarPhoto(inp){
   var r=await sb.from('cars').update(upd).eq('id',cid);
   if(r.error){toast('Error saving photo: '+r.error.message);return;}
   toast('Photo uploaded!');
+  adCar();
+}
+async function adTogglePauseCar(cid,pause){
+  var r=await sb.from('cars').update({applications_paused:pause}).eq('id',cid);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast(pause?'Applications paused — drivers can see the car but cannot apply.':'Applications resumed — drivers can now apply.');
+  _carCache=null;
   adCar();
 }
 async function adSetCar(cid,status){
