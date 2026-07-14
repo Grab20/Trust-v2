@@ -898,6 +898,16 @@ nav div::-webkit-scrollbar{display:none}
         <div class="dbox" id="ocb"><input type="file" accept="image/*" onchange="mDoc('ocb','cb',this)"><div style="font-size:18px">&#128663;</div><div style="font-size:10px;font-weight:600">Back *</div></div>
         <div class="dbox" id="oci"><input type="file" accept="image/*" onchange="mDoc('oci','ci',this)"><div style="font-size:18px">&#128663;</div><div style="font-size:10px;font-weight:600">Interior</div></div>
       </div>
+      <div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-size:12px;margin-bottom:10px" id="o-checklist">
+        <div style="font-weight:700;color:var(--g);margin-bottom:6px">&#9989; Before you submit, confirm you have:</div>
+        <div id="oc-hs" style="color:var(--muted)">&#9744; Headshot photo</div>
+        <div id="oc-hid" style="color:var(--muted)">&#9744; Photo holding your ID</div>
+        <div id="oc-oid" style="color:var(--muted)">&#9744; ID / Passport copy</div>
+        <div id="oc-cf" style="color:var(--muted)">&#9744; Car front photo</div>
+        <div id="oc-cs" style="color:var(--muted)">&#9744; Car side photo</div>
+        <div id="oc-cb" style="color:var(--muted)">&#9744; Car back photo</div>
+      </div>
+      <div class="ferr" id="reg-err-o" style="margin-bottom:8px"></div>
       <div style="display:flex;gap:8px"><button class="btn btn-out" onclick="backS1()">Back</button><button class="btn btn-g" style="flex:1" id="o-reg-btn" onclick="reg2o()">Create Account</button></div>
     </div>
 
@@ -1004,6 +1014,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="adm-nav" id="an-hist" onclick="adNav('hist')">&#128336; Match History</div>
       <div class="adm-nav" id="an-prvr" onclick="adNav('prvr')">&#11088; Platform Reviews <span id="prvr-badge" style="display:none;background:#E8A520;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;margin-left:4px">0</span></div>
       <div class="adm-nav" id="an-edits" onclick="adNav('edits')">&#9998; Profile Edits <span id="edits-badge" style="display:none;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;margin-left:4px">0</span></div>
+      <div class="adm-nav" id="an-tc" onclick="adNav('tc')">&#128221; T&amp;C Signatures</div>
       <div style="margin-top:auto;padding:10px 6px 4px">
         <button onclick="go('home')" style="width:100%;background:rgba(255,255,255,.07);border:none;color:rgba(255,255,255,.45);padding:7px;border-radius:6px;font-size:12px;cursor:pointer;font-family:inherit">Back to site</button>
       </div>
@@ -1022,6 +1033,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="adm-panel" id="ap-hist"></div>
       <div class="adm-panel" id="ap-prvr"></div>
       <div class="adm-panel" id="ap-edits"></div>
+      <div class="adm-panel" id="ap-tc"></div>
     </div>
   </div>
 </div>
@@ -1391,8 +1403,8 @@ function eid(id) { return document.getElementById(id); }
 function ini(n) { return ((n||'?').split(' ').map(function(x){return x[0]||'?';}).join('').toUpperCase().slice(0,2)); }
 function imgUrl(url,w,q){if(!url)return url;var u=url.replace('/storage/v1/object/public/','/storage/v1/render/image/public/');return u+(u.indexOf('?')>=0?'&':'?')+'width='+(w||400)+'&quality='+(q||70);}
 function toast(msg) { var t=eid('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(function(){t.classList.remove('on');},3000); }
-function showErr(id,msg) { var e=eid(id); if(e){e.textContent=msg;e.classList.add('on');} }
-function clearErr(id) { var e=eid(id); if(e)e.classList.remove('on'); }
+function showErr(id,msg) { var e=eid(id); if(e){e.textContent=msg;e.classList.add('on');e.scrollIntoView({behavior:'smooth',block:'center'});} }
+function clearErr(id) { var e=eid(id); if(e){e.textContent='';e.classList.remove('on');} }
 function spin() { return '<div class="loading"><div class="spin"></div>Loading...</div>'; }
 function empty(ic,msg) { return '<div class="empty"><div class="empty-i">'+ic+'</div><p>'+msg+'</p></div>'; }
 function pb(p) { var m={Uber:'pb-u',Bolt:'pb-b',inDrive:'pb-i'}; return '<span class="pbadge '+(m[p]||'')+'">'+p+'</span>'; }
@@ -2007,6 +2019,10 @@ function setRole(r) {
   eid('rb-d').classList.toggle('on',r==='driver');
   eid('rb-o').classList.toggle('on',r==='owner');
   var pdpN=eid('pdp-notice'); if(pdpN) pdpN.style.display=r==='driver'?'flex':'none';
+  // Owners have 2 steps, drivers have 3
+  var s3=eid('rs3'); var s3line=s3?s3.previousElementSibling:null;
+  if(s3)s3.style.display=r==='owner'?'none':'';
+  if(s3line&&s3line.classList.contains('sbi-line'))s3line.style.display=r==='owner'?'none':'';
 }
 function reg1() {
   clearErr('reg-err');
@@ -2061,25 +2077,33 @@ function reg2d() {
   eid('rs2').className='sbi done'; eid('rs3').className='sbi on';
 }
 function backS2(){eid('reg-s2-d').style.display='block';eid('reg-s3').style.display='none';eid('rs2').className='sbi on';eid('rs3').className='sbi';}
-function mDoc(boxId,key,inp){docFiles[key]=inp.files[0];eid(boxId).classList.add('up');}
+var _oclabels={o_hs:'Headshot photo',o_hid:'Photo holding your ID',oid_f:'ID / Passport copy',cf:'Car front photo',cs:'Car side photo',cb:'Car back photo'};
+function mDoc(boxId,key,inp){
+  docFiles[key]=inp.files[0];
+  eid(boxId).classList.add('up');
+  // Tick owner checklist
+  var clId={o_hs:'oc-hs',o_hid:'oc-hid',oid_f:'oc-oid',cf:'oc-cf',cs:'oc-cs',cb:'oc-cb'}[key];
+  if(clId){var cl=eid(clId);if(cl){cl.style.color='var(--gm)';cl.style.fontWeight='600';cl.innerHTML='&#10003; '+_oclabels[key];}}
+}
 async function upFile(bucket,path,file) {
   var r=await sb.storage.from(bucket).upload(path,file,{upsert:true});
   if(r.error||!r.data){console.error('upload fail',r.error);return null;}
   return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 async function reg2o() {
-  clearErr('reg-err');
-  if(!docFiles.o_hs){showErr('reg-err','A headshot photo of yourself is required.');return;}
-  if(!docFiles.o_hid){showErr('reg-err','A photo of you holding your ID is required.');return;}
-  if(!docFiles.oid_f){showErr('reg-err','ID/Passport copy is required.');return;}
-  if(!docFiles.cf||!docFiles.cs||!docFiles.cb){showErr('reg-err','Front, Side and Back car photos are required.');return;}
+  clearErr('reg-err'); clearErr('reg-err-o');
+  function oErr(msg){showErr('reg-err',msg);showErr('reg-err-o',msg);}
   var ph=eid('o-ph').value.trim(),lo=eid('o-lo').value.trim(),wa=eid('o-wa').value.trim();
   var mk=eid('o-mk').value.trim(),mo=eid('o-mo').value.trim(),yr=eid('o-yr').value,pr=eid('o-pr').value;
-  if(!ph){showErr('reg-err','Phone number is required.');return;}
-  if(!wa){showErr('reg-err','WhatsApp number is required.');return;}
-  if(!lo){showErr('reg-err','City / Location is required.');return;}
-  if(!mk||!mo||!yr||!pr){showErr('reg-err','Please fill in all car details.');return;}
-  oCarData={ph:ph,lo:lo,wa:eid('o-wa').value.trim(),mk:mk,mo:mo,yr:parseInt(yr),pr:parseInt(pr),cl:eid('o-cl').value.trim(),tr:eid('o-tr').value,dep:eid('o-dep').value.trim(),ins:eid('o-ins').value==='true',ci:eid('o-ci').value,ct:eid('o-ct').value,fp:eid('o-fp').value,plats:Array.from(document.querySelectorAll('.opc:checked')).map(function(c){return c.value;})};
+  if(!ph){oErr('Phone number is required.');return;}
+  if(!wa){oErr('WhatsApp number is required.');return;}
+  if(!lo){oErr('City / Location is required.');return;}
+  if(!mk||!mo||!yr||!pr){oErr('Please fill in all car details (make, model, year and weekly rate).');return;}
+  if(!docFiles.o_hs){oErr('A headshot photo of yourself is required — tap the Headshot box above.');return;}
+  if(!docFiles.o_hid){oErr('A photo of you holding your ID is required — tap the Holding ID box above.');return;}
+  if(!docFiles.oid_f){oErr('An ID/Passport copy is required — tap the ID/Passport box above.');return;}
+  if(!docFiles.cf||!docFiles.cs||!docFiles.cb){oErr('Front, Side and Back car photos are all required.');return;}
+  oCarData={ph:ph,lo:lo,wa:eid('o-wa').value.trim(),mk:mk,mo:mo,yr:parseInt(yr),pr:parseInt(pr),cl:eid('o-cl').value.trim(),tr:eid('o-tr').value,dep:eid('o-dep').value.trim()||null,ins:eid('o-ins').value==='true',ci:eid('o-ci').value,ct:eid('o-ct').value,fp:eid('o-fp').value,plats:Array.from(document.querySelectorAll('.opc:checked')).map(function(c){return c.value;})};
   var btn=eid('o-reg-btn'); btn.textContent='Creating...'; btn.disabled=true;
   await doReg(); btn.textContent='Create Account'; btn.disabled=false;
 }
@@ -2127,7 +2151,7 @@ async function doReg() {
   if(!uid){showErr('reg-err','Signup failed. Please try again.');return;}
   var hasSession=!!(r.data&&r.data.session);
   var now=new Date().toISOString();
-  await sb.from('profiles').upsert({id:uid,email:rEmail,full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',terms_accepted:true,popia_accepted:true,terms_accepted_at:now,popia_accepted_at:now,terms_version:'1.0'},{onConflict:'id'});
+  await sb.from('profiles').upsert({id:uid,email:rEmail,full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',terms_accepted:true,popia_accepted:true,terms_accepted_at:now,popia_accepted_at:now,terms_version:'1.0',tc_accepted_at:now,tc_version:'July 2026'},{onConflict:'id'});
   var t=Date.now();
   if(isD){
     var u={};
@@ -2195,8 +2219,10 @@ async function doReg() {
     var carInsert=await sb.from('cars').insert(carData);
     if(carInsert.error){
       console.error('Car insert error:',carInsert.error);
-      // Save to localStorage - will retry after email verification
+      // Save to localStorage so admin/retry can recover it
       try{localStorage.setItem('tm_pending_car',JSON.stringify({uid:uid,carData:carData}));}catch(e){}
+      // Show a recoverable warning — account was created, car listing failed
+      showErr('reg-err','Your account was created but your car listing could not be saved ('+carInsert.error.message+'). Please contact support@trustmatesa.co.za with your email address and we will add your car.');
     }
   }
   docFiles={};
@@ -2228,7 +2254,12 @@ async function resendVerification() {
 }
 
 // ── TERMS / POPIA ──────────────────────────────────────
-function acceptTC() { eid('reg-tc').checked=true; closeModal('terms-modal'); toast('Terms accepted'); }
+function acceptTC() {
+  var cb=eid('reg-tc'); if(cb)cb.checked=true;
+  closeModal('terms-modal'); toast('Terms accepted');
+  // If already logged in (viewing T&C from dashboard), record acceptance immediately
+  if(U){sb.from('profiles').update({tc_accepted_at:new Date().toISOString(),tc_version:'July 2026'}).eq('id',U.id).then(function(){});}
+}
 function acceptPP() { eid('reg-pp').checked=true; closeModal('popia-modal'); toast('POPIA consent given'); }
 
 // ── DASHBOARD ──────────────────────────────────────────
@@ -3703,6 +3734,7 @@ function adNav(name) {
   if(name==='hist') adHist();
   if(name==='prvr') adPrvReviews();
   if(name==='edits') adProfileEdits();
+  if(name==='tc') adTcSigs();
   if(name==='set') adSet();
 }
 
@@ -5439,6 +5471,55 @@ async function adDeleteExample(key){
   toast('Removed.'); adSet();
 }
 
+
+// ── T&C SIGNATURES ──────────────────────────────────────────
+async function adTcSigs(){
+  var el=document.getElementById('ap-tc');
+  el.innerHTML='<div class="ptitle">T&amp;C Signatures</div>'+adSpin();
+  var r=await sb.from('profiles').select('id,full_name,email,phone,role,tc_accepted_at,tc_version,created_at').order('tc_accepted_at',{ascending:false,nullsFirst:false});
+  var users=r.data||[];
+  var signed=users.filter(function(u){return !!u.tc_accepted_at;});
+  var unsigned=users.filter(function(u){return !u.tc_accepted_at;});
+  var html='<div class="ptitle">T&amp;C Signatures</div>'
+    +'<div class="psub">'+signed.length+' signed &middot; '+unsigned.length+' not yet recorded</div>'
+    +'<div class="kgrid" style="margin-bottom:16px">'
+    +'<div class="kcard"><div class="kcard-n g">'+signed.length+'</div><div class="kcard-l">Signed</div></div>'
+    +'<div class="kcard"><div class="kcard-n a">'+unsigned.length+'</div><div class="kcard-l">No Record</div></div>'
+    +'<div class="kcard"><div class="kcard-n">'+users.length+'</div><div class="kcard-l">Total Users</div></div>'
+    +'</div>'
+    +'<div style="overflow-x:auto"><table class="atbl"><thead><tr>'
+    +'<th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Version Signed</th><th>Signed At</th><th>Registered</th>'
+    +'</tr></thead><tbody>'
+    +signed.map(function(u,i){
+      return '<tr style="background:'+(i%2===0?'#fff':'#f9f8f6')+'">'
+        +'<td style="color:var(--muted);font-size:11px">'+(i+1)+'</td>'
+        +'<td><strong>'+(u.full_name||'-')+'</strong></td>'
+        +'<td style="font-size:12px">'+(u.email||'-')+'</td>'
+        +'<td style="font-size:12px">'+(u.phone||'-')+'</td>'
+        +'<td><span class="pill" style="font-size:10px;text-transform:capitalize">'+(u.role||'-')+'</span></td>'
+        +'<td style="font-size:12px;font-weight:600;color:var(--gm)">'+(u.tc_version||'Unknown')+'</td>'
+        +'<td style="font-size:12px;white-space:nowrap">'+fmtD(u.tc_accepted_at)+'</td>'
+        +'<td style="font-size:11px;color:var(--muted);white-space:nowrap">'+fmtD(u.created_at)+'</td>'
+        +'</tr>';
+    }).join('');
+  if(unsigned.length){
+    html+='<tr><td colspan="8" style="padding:10px 12px;font-size:11px;font-weight:700;color:var(--muted);background:#f5f4f1;border-top:2px solid var(--border)">&#9888; No T&amp;C signature recorded (registered before tracking or pre-existing accounts)</td></tr>'
+      +unsigned.map(function(u,i){
+        return '<tr style="opacity:.6">'
+          +'<td style="color:var(--muted);font-size:11px">-</td>'
+          +'<td><strong>'+(u.full_name||'-')+'</strong></td>'
+          +'<td style="font-size:12px">'+(u.email||'-')+'</td>'
+          +'<td style="font-size:12px">'+(u.phone||'-')+'</td>'
+          +'<td><span class="pill" style="font-size:10px;text-transform:capitalize">'+(u.role||'-')+'</span></td>'
+          +'<td style="font-size:12px;color:#dc2626">Not recorded</td>'
+          +'<td style="font-size:11px;color:var(--muted)">-</td>'
+          +'<td style="font-size:11px;color:var(--muted);white-space:nowrap">'+fmtD(u.created_at)+'</td>'
+          +'</tr>';
+      }).join('');
+  }
+  html+='</tbody></table></div>';
+  el.innerHTML=html;
+}
 
 // Also load examples when registration page shows
 async function loadPlatExamples(){
