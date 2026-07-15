@@ -2348,6 +2348,47 @@ async function pOv() {
       +(docValid&&daysLeft<30?'<p style="font-size:12px;color:var(--amber)">Docs expire in '+daysLeft+' days.</p>':'')
       +(docValid?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'<p style="font-size:11px;color:#dc2626">&#9888; Documents pending verification</p>')
       +'</div>';
+    // ── DRIVER CURRENT MATCH (shown right after Trust Score) ──
+    var dMatchR=await sb.from('applications').select('id,owner_id,car_id,created_at,unmatched_at,unmatch_reason').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
+    if(dMatchR.data){
+      var dm=dMatchR.data;
+      var [dOwnerR,dCarR]=await Promise.all([
+        sb.from('profiles').select('id,full_name,location,phone,whatsapp,photo_holding_id_url').eq('id',dm.owner_id).maybeSingle(),
+        dm.car_id?sb.from('cars').select('id,make,model,year,color,transmission,fuel_policy,deposit,insurance,photo_front_url,location,price_per_week').eq('id',dm.car_id).maybeSingle():{data:null}
+      ]);
+      var dOwner=dOwnerR.data||{};
+      var dCar=dCarR.data||null;
+      var dOav=dOwner.photo_holding_id_url
+        ?'<img src="'+esc(dOwner.photo_holding_id_url)+'" style="width:64px;height:64px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0">'
+        :'<div class="av" style="width:64px;height:64px;font-size:20px;flex-shrink:0">'+ini(dOwner.full_name||'?')+'</div>';
+      html+='<div class="shd" style="margin-top:16px">&#9889; Your Current Match</div>';
+      html+='<div style="background:#fff;border:2px solid var(--gm);border-radius:12px;padding:16px;margin-bottom:16px">'
+        +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">'+dOav
+        +'<div style="flex:1">'
+        +'<div style="font-size:16px;font-weight:800;color:var(--g);margin-bottom:2px">'+(dOwner.full_name||'Owner')+'</div>'
+        +(dOwner.location?'<div style="font-size:12px;color:var(--muted)">&#128205; '+esc(dOwner.location)+'</div>':'')
+        +'<span style="font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;border:1px solid #a5d6a7;display:inline-block;margin-top:4px">&#127968; Owner</span>'
+        +'</div></div>'
+        +(dCar?'<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:12px">'
+          +(dCar.photo_front_url?'<img src="'+esc(dCar.photo_front_url)+'" style="width:100%;height:160px;object-fit:cover;display:block">':'')
+          +'<div style="padding:10px 12px">'
+          +'<div style="font-size:15px;font-weight:800;color:var(--g);margin-bottom:8px">'+esc(dCar.make)+' '+esc(dCar.model)+' '+dCar.year+(dCar.color?' &middot; '+esc(dCar.color):'')+'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">'
+          +'<div><span style="color:var(--muted)">Weekly Rental</span><br><strong style="color:var(--gm);font-size:15px">R'+(dCar.price_per_week||'—')+'/wk</strong></div>'
+          +'<div><span style="color:var(--muted)">Location</span><br><strong>&#128205; '+esc(dCar.location||'—')+'</strong></div>'
+          +(dCar.transmission?'<div><span style="color:var(--muted)">Transmission</span><br><strong>'+esc(dCar.transmission)+'</strong></div>':'')
+          +(dCar.deposit?'<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+esc(String(dCar.deposit))+'</strong></div>':'')
+          +(dCar.insurance?'<div><span style="color:var(--muted)">Insurance</span><br><strong>'+esc(dCar.insurance)+'</strong></div>':'')
+          +(dCar.fuel_policy?'<div><span style="color:var(--muted)">Fuel Policy</span><br><strong>'+esc(dCar.fuel_policy)+'</strong></div>':'')
+          +'</div></div></div>':'')
+        +'<div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:12px">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">OWNER CONTACT</div>'
+        +(dOwner.phone?'<div style="font-size:13px;margin-bottom:4px">&#128222; <a href="tel:'+esc(dOwner.phone)+'" style="color:var(--g);font-weight:600">'+esc(dOwner.phone)+'</a></div>':'')
+        +(dOwner.whatsapp?'<div style="font-size:13px"><a href="https://wa.me/'+esc((dOwner.whatsapp||'').replace(/[^0-9]/g,''))+'" target="_blank" style="color:#25D366;font-weight:700">&#128241; WhatsApp</a></div>':'')
+        +'</div>'
+        +'<button class="btn btn-out btn-w btn-sm" style="margin-top:6px" data-aid="'+dm.id+'" onclick="driverUnmatch(this.dataset.aid)">Unmatch</button>'
+        +'</div>';
+    }
     // ── DRIVER SETTINGS ──
     html+='<div class="tbox" style="margin-top:14px">'
       +'<div class="shd">&#9881;&#65039; Settings</div>'
@@ -2432,47 +2473,6 @@ async function pOv() {
             +'</div>'
             +'</div>';
         }).join('')
-        +'</div>';
-    }
-    // ── DRIVER CURRENT MATCH ──
-    var dMatchR=await sb.from('applications').select('id,owner_id,car_id,created_at,unmatched_at,unmatch_reason').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
-    if(dMatchR.data){
-      var dm=dMatchR.data;
-      var [dOwnerR,dCarR]=await Promise.all([
-        sb.from('profiles').select('id,full_name,location,phone,whatsapp,photo_holding_id_url').eq('id',dm.owner_id).maybeSingle(),
-        dm.car_id?sb.from('cars').select('id,make,model,year,color,transmission,fuel_policy,deposit,insurance,photo_front_url,location,price_per_week').eq('id',dm.car_id).maybeSingle():{data:null}
-      ]);
-      var dOwner=dOwnerR.data||{};
-      var dCar=dCarR.data||null;
-      var dOav=dOwner.photo_holding_id_url
-        ?'<img src="'+esc(dOwner.photo_holding_id_url)+'" style="width:64px;height:64px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0">'
-        :'<div class="av" style="width:64px;height:64px;font-size:20px;flex-shrink:0">'+ini(dOwner.full_name||'?')+'</div>';
-      html+='<div class="shd" style="margin-top:16px">&#9889; Your Current Match</div>';
-      html+='<div style="background:#fff;border:2px solid var(--gm);border-radius:12px;padding:16px;margin-bottom:16px">'
-        +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">'+dOav
-        +'<div style="flex:1">'
-        +'<div style="font-size:16px;font-weight:800;color:var(--g);margin-bottom:2px">'+(dOwner.full_name||'Owner')+'</div>'
-        +(dOwner.location?'<div style="font-size:12px;color:var(--muted)">&#128205; '+esc(dOwner.location)+'</div>':'')
-        +'<span style="font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;border:1px solid #a5d6a7;display:inline-block;margin-top:4px">&#127968; Owner</span>'
-        +'</div></div>'
-        +(dCar?'<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:12px">'
-          +(dCar.photo_front_url?'<img src="'+esc(dCar.photo_front_url)+'" style="width:100%;height:160px;object-fit:cover;display:block">':'')
-          +'<div style="padding:10px 12px">'
-          +'<div style="font-size:15px;font-weight:800;color:var(--g);margin-bottom:8px">'+esc(dCar.make)+' '+esc(dCar.model)+' '+dCar.year+(dCar.color?' &middot; '+esc(dCar.color):'')+'</div>'
-          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">'
-          +'<div><span style="color:var(--muted)">Weekly Rental</span><br><strong style="color:var(--gm);font-size:15px">R'+(dCar.price_per_week||'—')+'/wk</strong></div>'
-          +'<div><span style="color:var(--muted)">Location</span><br><strong>&#128205; '+esc(dCar.location||'—')+'</strong></div>'
-          +(dCar.transmission?'<div><span style="color:var(--muted)">Transmission</span><br><strong>'+esc(dCar.transmission)+'</strong></div>':'')
-          +(dCar.deposit?'<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+esc(String(dCar.deposit))+'</strong></div>':'')
-          +(dCar.insurance?'<div><span style="color:var(--muted)">Insurance</span><br><strong>'+esc(dCar.insurance)+'</strong></div>':'')
-          +(dCar.fuel_policy?'<div><span style="color:var(--muted)">Fuel Policy</span><br><strong>'+esc(dCar.fuel_policy)+'</strong></div>':'')
-          +'</div></div></div>':'')
-        +'<div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:12px">'
-        +'<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">OWNER CONTACT</div>'
-        +(dOwner.phone?'<div style="font-size:13px;margin-bottom:4px">&#128222; <a href="tel:'+esc(dOwner.phone)+'" style="color:var(--g);font-weight:600">'+esc(dOwner.phone)+'</a></div>':'')
-        +(dOwner.whatsapp?'<div style="font-size:13px"><a href="https://wa.me/'+esc((dOwner.whatsapp||'').replace(/[^0-9]/g,''))+'" target="_blank" style="color:#25D366;font-weight:700">&#128241; WhatsApp</a></div>':'')
-        +'</div>'
-        +'<button class="btn btn-out btn-w btn-sm" style="margin-top:6px" data-aid="'+dm.id+'" onclick="driverUnmatch(this.dataset.aid)">Unmatch</button>'
         +'</div>';
     }
     // ── DRIVER PAST RENTALS ──
@@ -4442,7 +4442,7 @@ async function adReg(){
         +'<button class="btn btn-gm btn-sm" data-did="'+d.id+'" onclick="adSaveTrustScore(this.dataset.did)">Save Score</button>'
         +'</div>'
         +'</div>'
-        +'<div class="rcard-acts"><button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button><button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Decline</button><input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
+        +'<div class="rcard-acts"><button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button><button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Decline</button><button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" onclick="adMoveIncomplete(\'drv\',\''+d.id+'\')">&#9203; Move to Incomplete</button><input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
     }).join('');
   }
   if(pOwns.length){
@@ -4459,7 +4459,7 @@ async function adReg(){
         +(oCars.length?'<div style="margin-top:10px"><div style="font-size:12px;font-weight:600;margin-bottom:6px">'+oCars.length+' car'+(oCars.length!==1?'s':'')+' listed</div>'
           +oCars.map(function(c){var photos=[c.photo_front_url,c.photo_side_url,c.photo_back_url,c.photo_interior_url].filter(Boolean);return '<div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:7px">'+(photos.length?'<div style="display:flex;gap:5px;padding:8px;border-bottom:1px solid var(--border)">'+photos.map(function(u,i){return dthumb(u,['Front','Side','Back','Interior'][i]||'Photo');}).join('')+'</div>':'')+'<div style="padding:7px 10px;font-size:12px"><strong>'+c.make+' '+c.model+' '+c.year+'</strong> / R'+c.price_per_week+'/wk / '+c.location+'</div></div>';}).join('')+'</div>':'')
         +'</div>'
-        +'<div class="rcard-acts"><button class="btn btn-gm btn-sm" onclick="adSetOwner(\''+o.id+'\',\'approved\')">Approve Owner</button><button class="btn btn-red btn-sm" onclick="adSetOwner(\''+o.id+'\',\'rejected\')">Decline</button><input id="onote-'+o.id+'" placeholder="Note (for decline)..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
+        +'<div class="rcard-acts"><button class="btn btn-gm btn-sm" onclick="adSetOwner(\''+o.id+'\',\'approved\')">Approve Owner</button><button class="btn btn-red btn-sm" onclick="adSetOwner(\''+o.id+'\',\'rejected\')">Decline</button><button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" onclick="adMoveIncomplete(\'own\',\''+o.id+'\')">&#9203; Move to Incomplete</button><input id="onote-'+o.id+'" placeholder="Note (for decline)..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
     }).join('');
   }
   el.innerHTML=html;
@@ -4535,6 +4535,21 @@ async function adSetOwner(pid,status){
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   toast(status==='approved'?'Owner approved!':'Owner declined');
   adReg();adOv();
+}
+
+async function adMoveIncomplete(type,id){
+  if(!confirm('Move this registration to Incomplete? They will be notified to complete their documents.')) return;
+  var c=document.getElementById((type==='drv'?'rc-':'ro-')+id);
+  if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
+  var r;
+  if(type==='drv'){
+    r=await sb.from('driver_profiles').update({status:'incomplete'}).eq('id',id).select();
+  } else {
+    r=await sb.from('profiles').update({admin_status:'incomplete'}).eq('id',id).select();
+  }
+  if(r&&r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
+  if(r&&(!r.data||!r.data.length)){toast('Update blocked — check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
+  toast('Moved to Incomplete.'); adReg(); adOv();
 }
 
 // ── MANAGE DRIVERS ─────────────────────────────────────
