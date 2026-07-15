@@ -699,7 +699,7 @@ nav div::-webkit-scrollbar{display:none}
     <div class="fg"><label>Email</label><input id="le" type="email" placeholder="you@example.com"/></div>
     <div class="fg"><label>Password</label><input id="lp" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
     <button class="btn btn-g btn-w" onclick="doLogin()" id="login-btn">Sign in</button>
-    <div class="afoot">No account? <a onclick="go('register')">Register</a></div>
+    <div class="afoot">No account? <a onclick="go('register')">Register</a> &middot; <a onclick="showForgot()">Forgot password?</a></div>
   </div></div>
 </div>
 
@@ -873,15 +873,14 @@ nav div::-webkit-scrollbar{display:none}
       <div class="fg"><label>Preferred contact method</label>
         <select id="o-pc"><option value="whatsapp">WhatsApp</option><option value="phone">Phone call</option><option value="email">Email</option><option value="any">Any</option></select></div>
       <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 4px;padding-top:8px;border-top:1px solid var(--border)">Your Photos &amp; ID (required)</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">These are used to verify your identity. We require a clear headshot, a photo of you holding your ID, and a copy of your ID/Passport.</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Used to verify your identity. Required to protect both you and the driver you'll be matched with.</div>
       <div class="doc-grid" style="margin-bottom:12px">
-        <div class="dbox" id="o-hs"><input type="file" accept="image/*" onchange="mDoc('o-hs','o_hs',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Headshot *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Clear photo of your face</div></div>
         <div class="dbox" id="o-hid"><input type="file" accept="image/*" onchange="mDoc('o-hid','o_hid',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Holding ID *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Photo of YOU holding your ID</div></div>
         <div class="dbox" id="oid"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('oid','oid_f',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID / Passport *</div><div style="font-size:9px;color:var(--muted);margin-top:3px">Screenshot or photo copy accepted</div></div>
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px">Car Details</div>
       <div class="frow"><div class="fg"><label>Make *</label><input id="o-mk" placeholder="Toyota"/></div><div class="fg"><label>Model *</label><input id="o-mo" placeholder="Corolla"/></div></div>
-      <div class="frow"><div class="fg"><label>Year *</label><input id="o-yr" type="number" placeholder="2021"/></div><div class="fg"><label>Color</label><input id="o-cl" placeholder="White"/></div></div>
+      <div class="fg"><label>Year *</label><input id="o-yr" type="number" placeholder="2021"/></div>
       <div class="frow"><div class="fg"><label>Transmission</label><select id="o-tr"><option value="manual">Manual</option><option value="automatic">Automatic</option></select></div><div class="fg"><label>Weekly Rate (R) *</label><input id="o-pr" type="number" placeholder="2500"/></div></div>
       <div class="frow"><div class="fg"><label>Security Deposit</label><label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;margin-bottom:6px;cursor:pointer"><input type="checkbox" id="o-dep-toggle" onchange="document.getElementById('o-dep-wrap').style.display=this.checked?'block':'none'" style="width:16px;height:16px"> Yes, I require a deposit</label><div id="o-dep-wrap" style="display:none"><input id="o-dep" type="number" placeholder="Amount e.g. 5000"/></div></div><div class="fg"><label>Insurance</label><select id="o-ins"><option value="true">Included</option><option value="false">No</option></select></div></div>
       <div class="frow"><div class="fg"><label>Check-in day</label><select id="o-ci"><option>Monday</option><option>Tuesday</option><option>Wednesday</option><option>Thursday</option><option>Friday</option><option>Saturday</option></select></div><div class="fg"><label>Check-in time</label><select id="o-ct"><option value="07:00">07:00</option><option value="08:00" selected>08:00</option><option value="09:00">09:00</option><option value="10:00">10:00</option></select></div></div>
@@ -900,7 +899,6 @@ nav div::-webkit-scrollbar{display:none}
       </div>
       <div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-size:12px;margin-bottom:10px" id="o-checklist">
         <div style="font-weight:700;color:var(--g);margin-bottom:6px">&#9989; Before you submit, confirm you have:</div>
-        <div id="oc-hs" style="color:var(--muted)">&#9744; Headshot photo</div>
         <div id="oc-hid" style="color:var(--muted)">&#9744; Photo holding your ID</div>
         <div id="oc-oid" style="color:var(--muted)">&#9744; ID / Passport copy</div>
         <div id="oc-cf" style="color:var(--muted)">&#9744; Car front photo</div>
@@ -1113,6 +1111,21 @@ nav div::-webkit-scrollbar{display:none}
     <p id="cm-role" style="font-size:11px;color:var(--muted);margin-bottom:14px"></p>
     <div id="cm-body"></div>
     <button class="btn btn-out btn-w" style="margin-top:14px" onclick="closeModal('contact-modal')">Close</button>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD MODAL -->
+<div class="overlay" id="forgot-modal" style="display:none">
+  <div class="modal" style="max-width:360px;padding:24px">
+    <div style="font-size:17px;font-weight:700;margin-bottom:6px">Reset Password</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Enter your email and we'll send a password reset link.</p>
+    <div class="ferr" id="forgot-err"></div>
+    <div class="fg"><label>Email</label><input id="forgot-email" type="email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doForgot()"/></div>
+    <div id="forgot-ok" style="display:none;background:#f0faf2;border:1px solid #bbf0c8;padding:10px 13px;border-radius:8px;font-size:13px;color:var(--gm);margin-bottom:12px">&#10003; Check your inbox — a reset link has been sent.</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-g" onclick="doForgot()" id="forgot-btn">Send Reset Link</button>
+      <button class="btn btn-out" onclick="closeModal('forgot-modal')">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -1985,6 +1998,23 @@ async function loadProfPage(dpId) {
 }
 
 // ── AUTH ───────────────────────────────────────────────
+function showForgot(){
+  var em=(eid('le')||{}).value||'';
+  var fi=eid('forgot-email'); if(fi&&em)fi.value=em;
+  clearErr('forgot-err');
+  var ok=eid('forgot-ok'); if(ok)ok.style.display='none';
+  openModal('forgot-modal');
+}
+async function doForgot(){
+  clearErr('forgot-err');
+  var e=((eid('forgot-email')||{}).value||'').trim();
+  if(!e){showErr('forgot-err','Please enter your email address.');return;}
+  var btn=eid('forgot-btn'); if(btn){btn.textContent='Sending...';btn.disabled=true;}
+  var r=await sb.auth.resetPasswordForEmail(e,{redirectTo:window.location.origin+window.location.pathname});
+  if(btn){btn.textContent='Send Reset Link';btn.disabled=false;}
+  if(r.error){showErr('forgot-err',r.error.message);return;}
+  var ok=eid('forgot-ok'); if(ok)ok.style.display='block';
+}
 async function doLogin() {
   clearErr('login-err');
   var e=eid('le').value.trim(), p=eid('lp').value;
@@ -2077,12 +2107,12 @@ function reg2d() {
   eid('rs2').className='sbi done'; eid('rs3').className='sbi on';
 }
 function backS2(){eid('reg-s2-d').style.display='block';eid('reg-s3').style.display='none';eid('rs2').className='sbi on';eid('rs3').className='sbi';}
-var _oclabels={o_hs:'Headshot photo',o_hid:'Photo holding your ID',oid_f:'ID / Passport copy',cf:'Car front photo',cs:'Car side photo',cb:'Car back photo'};
+var _oclabels={o_hid:'Photo holding your ID',oid_f:'ID / Passport copy',cf:'Car front photo',cs:'Car side photo',cb:'Car back photo'};
 function mDoc(boxId,key,inp){
   docFiles[key]=inp.files[0];
   eid(boxId).classList.add('up');
   // Tick owner checklist
-  var clId={o_hs:'oc-hs',o_hid:'oc-hid',oid_f:'oc-oid',cf:'oc-cf',cs:'oc-cs',cb:'oc-cb'}[key];
+  var clId={o_hid:'oc-hid',oid_f:'oc-oid',cf:'oc-cf',cs:'oc-cs',cb:'oc-cb'}[key];
   if(clId){var cl=eid(clId);if(cl){cl.style.color='var(--gm)';cl.style.fontWeight='600';cl.innerHTML='&#10003; '+_oclabels[key];}}
 }
 async function upFile(bucket,path,file) {
@@ -2099,11 +2129,10 @@ async function reg2o() {
   if(!wa){oErr('WhatsApp number is required.');return;}
   if(!lo){oErr('City / Location is required.');return;}
   if(!mk||!mo||!yr||!pr){oErr('Please fill in all car details (make, model, year and weekly rate).');return;}
-  if(!docFiles.o_hs){oErr('A headshot photo of yourself is required — tap the Headshot box above.');return;}
   if(!docFiles.o_hid){oErr('A photo of you holding your ID is required — tap the Holding ID box above.');return;}
   if(!docFiles.oid_f){oErr('An ID/Passport copy is required — tap the ID/Passport box above.');return;}
   if(!docFiles.cf||!docFiles.cs||!docFiles.cb){oErr('Front, Side and Back car photos are all required.');return;}
-  oCarData={ph:ph,lo:lo,wa:eid('o-wa').value.trim(),mk:mk,mo:mo,yr:parseInt(yr),pr:parseInt(pr),cl:eid('o-cl').value.trim(),tr:eid('o-tr').value,dep:eid('o-dep').value.trim()||null,ins:eid('o-ins').value==='true',ci:eid('o-ci').value,ct:eid('o-ct').value,fp:eid('o-fp').value,plats:Array.from(document.querySelectorAll('.opc:checked')).map(function(c){return c.value;})};
+  oCarData={ph:ph,lo:lo,wa:eid('o-wa').value.trim(),mk:mk,mo:mo,yr:parseInt(yr),pr:parseInt(pr),cl:null,tr:eid('o-tr').value,dep:eid('o-dep').value.trim()||null,ins:eid('o-ins').value==='true',ci:eid('o-ci').value,ct:eid('o-ct').value,fp:eid('o-fp').value,plats:Array.from(document.querySelectorAll('.opc:checked')).map(function(c){return c.value;})};
   var btn=eid('o-reg-btn'); btn.textContent='Creating...'; btn.disabled=true;
   await doReg(); btn.textContent='Create Account'; btn.disabled=false;
 }
@@ -4062,7 +4091,7 @@ async function adOv(){
   var today=new Date().toISOString().slice(0,10);
   var logRes=await sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false});
   var viewRes=await sb.from('application_views').select('id,owner_id,created_at').order('created_at',{ascending:false});
-  var appStatRes=await sb.from('applications').select('id,driver_id,owner_id,status,created_at');
+  var appStatRes=await sb.from('applications').select('id,driver_id,owner_id,status,initiated_by,created_at');
 
   // profiles already include full_name+email from main fetch above
   var logins=logRes.data||[];
@@ -4073,13 +4102,18 @@ async function adOv(){
   var todayViews=(viewRes.data||[]).filter(function(v){return v.created_at&&v.created_at.slice(0,10)===today;}).length;
   var appStatData=appStatRes.data||[];
   var drvAppMap={},ownAppMap={};
+  var driverInitiatedSet={},ownerInitiatedSet={};
   appStatData.forEach(function(a){
     if(a.driver_id)drvAppMap[a.driver_id]=(drvAppMap[a.driver_id]||0)+1;
     if(a.owner_id)ownAppMap[a.owner_id]=(ownAppMap[a.owner_id]||0)+1;
+    if(a.initiated_by==='driver'&&a.driver_id)driverInitiatedSet[a.driver_id]=true;
+    if(a.initiated_by==='owner'&&a.owner_id)ownerInitiatedSet[a.owner_id]=true;
   });
   var dKeys=Object.keys(drvAppMap),oKeys=Object.keys(ownAppMap);
   var avgDrvApps=dKeys.length?(dKeys.reduce(function(s,k){return s+drvAppMap[k];},0)/dKeys.length).toFixed(1):'0';
   var avgOwnApps=oKeys.length?(oKeys.reduce(function(s,k){return s+ownAppMap[k];},0)/oKeys.length).toFixed(1):'0';
+  var driversWhoSentApps=Object.keys(driverInitiatedSet).length;
+  var ownersWhoSentApps=Object.keys(ownerInitiatedSet).length;
   var pdrvs=dps.filter(function(d){return d.status==='pending';}).length;
   var adrvs=dps.filter(function(d){return d.status==='approved';}).length;
   var powns=users.filter(function(u){return(u.role==='owner'||u.role==='both')&&u.admin_status==='pending';}).length;
@@ -4113,7 +4147,8 @@ async function adOv(){
     +'</div>'
     +'<div class="shd">Application Engagement</div><div class="kgrid">'
     +'<div class="kcard"><div class="kcard-n g">'+totalApps+'</div><div class="kcard-l">Total Applications</div></div>'
-    +'<div class="kcard"><div class="kcard-n g">'+driversWhoApplied+'</div><div class="kcard-l">Drivers Who Applied</div></div>'
+    +'<div class="kcard"><div class="kcard-n g">'+driversWhoSentApps+'</div><div class="kcard-l">Drivers Sent Apps</div></div>'
+    +'<div class="kcard"><div class="kcard-n g">'+ownersWhoSentApps+'</div><div class="kcard-l">Owners Sent Requests</div></div>'
     +'<div class="kcard"><div class="kcard-n">'+ownersWhoReceived+'</div><div class="kcard-l">Owners Received Apps</div></div>'
     +'<div class="kcard"><div class="kcard-n">'+ownersViewedCount+'</div><div class="kcard-l">Owners Viewed Apps</div></div>'
     +'<div class="kcard"><div class="kcard-n">'+avgDrvApps+'</div><div class="kcard-l">Avg Apps / Driver</div></div>'
@@ -4499,7 +4534,7 @@ async function adDrv(){
   var counts={all:allDps.length};
   ['pending','approved','rejected','incomplete'].forEach(function(s){counts[s]=allDps.filter(function(d){return d.status===s;}).length;});
   el.innerHTML='<div class="ptitle">Manage Drivers</div>'
-    +'<div style="margin-bottom:10px"><input id="adm-drv-q" type="text" placeholder="&#128269; Search driver name or email..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adDrvSearch()"/></div>'
+    +'<div style="margin-bottom:10px"><input id="adm-drv-q" type="text" placeholder="&#128269; Search driver name or email..." value="'+esc(window._adDrvQ||'')+'" style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adDrvSearch()"/></div>'
     +'<div class="tbb-row" id="drv-tabs">'
     +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')']].map(function(t){return '<button class="tbb'+(adDrvFilter===t[0]?' on':'')+'" onclick="window._adDrvFilter=\''+t[0]+'\';adDrv()">'+t[1]+'</button>';}).join('')
     +'</div>'
@@ -4556,6 +4591,7 @@ async function adDrv(){
         +'<div id="adrv-'+d.id+'" style="display:none"></div>'
         +'</div>';
     }).join('');
+  if(window._adDrvQ)adDrvSearch();
 }
 
 // ── ADMIN REVIEW MANAGEMENT ─────────────────────────────
@@ -5042,7 +5078,7 @@ async function adHist(){
   el.innerHTML='<div class="ptitle">Match History</div>'+adSpin();
 
   var r=await sb.from('applications')
-    .select('id,status,created_at,matched_at,unmatched_at,unmatched_by,initiated_by,driver_id,owner_id,car_id')
+    .select('id,status,created_at,matched_at,unmatched_at,unmatched_by,unmatch_reason,initiated_by,driver_id,owner_id,car_id')
     .order('created_at',{ascending:false});
   var apps=r.data||[];
 
@@ -5066,7 +5102,7 @@ async function adHist(){
     if(!filtered.length)return '<p style="font-size:13px;color:var(--muted);padding:16px">No records.</p>';
     return '<div style="overflow-x:auto"><table class="atbl"><thead><tr>'
       +'<th>Applied</th><th>Driver</th><th>Owner</th><th>Car</th><th>By</th>'
-      +'<th>Matched</th><th>Unmatched</th><th>Unmatched by</th>'
+      +'<th>Matched</th><th>Unmatched</th><th>Unmatched by</th><th>Unmatch Reason</th>'
       +'</tr></thead><tbody>'
       +filtered.map(function(a){
         var isActive=a.status==='approved'&&!a.unmatched_at;
@@ -5085,6 +5121,7 @@ async function adHist(){
           +'<td style="font-size:11px;color:var(--gm);white-space:nowrap">'+(a.matched_at?'&#9989; '+fmtD(a.matched_at):a.status==='pending'?'<span style="color:#E8A520">Pending</span>':a.status==='rejected'&&!a.unmatched_at?'<span style="color:#dc2626">Declined</span>':'-')+'</td>'
           +'<td style="font-size:11px;color:#dc2626;white-space:nowrap">'+(a.unmatched_at?'&#10060; '+fmtD(a.unmatched_at):'-')+'</td>'
           +'<td style="font-size:11px">'+unmatchedBy+'</td>'
+          +'<td style="font-size:11px;color:#7c5c00">'+(a.unmatch_reason?esc(a.unmatch_reason):'-')+'</td>'
           +'</tr>';
       }).join('')
       +'</tbody></table></div>';
@@ -5122,7 +5159,7 @@ function adHistFilter(type){
   if(!filtered.length){box.innerHTML='<p style="font-size:13px;color:var(--muted);padding:16px">No records.</p>';return;}
   box.innerHTML='<div style="overflow-x:auto"><table class="atbl"><thead><tr>'
     +'<th>Applied</th><th>Driver</th><th>Owner</th><th>Car</th><th>By</th>'
-    +'<th>Matched</th><th>Unmatched</th><th>Unmatched by</th>'
+    +'<th>Matched</th><th>Unmatched</th><th>Unmatched by</th><th>Unmatch Reason</th>'
     +'</tr></thead><tbody>'
     +filtered.map(function(a){
       var isActive=a.status==='approved'&&!a.unmatched_at;
@@ -5139,6 +5176,7 @@ function adHistFilter(type){
         +'<td style="font-size:11px;color:var(--gm);white-space:nowrap">'+(a.matched_at?'&#9989; '+fmtD(a.matched_at):a.status==='pending'?'<span style="color:#E8A520">Pending</span>':a.status==='rejected'&&!a.unmatched_at?'<span style="color:#dc2626">Declined</span>':'-')+'</td>'
         +'<td style="font-size:11px;color:#dc2626;white-space:nowrap">'+(a.unmatched_at?'&#10060; '+fmtD(a.unmatched_at):'-')+'</td>'
         +'<td style="font-size:11px">'+unmatchedBy+'</td>'
+        +'<td style="font-size:11px;color:#7c5c00">'+(a.unmatch_reason?esc(a.unmatch_reason):'-')+'</td>'
         +'</tr>';
     }).join('')
     +'</tbody></table></div>';
