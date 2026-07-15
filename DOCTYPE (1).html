@@ -2432,6 +2432,68 @@ async function pOv() {
         }).join('')
         +'</div>';
     }
+    // ── DRIVER CURRENT MATCH ──
+    var dMatchR=await sb.from('applications').select('id,owner_id,car_id,created_at,unmatched_at,unmatch_reason').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
+    if(dMatchR.data){
+      var dm=dMatchR.data;
+      var [dOwnerR,dCarR]=await Promise.all([
+        sb.from('profiles').select('id,full_name,location,phone,whatsapp,photo_holding_id_url').eq('id',dm.owner_id).maybeSingle(),
+        dm.car_id?sb.from('cars').select('id,make,model,year,color,transmission,fuel_policy,deposit,insurance,photo_front_url,location,price_per_week').eq('id',dm.car_id).maybeSingle():{data:null}
+      ]);
+      var dOwner=dOwnerR.data||{};
+      var dCar=dCarR.data||null;
+      var dOav=dOwner.photo_holding_id_url
+        ?'<img src="'+esc(dOwner.photo_holding_id_url)+'" style="width:64px;height:64px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0">'
+        :'<div class="av" style="width:64px;height:64px;font-size:20px;flex-shrink:0">'+ini(dOwner.full_name||'?')+'</div>';
+      html+='<div class="shd" style="margin-top:16px">&#9889; Your Current Match</div>';
+      html+='<div style="background:#fff;border:2px solid var(--gm);border-radius:12px;padding:16px;margin-bottom:16px">'
+        +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">'+dOav
+        +'<div style="flex:1">'
+        +'<div style="font-size:16px;font-weight:800;color:var(--g);margin-bottom:2px">'+(dOwner.full_name||'Owner')+'</div>'
+        +(dOwner.location?'<div style="font-size:12px;color:var(--muted)">&#128205; '+esc(dOwner.location)+'</div>':'')
+        +'<span style="font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;border:1px solid #a5d6a7;display:inline-block;margin-top:4px">&#127968; Owner</span>'
+        +'</div></div>'
+        +(dCar?'<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:12px">'
+          +(dCar.photo_front_url?'<img src="'+esc(dCar.photo_front_url)+'" style="width:100%;height:160px;object-fit:cover;display:block">':'')
+          +'<div style="padding:10px 12px">'
+          +'<div style="font-size:15px;font-weight:800;color:var(--g);margin-bottom:8px">'+esc(dCar.make)+' '+esc(dCar.model)+' '+dCar.year+(dCar.color?' &middot; '+esc(dCar.color):'')+'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">'
+          +'<div><span style="color:var(--muted)">Weekly Rental</span><br><strong style="color:var(--gm);font-size:15px">R'+(dCar.price_per_week||'—')+'/wk</strong></div>'
+          +'<div><span style="color:var(--muted)">Location</span><br><strong>&#128205; '+esc(dCar.location||'—')+'</strong></div>'
+          +(dCar.transmission?'<div><span style="color:var(--muted)">Transmission</span><br><strong>'+esc(dCar.transmission)+'</strong></div>':'')
+          +(dCar.deposit?'<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+esc(String(dCar.deposit))+'</strong></div>':'')
+          +(dCar.insurance?'<div><span style="color:var(--muted)">Insurance</span><br><strong>'+esc(dCar.insurance)+'</strong></div>':'')
+          +(dCar.fuel_policy?'<div><span style="color:var(--muted)">Fuel Policy</span><br><strong>'+esc(dCar.fuel_policy)+'</strong></div>':'')
+          +'</div></div></div>':'')
+        +'<div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:12px">'
+        +'<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px">OWNER CONTACT</div>'
+        +(dOwner.phone?'<div style="font-size:13px;margin-bottom:4px">&#128222; <a href="tel:'+esc(dOwner.phone)+'" style="color:var(--g);font-weight:600">'+esc(dOwner.phone)+'</a></div>':'')
+        +(dOwner.whatsapp?'<div style="font-size:13px"><a href="https://wa.me/'+esc((dOwner.whatsapp||'').replace(/[^0-9]/g,''))+'" target="_blank" style="color:#25D366;font-weight:700">&#128241; WhatsApp</a></div>':'')
+        +'</div>'
+        +'<button class="btn btn-out btn-w btn-sm" style="margin-top:6px" data-aid="'+dm.id+'" onclick="driverUnmatch(this.dataset.aid)">Unmatch</button>'
+        +'</div>';
+    }
+    // ── DRIVER PAST RENTALS ──
+    var dPastR=await sb.from('applications').select('id,owner_id,car_id,unmatched_at,unmatch_reason').eq('driver_id',U.id).eq('status','approved').not('unmatched_at','is',null).order('unmatched_at',{ascending:false});
+    var dPastApps=dPastR.data||[];
+    if(dPastApps.length){
+      html+='<div class="shd" style="margin-top:20px">&#128197; Past Rentals</div>';
+      var dpOIds=[...new Set(dPastApps.map(function(a){return a.owner_id;}).filter(Boolean))];
+      var dpOpR=dpOIds.length?await sb.from('profiles').select('id,full_name,location').in('id',dpOIds):{data:[]};
+      var dpOm={};
+      (dpOpR.data||[]).forEach(function(p){dpOm[p.id]=p;});
+      html+='<div style="background:#fff;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px">'
+        +dPastApps.map(function(a){
+          var op=dpOm[a.owner_id]||{};
+          return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)">'
+            +'<div class="av">'+ini(op.full_name||'?')+'</div>'
+            +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--g)">'+(op.full_name||'Owner')+'</div>'
+            +'<div style="font-size:11px;color:var(--muted)">Ended '+fmtD(a.unmatched_at)+'</div>'
+            +(a.unmatch_reason?'<div style="font-size:11px;color:#7c5c00;background:#fef3c7;border-radius:5px;padding:2px 7px;margin-top:3px;display:inline-block">Reason: '+esc(a.unmatch_reason)+'</div>':'')
+            +'</div>'
+            +'</div>';
+        }).join('')+'</div>';
+    }
   }
   if(isO){
     var ar=await sb.from('applications').select('id,status,unmatched_at,unmatched_by,unmatch_reason,driver_id').eq('owner_id',U.id);
@@ -5656,6 +5718,14 @@ function ownerUnmatch(aidOrBtn){
   sb.from('applications').update({status:'rejected',unmatched_at:new Date().toISOString(),unmatched_by:'owner'}).eq('id',aid).then(function(r){
     if(r.error){toast('Error: '+r.error.message);return;}
     _drvCache=null; toast('Unmatched successfully.'); pOv();
+  });
+}
+function driverUnmatch(aid){
+  if(!aid){toast('Could not identify application.');return;}
+  if(!confirm('Are you sure you want to unmatch from this owner?')) return;
+  sb.from('applications').update({status:'rejected',unmatched_at:new Date().toISOString(),unmatched_by:'driver'}).eq('id',aid).then(function(r){
+    if(r.error){toast('Error: '+r.error.message);return;}
+    toast('Unmatched successfully.'); pOv();
   });
 }
 function openPubMenu(){document.getElementById('pub-mob-menu').style.display='block';document.body.style.overflow='hidden';}
