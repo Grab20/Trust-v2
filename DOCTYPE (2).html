@@ -875,8 +875,23 @@ nav div::-webkit-scrollbar{display:none}
       <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 4px;padding-top:8px;border-top:1px solid var(--border)">Your Photos &amp; ID (required)</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Used to verify your identity. Required to protect both you and the driver you'll be matched with.</div>
       <div class="doc-grid" style="margin-bottom:12px">
-        <div class="dbox" id="o-hid"><input type="file" accept="image/*" onchange="mDoc('o-hid','o_hid',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Holding ID *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Photo of YOU holding your ID</div></div>
+        <div class="dbox" id="o-selfie" onclick="openOwnerSelfie()" style="cursor:pointer">
+          <canvas id="o-selfie-canvas" style="display:none;width:52px;height:52px;border-radius:50%;object-fit:cover"></canvas>
+          <div id="o-selfie-icon" style="font-size:18px">&#129399;</div>
+          <div style="font-size:10px;font-weight:600">Selfie *</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Opens camera</div>
+        </div>
         <div class="dbox" id="oid"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('oid','oid_f',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID / Passport *</div><div style="font-size:9px;color:var(--muted);margin-top:3px">Screenshot or photo copy accepted</div></div>
+      </div>
+      <!-- Selfie camera overlay -->
+      <div id="selfie-overlay" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.85);flex-direction:column;align-items:center;justify-content:center">
+        <div style="color:#fff;font-size:15px;font-weight:700;margin-bottom:12px">Take a Selfie</div>
+        <video id="selfie-video" autoplay playsinline muted style="width:min(320px,90vw);border-radius:12px;background:#000"></video>
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <button onclick="captureOwnerSelfie()" style="background:var(--gm);color:#fff;border:none;border-radius:999px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer">&#128247; Capture</button>
+          <button onclick="closeOwnerSelfie()" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:999px;padding:12px 22px;font-size:14px;cursor:pointer">Cancel</button>
+        </div>
+        <canvas id="selfie-capture" style="display:none"></canvas>
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px">Car Details</div>
       <div class="frow"><div class="fg"><label>Make *</label><input id="o-mk" placeholder="Toyota"/></div><div class="fg"><label>Model *</label><input id="o-mo" placeholder="Corolla"/></div></div>
@@ -899,7 +914,7 @@ nav div::-webkit-scrollbar{display:none}
       </div>
       <div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:10px 13px;font-size:12px;margin-bottom:10px" id="o-checklist">
         <div style="font-weight:700;color:var(--g);margin-bottom:6px">&#9989; Before you submit, confirm you have:</div>
-        <div id="oc-hid" style="color:var(--muted)">&#9744; Photo holding your ID</div>
+        <div id="oc-selfie" style="color:var(--muted)">&#9744; Selfie photo</div>
         <div id="oc-oid" style="color:var(--muted)">&#9744; ID / Passport copy</div>
         <div id="oc-cf" style="color:var(--muted)">&#9744; Car front photo</div>
         <div id="oc-cs" style="color:var(--muted)">&#9744; Car side photo</div>
@@ -2109,13 +2124,67 @@ function reg2d() {
   eid('rs2').className='sbi done'; eid('rs3').className='sbi on';
 }
 function backS2(){eid('reg-s2-d').style.display='block';eid('reg-s3').style.display='none';eid('rs2').className='sbi on';eid('rs3').className='sbi';}
-var _oclabels={o_hid:'Photo holding your ID',oid_f:'ID / Passport copy',cf:'Car front photo',cs:'Car side photo',cb:'Car back photo'};
+var _oclabels={o_selfie:'Selfie photo',oid_f:'ID / Passport copy',cf:'Car front photo',cs:'Car side photo',cb:'Car back photo'};
 function mDoc(boxId,key,inp){
   docFiles[key]=inp.files[0];
   eid(boxId).classList.add('up');
   // Tick owner checklist
-  var clId={o_hid:'oc-hid',oid_f:'oc-oid',cf:'oc-cf',cs:'oc-cs',cb:'oc-cb'}[key];
+  var clId={o_selfie:'oc-selfie',oid_f:'oc-oid',cf:'oc-cf',cs:'oc-cs',cb:'oc-cb'}[key];
   if(clId){var cl=eid(clId);if(cl){cl.style.color='var(--gm)';cl.style.fontWeight='600';cl.innerHTML='&#10003; '+_oclabels[key];}}
+}
+function tickOwnerSelfie(){
+  var cl=eid('oc-selfie');
+  if(cl){cl.style.color='var(--gm)';cl.style.fontWeight='600';cl.innerHTML='&#10003; Selfie photo';}
+}
+var _selfieStream=null;
+function openOwnerSelfie(){
+  var overlay=eid('selfie-overlay');
+  if(!overlay)return;
+  overlay.style.display='flex';
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false})
+    .then(function(stream){
+      _selfieStream=stream;
+      var v=eid('selfie-video');
+      if(v){v.srcObject=stream;v.play();}
+    })
+    .catch(function(err){
+      closeOwnerSelfie();
+      // Fallback: let them upload a file instead
+      alert('Camera not available ('+err.message+'). Please upload a selfie photo instead.');
+      var inp=document.createElement('input');
+      inp.type='file';inp.accept='image/*';
+      inp.onchange=function(){if(inp.files[0]){docFiles.o_selfie=inp.files[0];eid('o-selfie').classList.add('up');eid('o-selfie-icon').textContent='✓';tickOwnerSelfie();}};
+      inp.click();
+    });
+}
+function closeOwnerSelfie(){
+  var overlay=eid('selfie-overlay');
+  if(overlay)overlay.style.display='none';
+  if(_selfieStream){_selfieStream.getTracks().forEach(function(t){t.stop();});_selfieStream=null;}
+}
+function captureOwnerSelfie(){
+  var v=eid('selfie-video');
+  var cap=eid('selfie-capture');
+  if(!v||!cap)return;
+  cap.width=v.videoWidth||640;
+  cap.height=v.videoHeight||480;
+  cap.getContext('2d').drawImage(v,0,0,cap.width,cap.height);
+  cap.toBlob(function(blob){
+    docFiles.o_selfie=blob;
+    // Show preview in the dbox
+    var preview=eid('o-selfie-canvas');
+    var icon=eid('o-selfie-icon');
+    if(preview){
+      preview.width=cap.width;preview.height=cap.height;
+      preview.getContext('2d').drawImage(cap,0,0);
+      preview.style.display='block';
+    }
+    if(icon)icon.style.display='none';
+    eid('o-selfie').classList.add('up');
+    tickOwnerSelfie();
+    closeOwnerSelfie();
+    toast('Selfie captured!');
+  },'image/jpeg',0.88);
 }
 async function upFile(bucket,path,file) {
   var r=await sb.storage.from(bucket).upload(path,file,{upsert:true});
@@ -2131,7 +2200,7 @@ async function reg2o() {
   if(!wa){oErr('WhatsApp number is required.');return;}
   if(!lo){oErr('City / Location is required.');return;}
   if(!mk||!mo||!yr||!pr){oErr('Please fill in all car details (make, model, year and weekly rate).');return;}
-  if(!docFiles.o_hid){oErr('A photo of you holding your ID is required — tap the Holding ID box above.');return;}
+  if(!docFiles.o_selfie){oErr('A selfie photo is required — tap the Selfie box above to open your camera.');return;}
   if(!docFiles.oid_f){oErr('An ID/Passport copy is required — tap the ID/Passport box above.');return;}
   if(!docFiles.cf||!docFiles.cs||!docFiles.cb){oErr('Front, Side and Back car photos are all required.');return;}
   oCarData={ph:ph,lo:lo,wa:eid('o-wa').value.trim(),mk:mk,mo:mo,yr:parseInt(yr),pr:parseInt(pr),cl:null,tr:eid('o-tr').value,dep:eid('o-dep').value.trim()||null,ins:eid('o-ins').value==='true',ci:eid('o-ci').value,ct:eid('o-ct').value,fp:eid('o-fp').value,plats:Array.from(document.querySelectorAll('.opc:checked')).map(function(c){return c.value;})};
@@ -2165,7 +2234,7 @@ async function doReg() {
   var lo=isD?eid('d-lo').value.trim():oCarData.lo;
   var wa=isD?(eid('d-wa').value.trim()||null):(oCarData.wa||null);
   var pc=isD?(eid('d-pc')?eid('d-pc').value:null):(eid('o-pc')?eid('o-pc').value:null);
-  var ownerIdUrl=null,ownerHsUrl=null,ownerHidUrl=null;
+  var ownerIdUrl=null,ownerHsUrl=null;
   if(rRole==='owner'){
     var safeEmail=rEmail.replace(/[^a-z0-9]/gi,'_');
     if(docFiles.oid_f){
@@ -2173,20 +2242,14 @@ async function doReg() {
       var preUp=await sb.storage.from('profile-photos').upload('pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt,docFiles.oid_f,{upsert:true});
       if(!preUp.error)ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(preUp.data.path||('pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt)).data.publicUrl;
     }
-    if(docFiles.o_hs){
-      var hsExt=(docFiles.o_hs.name.split('.').pop()||'jpg').toLowerCase();
-      var hsPath='pre-reg/'+safeEmail+'-hs-'+Date.now()+'.'+hsExt;
-      var hsUp=await sb.storage.from('profile-photos').upload(hsPath,docFiles.o_hs,{upsert:true});
-      if(!hsUp.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(hsPath).data.publicUrl;
-    }
-    if(docFiles.o_hid){
-      var hidExt=(docFiles.o_hid.name.split('.').pop()||'jpg').toLowerCase();
-      var hidPath='pre-reg/'+safeEmail+'-hid-'+Date.now()+'.'+hidExt;
-      var hidUp=await sb.storage.from('profile-photos').upload(hidPath,docFiles.o_hid,{upsert:true});
-      if(!hidUp.error)ownerHidUrl=sb.storage.from('profile-photos').getPublicUrl(hidPath).data.publicUrl;
+    if(docFiles.o_selfie){
+      var selfieBlob=docFiles.o_selfie;
+      var selfiePath='pre-reg/'+safeEmail+'-selfie-'+Date.now()+'.jpg';
+      var selfieUp=await sb.storage.from('profile-photos').upload(selfiePath,selfieBlob,{upsert:true,contentType:'image/jpeg'});
+      if(!selfieUp.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath).data.publicUrl;
     }
   }
-  var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl,photo_holding_id_url:ownerHidUrl}}});
+  var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl}}});
   if(r.error){
     var msg=r.error.message;
     if(/rate.limit|too.many/i.test(msg))msg='Too many signup attempts for this email. Please wait 1 hour and try again, or use a different email address.';
