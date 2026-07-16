@@ -4705,6 +4705,70 @@ async function adOv(){
     +'<div class="kcard"><div class="kcard-n">'+avgDrvApps+'</div><div class="kcard-l">Avg Apps / Driver</div></div>'
     +'<div class="kcard"><div class="kcard-n">'+avgOwnApps+'</div><div class="kcard-l">Avg Apps / Owner</div></div>'
     +'</div>'
+    +'<div class="shd">&#128172; Chat Activity</div>'
+    +'<div id="adov-chat-wrap">'+adSpin()+'</div>';
+  // Load chat stats async
+  (async function(){
+    var wrap=document.getElementById('adov-chat-wrap'); if(!wrap)return;
+    var [msgR,activeAppR]=await Promise.all([
+      sb.from('messages').select('id,application_id,sender_id,created_at,read_by_recipient').order('created_at',{ascending:false}),
+      sb.from('applications').select('id,driver_id,owner_id,driver_agreed_terms,owner_agreed_terms,terms_agreed_at,terms_proposed').eq('status','approved').is('unmatched_at',null)
+    ]);
+    var msgs=msgR.data||[];
+    var activeApps=activeAppR.data||[];
+    // Apps that have any messages
+    var appsWithMsgs=[...new Set(msgs.map(function(m){return m.application_id;}))];
+    var chatting=activeApps.filter(function(a){return appsWithMsgs.includes(a.id);});
+    var notChatting=activeApps.filter(function(a){return !appsWithMsgs.includes(a.id);});
+    var unreadTotal=msgs.filter(function(m){return !m.read_by_recipient;}).length;
+    // Get last message per app
+    var lastMsg={};
+    msgs.forEach(function(m){if(!lastMsg[m.application_id])lastMsg[m.application_id]=m;});
+    // Count messages per app
+    var msgCount={};
+    msgs.forEach(function(m){msgCount[m.application_id]=(msgCount[m.application_id]||0)+1;});
+    // Fetch party profiles
+    var pIds=[...new Set(activeApps.flatMap(function(a){return [a.driver_id,a.owner_id];}))].filter(Boolean);
+    var prRes=pIds.length?await sb.from('profiles').select('id,full_name').in('id',pIds):{data:[]};
+    var prMap={};(prRes.data||[]).forEach(function(p){prMap[p.id]=p;});
+    // Stat row
+    var today=new Date().toISOString().slice(0,10);
+    var todayMsgs=msgs.filter(function(m){return m.created_at&&m.created_at.slice(0,10)===today;}).length;
+    var html='<div class="kgrid" style="margin-bottom:14px">'
+      +'<div class="kcard"><div class="kcard-n g">'+chatting.length+'</div><div class="kcard-l">Pairs Chatting</div></div>'
+      +'<div class="kcard"><div class="kcard-n">'+msgs.length+'</div><div class="kcard-l">Total Messages</div></div>'
+      +'<div class="kcard"><div class="kcard-n g">'+todayMsgs+'</div><div class="kcard-l">Messages Today</div></div>'
+      +'<div class="kcard"><div class="kcard-n '+(unreadTotal>0?'a':'')+'">'+unreadTotal+'</div><div class="kcard-l">Unread</div></div>'
+      +'</div>';
+    if(chatting.length){
+      html+='<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:12px">'
+        +'<div style="padding:10px 14px;background:var(--gs);font-size:11px;font-weight:700;color:var(--gm)">ACTIVE CONVERSATIONS</div>'
+        +chatting.map(function(a){
+          var drv=prMap[a.driver_id]||{};
+          var own=prMap[a.owner_id]||{};
+          var lm=lastMsg[a.id];
+          var termsAgreed=a.driver_agreed_terms&&a.owner_agreed_terms;
+          var mc=msgCount[a.id]||0;
+          var tp=a.terms_proposed||{};
+          return '<div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--border)">'
+            +'<div style="flex:1;min-width:0">'
+            +'<div style="font-size:13px;font-weight:700;color:var(--g)">'+(drv.full_name||'Driver')+' &harr; '+(own.full_name||'Owner')+'</div>'
+            +'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+mc+' message'+(mc!==1?'s':'')+(lm?' &middot; Last: '+fmtDT(lm.created_at):'')+'</div>'
+            +(tp.rate?'<div style="font-size:11px;color:var(--muted)">Proposed R'+tp.rate+'/wk</div>':'')
+            +'</div>'
+            +'<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;flex-shrink:0;border:1px solid '+(termsAgreed?'#a5d6a7':'#E8A520')+';background:'+(termsAgreed?'#e8f5e9':'#fff8e1')+';color:'+(termsAgreed?'#2e7d32':'#7a5200')+'">'
+            +(termsAgreed?'&#10003; Terms Agreed':'&#9201; Negotiating')+'</span>'
+            +'</div>';
+        }).join('')
+        +'</div>';
+    }
+    if(notChatting.length){
+      html+='<div style="font-size:12px;color:var(--muted);padding:8px 0">'+notChatting.length+' matched pair'+(notChatting.length!==1?'s':'')+' not yet chatting: '
+        +notChatting.map(function(a){var drv=prMap[a.driver_id]||{};var own=prMap[a.owner_id]||{};return (drv.full_name||'Driver')+' &amp; '+(own.full_name||'Owner');}).join(', ')+'.</div>';
+    }
+    if(!activeApps.length) html='<p style="font-size:13px;color:var(--muted)">No active matches yet.</p>';
+    wrap.innerHTML=html;
+  })();
 }
 
 // ── INCOMPLETE REGISTRATIONS ─────────────────────────
@@ -5890,6 +5954,13 @@ async function adMatch(){
   el.innerHTML='<div class="ptitle">Active Rentals</div>'+adSpin();
   // Fetch all active approved matches with terms fields
   var r=await sb.from('applications').select('id,car_id,driver_id,owner_id,created_at,matched_at,terms_proposed,terms_proposed_by,driver_agreed_terms,owner_agreed_terms,terms_agreed_at').eq('status','approved').is('unmatched_at',null).order('matched_at',{ascending:false});
+  // Fetch message counts per application
+  var msgCountMap={}, lastMsgMap={};
+  var msgR=await sb.from('messages').select('id,application_id,created_at').order('created_at',{ascending:false});
+  (msgR.data||[]).forEach(function(m){
+    msgCountMap[m.application_id]=(msgCountMap[m.application_id]||0)+1;
+    if(!lastMsgMap[m.application_id])lastMsgMap[m.application_id]=m.created_at;
+  });
   var apps=r.data||[];
   if(!apps.length){el.innerHTML='<div class="ptitle">Active Rentals</div><div class="empty"><p>No active matches.</p></div>';return;}
   var carIds=apps.map(function(a){return a.car_id;}).filter(Boolean);
@@ -5976,7 +6047,10 @@ async function adMatch(){
           :'<div style="font-size:11px;color:#E8A520;margin-top:2px">&#128274; Contact hidden</div>')
         +'</div>'
         +'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Matched: '+fmtD(a.matched_at||a.created_at)+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Matched: '+fmtD(a.matched_at||a.created_at)+'</div>'
+        +(msgCountMap[a.id]
+          ?'<div style="font-size:12px;font-weight:600;color:var(--g);margin-bottom:10px">&#128172; '+(msgCountMap[a.id])+' message'+(msgCountMap[a.id]!==1?'s':'')+' &middot; Last: '+fmtDT(lastMsgMap[a.id])+'</div>'
+          :'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">&#128172; No messages yet</div>')
         +'<button class="btn btn-red" style="font-size:12px;padding:7px 16px" data-aid="'+a.id+'" onclick="adAdminUnmatch(this)">&#10006; Force Unmatch</button>'
         +'</div></div></div>';
     }).join('')
