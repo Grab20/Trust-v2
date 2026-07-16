@@ -1025,7 +1025,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="adm-nav" id="an-app" onclick="adNav('app')">&#129309; All Applications</div>
       <div class="adm-nav" id="an-set" onclick="adNav('set')">&#9881; Settings</div>
       <div class="adm-nav" id="an-stats" onclick="adNav('stats')">&#128202; Analytics</div>
-      <div class="adm-nav" id="an-match" onclick="adNav('match')">&#128101; Matched Cars</div>
+      <div class="adm-nav" id="an-match" onclick="adNav('match')">&#128101; Active Rentals</div>
       <div class="adm-nav" id="an-hist" onclick="adNav('hist')">&#128336; Match History</div>
       <div class="adm-nav" id="an-prvr" onclick="adNav('prvr')">&#11088; Platform Reviews <span id="prvr-badge" style="display:none;background:#E8A520;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;margin-left:4px">0</span></div>
       <div class="adm-nav" id="an-edits" onclick="adNav('edits')">&#9998; Profile Edits <span id="edits-badge" style="display:none;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;margin-left:4px">0</span></div>
@@ -5887,12 +5887,11 @@ async function adPrvAction(id,approve){
 // ── MATCHED CARS ─────────────────────────────────────
 async function adMatch(){
   var el=document.getElementById('ap-match');
-  el.innerHTML='<div class="ptitle">Matched Cars</div>'+adSpin();
-  // Fetch all active approved matches
-  var r=await sb.from('applications').select('id,car_id,driver_id,owner_id,created_at').eq('status','approved').is('unmatched_at',null);
+  el.innerHTML='<div class="ptitle">Active Rentals</div>'+adSpin();
+  // Fetch all active approved matches with terms fields
+  var r=await sb.from('applications').select('id,car_id,driver_id,owner_id,created_at,matched_at,terms_proposed,terms_proposed_by,driver_agreed_terms,owner_agreed_terms,terms_agreed_at').eq('status','approved').is('unmatched_at',null).order('matched_at',{ascending:false});
   var apps=r.data||[];
-  if(!apps.length){el.innerHTML='<div class="ptitle">Matched Cars</div><div class="empty"><p>No active matches.</p></div>';return;}
-  // Fetch cars
+  if(!apps.length){el.innerHTML='<div class="ptitle">Active Rentals</div><div class="empty"><p>No active matches.</p></div>';return;}
   var carIds=apps.map(function(a){return a.car_id;}).filter(Boolean);
   var drvIds=apps.map(function(a){return a.driver_id;}).filter(Boolean);
   var ownIds=apps.map(function(a){return a.owner_id;}).filter(Boolean);
@@ -5901,35 +5900,98 @@ async function adMatch(){
   var prRes=allPIds.length?await sb.from('profiles').select('id,full_name,phone,whatsapp,email,location').in('id',allPIds):{data:[]};
   var carMap={};(carRes.data||[]).forEach(function(c){carMap[c.id]=c;});
   var prMap={};(prRes.data||[]).forEach(function(p){prMap[p.id]=p;});
-  el.innerHTML='<div class="ptitle">Matched Cars</div><div class="psub">'+apps.length+' active match'+(apps.length!==1?'es':'')+'</div>'
+
+  var termsAgreedCount=apps.filter(function(a){return a.driver_agreed_terms&&a.owner_agreed_terms;}).length;
+  var pendingTermsCount=apps.length-termsAgreedCount;
+
+  el.innerHTML='<div class="ptitle">Active Rentals</div>'
+    +'<div class="psub">'+apps.length+' active match'+(apps.length!==1?'es':'')+' &middot; <span style="color:var(--gm);font-weight:700">&#10003; '+termsAgreedCount+' contact revealed</span>'+(pendingTermsCount?' &middot; <span style="color:#E8A520;font-weight:700">&#9201; '+pendingTermsCount+' terms pending</span>':'')+'</div>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
+    +'<button class="btn btn-sm '+(window._adMatchFilter==='all'||!window._adMatchFilter?'btn-gm':'btn-out')+'" onclick="adMatchFilter(\'all\')">All</button>'
+    +'<button class="btn btn-sm '+(window._adMatchFilter==='agreed'?'btn-gm':'btn-out')+'" onclick="adMatchFilter(\'agreed\')">&#10003; Contact Revealed</button>'
+    +'<button class="btn btn-sm '+(window._adMatchFilter==='pending'?'btn-gm':'btn-out')+'" onclick="adMatchFilter(\'pending\')">&#9201; Terms Pending</button>'
+    +'</div>'
+    +'<div id="ad-match-list">'
     +apps.map(function(a){
       var c=carMap[a.car_id]||{};
       var drv=prMap[a.driver_id]||{};
       var own=prMap[a.owner_id]||{};
-      return '<div class="rcard" style="border-left:4px solid var(--gm)">'
+      var termsAgreed=a.driver_agreed_terms&&a.owner_agreed_terms;
+      var tp=a.terms_proposed||{};
+      var termsStatusHtml='';
+      if(termsAgreed){
+        termsStatusHtml='<div style="background:#f0faf2;border:1.5px solid #a5d6a7;border-radius:8px;padding:10px 12px;margin-bottom:10px">'
+          +'<div style="font-size:11px;font-weight:800;color:var(--gm);margin-bottom:6px">&#10003; TERMS AGREED &mdash; CONTACT REVEALED</div>'
+          +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;font-size:12px;margin-bottom:6px">'
+          +(tp.rate?'<div><span style="color:var(--muted)">Weekly Rate</span><br><strong style="color:var(--gm)">R'+tp.rate+'/wk</strong></div>':'')
+          +(tp.deposit?'<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+tp.deposit+'</strong></div>':'')
+          +(tp.start_date?'<div><span style="color:var(--muted)">Start Date</span><br><strong>'+tp.start_date+'</strong></div>':'')
+          +(tp.notes?'<div style="grid-column:1/-1"><span style="color:var(--muted)">Notes</span><br><em style="font-size:11px">'+esc(tp.notes)+'</em></div>':'')
+          +'</div>'
+          +(a.terms_agreed_at?'<div style="font-size:10px;color:var(--muted)">Agreed on '+fmtDT(a.terms_agreed_at)+'</div>':'')
+          +'</div>';
+      } else {
+        var dAgr=a.driver_agreed_terms, oAgr=a.owner_agreed_terms;
+        var hasTerms=!!(tp.rate||tp.deposit||tp.start_date);
+        termsStatusHtml='<div style="background:#fff8e1;border:1.5px solid #E8A520;border-radius:8px;padding:10px 12px;margin-bottom:10px">'
+          +'<div style="font-size:11px;font-weight:800;color:#7a5200;margin-bottom:6px">&#128274; TERMS PENDING &mdash; CONTACT HIDDEN</div>'
+          +(hasTerms
+            ?'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:6px;font-size:12px;margin-bottom:8px">'
+              +(tp.rate?'<div><span style="color:var(--muted)">Proposed Rate</span><br><strong>R'+tp.rate+'/wk</strong></div>':'')
+              +(tp.deposit?'<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+tp.deposit+'</strong></div>':'')
+              +(tp.start_date?'<div><span style="color:var(--muted)">Start Date</span><br><strong>'+tp.start_date+'</strong></div>':'')
+              +'</div>'
+            :'<div style="font-size:12px;color:#7a5200;margin-bottom:8px">No terms proposed yet.</div>')
+          +'<div style="display:flex;gap:10px;font-size:12px">'
+          +'<span style="'+(dAgr?'color:var(--gm);font-weight:700':'color:#7a5200')+'">Driver: '+(dAgr?'&#10003; Agreed':'&#9711; Waiting')+'</span>'
+          +'<span style="'+(oAgr?'color:var(--gm);font-weight:700':'color:#7a5200')+'">Owner: '+(oAgr?'&#10003; Agreed':'&#9711; Waiting')+'</span>'
+          +'</div>'
+          +'</div>';
+      }
+      return '<div class="rcard" data-terms="'+(termsAgreed?'agreed':'pending')+'" style="border-left:4px solid '+(termsAgreed?'var(--gm)':'#E8A520')+'">'
         +'<div style="display:flex;gap:12px;align-items:flex-start;padding:14px">'
         +(c.photo_front_url?'<img src="'+c.photo_front_url+'" style="width:80px;height:58px;object-fit:cover;border-radius:8px;flex-shrink:0"/>':'<div style="width:80px;height:58px;background:var(--sand);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px">&#128663;</div>')
         +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:15px;font-weight:700;color:var(--g);margin-bottom:3px">'+(c.make||'-')+' '+(c.model||'')+' '+(c.year||'')+(c.color?' &middot; '+c.color:'')+'</div>'
-        +'<div style="font-size:12px;color:var(--muted);margin-bottom:8px">&#128205; '+(c.location||'-')+' &middot; R'+(c.price_per_week||0)+'/wk</div>'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px">'
+        +'<span style="font-size:15px;font-weight:700;color:var(--g)">'+(c.make||'-')+' '+(c.model||'')+' '+(c.year||'')+(c.color?' &middot; '+c.color:'')+'</span>'
+        +(termsAgreed?'<span style="font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:2px 8px;border-radius:999px;border:1px solid #a5d6a7">&#10003; Active Rental</span>':'<span style="font-size:10px;font-weight:700;background:#fff8e1;color:#7a5200;padding:2px 8px;border-radius:999px;border:1px solid #E8A520">&#9201; Negotiating</span>')
+        +'</div>'
+        +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">&#128205; '+(c.location||'-')+(c.price_per_week?' &middot; R'+c.price_per_week+'/wk':'')+'</div>'
+        +termsStatusHtml
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">'
         +'<div style="background:var(--gs);border-radius:8px;padding:10px 12px">'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--gm);margin-bottom:4px">&#128100; Driver</div>'
         +'<div style="font-size:13px;font-weight:600;color:var(--g)">'+(drv.full_name||'Unknown')+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+(drv.phone||'-')+(drv.whatsapp?' &middot; '+drv.whatsapp:'')+'</div>'
-        +'<div style="font-size:11px;color:var(--muted)">'+(drv.email||'-')+'</div>'
+        +(termsAgreed
+          ?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+(drv.phone||'-')+(drv.whatsapp?' &middot; &#128241; '+drv.whatsapp:'')+'</div>'
+            +'<div style="font-size:11px;color:var(--muted)">'+(drv.email||'-')+'</div>'
+          :'<div style="font-size:11px;color:#E8A520;margin-top:2px">&#128274; Contact hidden</div>')
         +'</div>'
         +'<div style="background:#f0f9ff;border-radius:8px;padding:10px 12px">'
         +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#0369a1;margin-bottom:4px">&#127968; Owner</div>'
         +'<div style="font-size:13px;font-weight:600;color:var(--g)">'+(own.full_name||'Unknown')+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+(own.phone||'-')+(own.whatsapp?' &middot; '+own.whatsapp:'')+'</div>'
-        +'<div style="font-size:11px;color:var(--muted)">'+(own.email||'-')+'</div>'
+        +(termsAgreed
+          ?'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+(own.phone||'-')+(own.whatsapp?' &middot; &#128241; '+own.whatsapp:'')+'</div>'
+            +'<div style="font-size:11px;color:var(--muted)">'+(own.email||'-')+'</div>'
+          :'<div style="font-size:11px;color:#E8A520;margin-top:2px">&#128274; Contact hidden</div>')
         +'</div>'
         +'</div>'
-        +'<div style="font-size:11px;color:var(--muted);margin-top:8px">Matched: '+fmtD(a.created_at)+'</div>'
-        +'<div style="margin-top:10px"><button class="btn btn-red" style="font-size:12px;padding:7px 16px" data-aid="'+a.id+'" onclick="adAdminUnmatch(this)">&#10006; Unmatch</button></div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Matched: '+fmtD(a.matched_at||a.created_at)+'</div>'
+        +'<button class="btn btn-red" style="font-size:12px;padding:7px 16px" data-aid="'+a.id+'" onclick="adAdminUnmatch(this)">&#10006; Force Unmatch</button>'
         +'</div></div></div>';
-    }).join('');
+    }).join('')
+    +'</div>';
+}
+
+function adMatchFilter(type){
+  window._adMatchFilter=type;
+  document.querySelectorAll('#ad-match-list .rcard').forEach(function(card){
+    if(type==='all') card.style.display='';
+    else card.style.display=(card.dataset.terms===type)?'':'none';
+  });
+  // Update button styles
+  document.querySelectorAll('#ap-match .btn').forEach(function(b){b.classList.remove('btn-gm');b.classList.add('btn-out');});
+  event.target.classList.remove('btn-out');event.target.classList.add('btn-gm');
 }
 
 async function adAdminUnmatch(btn){
