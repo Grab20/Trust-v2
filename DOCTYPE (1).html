@@ -2575,6 +2575,59 @@ async function pOv() {
         }).join('')
         +'</div>';
     }
+    // ── RECOMMENDED CARS NEAR DRIVER ──
+    if(DP&&DP.status==='approved'){
+      var drvLoc=(P&&P.location||'').trim();
+      html+='<div style="margin-top:20px;margin-bottom:4px"><div class="shd">&#11088; Available Cars Near You</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-bottom:8px">'
+        +(drvLoc?'&#128205; Based on your location':'Add your location in Settings for better matches')
+        +'</div>'
+        +'<div id="drv-car-rec-wrap"><div class="loading"><div class="spin"></div>Finding cars near you...</div></div>'
+        +'</div>';
+      // Load async so dashboard renders fast
+      (async function(){
+        var wrap=eid('drv-car-rec-wrap'); if(!wrap)return;
+        var carsR=await sb.from('cars').select('id,owner_id,make,model,year,color,transmission,price_per_week,deposit,insurance,photo_front_url,location,admin_status,status').eq('admin_status','approved').eq('status','available');
+        var allCars=(carsR.data||[]);
+        // Exclude cars whose owners are already matched
+        var matchedOwnerR=await sb.from('applications').select('owner_id').eq('status','approved').is('unmatched_at',null);
+        var matchedOwners=new Set((matchedOwnerR.data||[]).map(function(a){return a.owner_id;}));
+        var avail=allCars.filter(function(c){return !matchedOwners.has(c.owner_id);});
+        // Score by distance to driver
+        var dCoords=_resolveCoords(drvLoc);
+        avail.forEach(function(c){
+          var cCoords=_resolveCoords((c.location||'').trim());
+          if(!dCoords||!cCoords){c._dist=999;c._distLabel=c.location?'&#128205; '+esc(c.location):'';return;}
+          var d=_haversineG(dCoords[0],dCoords[1],cCoords[0],cCoords[1]);
+          c._dist=d;
+          if(d<=20)c._distLabel='&#128205; Within 20km';
+          else if(d<=40)c._distLabel='&#128205; Within 40km';
+          else if(d<=70)c._distLabel='&#128205; Within 70km';
+          else if(d<=100)c._distLabel='&#128205; Within 100km';
+          else c._distLabel=c.location?'&#128205; '+esc(c.location):'';
+        });
+        avail.sort(function(a,b){
+          function band(c){if(c._dist<=20)return 0;if(c._dist<=40)return 1;if(c._dist<=70)return 2;if(c._dist<=100)return 3;return 4;}
+          return band(a)-band(b)||(a.price_per_week||0)-(b.price_per_week||0);
+        });
+        var rec=avail.slice(0,8);
+        if(!rec.length){wrap.innerHTML='<p style="font-size:13px;color:var(--muted)">No available cars found near you right now.</p>';return;}
+        wrap.innerHTML='<div style="display:flex;overflow-x:auto;gap:12px;padding-bottom:10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-right:24px">'
+          +rec.map(function(c){
+            return '<div style="min-width:200px;max-width:200px;background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;scroll-snap-align:start;flex-shrink:0;cursor:pointer" onclick="go(\'cars\')">'
+              +(c.photo_front_url?'<img src="'+esc(c.photo_front_url)+'" style="width:100%;height:110px;object-fit:cover">':'<div style="width:100%;height:110px;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:32px">&#128663;</div>')
+              +'<div style="padding:10px">'
+              +'<div style="font-size:13px;font-weight:800;color:var(--g)">'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</div>'
+              +(c.color?'<div style="font-size:11px;color:var(--muted)">'+esc(c.color)+(c.transmission?' &middot; '+esc(c.transmission):'')+'</div>':'')
+              +'<div style="font-size:14px;font-weight:700;color:var(--gm);margin-top:5px">R'+c.price_per_week+'/wk</div>'
+              +(c.deposit?'<div style="font-size:11px;color:var(--muted)">Deposit: R'+c.deposit+'</div>':'')
+              +'<div style="font-size:11px;color:var(--muted);margin-top:3px">'+c._distLabel+'</div>'
+              +'</div></div>';
+          }).join('')
+          +'</div>'
+          +'<button class="btn btn-out btn-sm" style="margin-top:8px" onclick="go(\'cars\')">Browse All Cars</button>';
+      })();
+    }
     // ── DRIVER PAST RENTALS ──
     var dPastR=await sb.from('applications').select('id,owner_id,car_id,unmatched_at,unmatch_reason').eq('driver_id',U.id).eq('status','approved').not('unmatched_at','is',null).order('unmatched_at',{ascending:false});
     var dPastApps=dPastR.data||[];
@@ -3203,12 +3256,15 @@ async function pChat(){
   _chatIsDriver=isD;
   // Fetch other party profile + car
   var otherId=isD?app.owner_id:app.driver_id;
-  var [otherR,carR,msgsR]=await Promise.all([
-    sb.from('profiles').select('id,full_name,phone,whatsapp,location,photo_headshot_url,photo_holding_id_url').eq('id',otherId).maybeSingle(),
+  var [otherR,carR,msgsR,driverDocR]=await Promise.all([
+    sb.from('profiles').select('id,full_name,phone,whatsapp,location,photo_headshot_url,photo_holding_id_url,photo_fullbody_url').eq('id',otherId).maybeSingle(),
     app.car_id?sb.from('cars').select('id,make,model,year,price_per_week,deposit,location').eq('id',app.car_id).maybeSingle():{data:null},
-    sb.from('messages').select('*').eq('application_id',app.id).order('created_at',{ascending:true})
+    sb.from('messages').select('*').eq('application_id',app.id).order('created_at',{ascending:true}),
+    // Owner fetches driver docs from driver_profiles
+    !isD?sb.from('driver_profiles').select('doc_id_url,doc_license_url,photo_holding_id_url,photo_fullbody_url').eq('user_id',app.driver_id).maybeSingle():{data:null}
   ]);
   var other=otherR.data||{};
+  var driverDocs=(!isD&&driverDocR&&driverDocR.data)||null;
   var car=carR&&carR.data||null;
   _chatOtherName=other.full_name||(isD?'Owner':'Driver');
   var msgs=msgsR.data||[];
@@ -3269,6 +3325,30 @@ async function pChat(){
       +'<div style="margin-top:8px;font-size:11px;color:var(--muted)">&#128274; Contact details revealed once both parties agree.</div>'
       +'</div>';
   }
+  // Driver docs block (owner only)
+  var docsHtml='';
+  if(!isD){
+    var dd=driverDocs||{};
+    var docItems=[
+      {url:other.photo_headshot_url,label:'Headshot'},
+      {url:other.photo_fullbody_url||dd.photo_fullbody_url,label:'Full Body'},
+      {url:dd.photo_holding_id_url,label:'Holding ID'},
+      {url:dd.doc_id_url,label:'ID Document'},
+      {url:dd.doc_license_url,label:'Licence'}
+    ].filter(function(d){return !!d.url;});
+    if(docItems.length){
+      docsHtml='<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">'
+        +'<div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:8px">&#128196; Driver Documents</div>'
+        +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+        +docItems.map(function(d){
+          return '<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.url)+'\')">'
+            +'<img src="'+esc(d.url)+'" style="width:60px;height:44px;object-fit:cover;border-radius:7px;border:1.5px solid var(--border)">'
+            +'<div style="font-size:9px;color:var(--muted);margin-top:3px">'+d.label+'</div>'
+            +'</div>';
+        }).join('')
+        +'</div></div>';
+    }
+  }
   // Build chat html
   var chatHtml='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
     +(other.photo_headshot_url||other.photo_holding_id_url
@@ -3277,13 +3357,14 @@ async function pChat(){
     +'<div><div style="font-size:16px;font-weight:800;color:var(--g)">'+esc(_chatOtherName)+'</div>'
     +(car?'<div style="font-size:11px;color:var(--muted)">'+esc(car.make)+' '+esc(car.model)+' '+car.year+' &middot; R'+car.price_per_week+'/wk</div>':'')
     +'</div></div>'
+    +docsHtml
     +termsHtml
-    +'<div id="chat-msgs" style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;max-height:50vh;overflow-y:auto;padding:4px 0">'
+    +'<div id="chat-msgs" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:45vh;overflow-y:auto;padding:4px 0">'
     +msgs.map(function(m){return renderChatMsg(m,app);}).join('')
     +'</div>'
-    +'<div style="display:flex;gap:8px;align-items:flex-end">'
+    +'<div style="display:flex;gap:8px;align-items:flex-end;padding-top:8px;border-top:1px solid var(--border)">'
     +'<textarea id="chat-input" placeholder="Type a message..." style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;resize:none;height:44px;line-height:1.4" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();chatSend();}" oninput="this.style.height=\'44px\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'"></textarea>'
-    +'<button class="btn btn-gm" style="padding:10px 16px;height:44px;flex-shrink:0" onclick="chatSend()">&#10148;</button>'
+    +'<button class="btn btn-gm" style="padding:10px 16px;height:44px;flex-shrink:0;border-radius:10px" onclick="chatSend()">&#10148;</button>'
     +'</div>';
   el.innerHTML='<div class="tbox">'+chatHtml+'</div>';
   // Scroll messages to bottom
@@ -3920,13 +4001,37 @@ async function drvRespOv(btn){
   if(s==='approved') update.matched_at=new Date().toISOString();
   var r=await sb.from('applications').update(update).eq('id',id);
   if(r.error){toast('Error: '+r.error.message);return;}
-  if(s==='approved'){sendNotifEmail('match_approved_owner_only', id);_carCache=null;_drvCache=null;}
-  toast(s==='approved'?'Match accepted! Owner contact details are now visible.':'Request declined.');
+  if(s==='approved'){
+    sendNotifEmail('match_approved_owner_only', id);
+    _carCache=null;_drvCache=null;
+    // Show match celebration popup
+    showMatchPopup();
+  } else {
+    toast('Request declined.');
+  }
   var bR=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner');
   var cnt=bR.count||0;
   var bdg=eid('sb-ap-badge');
   if(bdg){bdg.textContent=cnt;bdg.style.display=cnt>0?'inline':'none';}
   pOv();
+}
+
+function showMatchPopup(){
+  var mo=eid('match-popup-modal');
+  if(!mo){
+    mo=document.createElement('div');mo.className='overlay';mo.id='match-popup-modal';
+    mo.addEventListener('click',function(e){if(e.target===mo)closeModal('match-popup-modal');});
+    document.body.appendChild(mo);
+  }
+  mo.innerHTML='<div class="modal" style="max-width:360px;padding:28px 24px;text-align:center">'
+    +'<div style="font-size:56px;margin-bottom:12px">&#127881;</div>'
+    +'<div style="font-size:22px;font-weight:800;color:var(--g);margin-bottom:8px">You\'re Matched!</div>'
+    +'<div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px">Great news! Use the chat to negotiate your rental terms. Contact details are revealed once both parties agree.</div>'
+    +'<div style="display:flex;flex-direction:column;gap:10px">'
+    +'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:700" onclick="closeModal(\'match-popup-modal\');dpanel(\'ch\')">&#128172; Open Chat &amp; Negotiate Terms</button>'
+    +'<button class="btn btn-out btn-w" onclick="closeModal(\'match-popup-modal\')">I\'ll do it later</button>'
+    +'</div></div>';
+  openModal('match-popup-modal');
 }
 async function doUnmatch(btn) {
   var id=btn.getAttribute('data-aid');
