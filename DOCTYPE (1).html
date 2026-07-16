@@ -1362,8 +1362,9 @@ sb.auth.getSession().then(function(r) {
 });
 sb.auth.onAuthStateChange(function(ev, session) {
   if (ev === 'INITIAL_SESSION') {
-    // Check for pending registration data on page reload after email verify
     if(session) {
+      U = session.user;
+      // Check for pending registration data on page reload after email verify
       try {
         var pendingInit = localStorage.getItem('tm_pending_reg');
         var pendingCarInit = localStorage.getItem('tm_pending_car');
@@ -1379,6 +1380,10 @@ sb.auth.onAuthStateChange(function(ev, session) {
           }
         }
       } catch(e) {}
+      loadP().then(setNav);
+    } else {
+      // No session — fire event so protected-page boot falls back gracefully
+      document.dispatchEvent(new Event('trustmate-no-auth'));
     }
     return;
   }
@@ -1514,12 +1519,30 @@ window.addEventListener('hashchange', function() {
   go(pg||'home', arg||null, true);
 });
 // On load, read hash and navigate to correct page
+// Wait for auth session to restore before navigating to protected pages
 (function(){
   var raw = window.location.hash.replace(/^#/,'') || 'home';
   var slash = raw.indexOf('/');
   var pg = slash>=0 ? raw.substring(0,slash) : raw;
   var arg = slash>=0 ? raw.substring(slash+1) : null;
-  if(pg && document.getElementById('page-'+pg)) go(pg, arg||null, true);
+  var protectedPages={'dashboard':1,'admin':1};
+  if(protectedPages[pg]){
+    // Delay until auth is confirmed (onAuthStateChange fires INITIAL_SESSION)
+    document.addEventListener('trustmate-auth', function onAuth(){
+      document.removeEventListener('trustmate-auth', onAuth);
+      go(pg, arg||null, true);
+    }, {once:true});
+    // If no session exists, redirect to login immediately
+    document.addEventListener('trustmate-no-auth', function(){
+      go('login', null, true);
+    }, {once:true});
+    // Safety fallback in case neither event fires within 3s
+    setTimeout(function(){
+      if(!U) go('login', null, true);
+    }, 3000);
+  } else {
+    if(pg && document.getElementById('page-'+pg)) go(pg, arg||null, true);
+  }
 })();
 function trackView(page) {
   try {
@@ -3161,6 +3184,7 @@ async function refreshChatNav(){
 }
 
 async function pChat(){
+  requestChatNotifPerm();
   var el=eid('panel-ch'); if(!el)return;
   el.innerHTML=spin();
   if(!U||!P){el.innerHTML='<div class="empty">Please log in.</div>';return;}
@@ -3317,11 +3341,39 @@ function appendChatMsg(m){
   }
 }
 
+function requestChatNotifPerm(){
+  if(typeof Notification!=='undefined'&&Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+
 function chatSubscribe(appId,app){
   if(_chatSub){try{sb.removeChannel(_chatSub);}catch(e){}}
   _chatSub=sb.channel('chat-'+appId)
     .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'application_id=eq.'+appId},function(payload){
-      appendChatMsg(payload.new);
+      var m=payload.new;
+      var onChatPanel=eid('panel-ch')&&eid('panel-ch').classList.contains('on');
+      if(onChatPanel){
+        appendChatMsg(m);
+      } else {
+        // Increment badge
+        var bdg=eid('ch-badge');
+        if(bdg){
+          var cur=parseInt(bdg.textContent||'0')||0;
+          bdg.textContent=cur+1;
+          bdg.style.display='inline';
+        }
+        // Browser push notification
+        if(m.sender_id!==U.id){
+          var body=m.type==='terms_proposal'?'📋 New rental terms proposed':m.type==='system'?m.content:(m.content||'New message');
+          if(typeof Notification!=='undefined'&&Notification.permission==='granted'){
+            var n=new Notification('TrustMate Chat — '+(_chatOtherName||'Your Match'),{body:body,icon:'/favicon.ico',tag:'tm-chat-'+appId});
+            n.onclick=function(){window.focus();dpanel('ch');n.close();};
+          } else {
+            toast('&#128172; New message from '+(_chatOtherName||'your match'));
+          }
+        }
+      }
     })
     .subscribe();
 }
@@ -3344,10 +3396,11 @@ function openTermsModal(){
     mo=document.createElement('div');mo.className='overlay';mo.id='terms-prop-modal';
     mo.innerHTML='<div class="modal" style="max-width:380px;padding:20px">'+html+'</div>';
     document.body.appendChild(mo);
+    mo.addEventListener('click',function(e){if(e.target===mo)closeModal('terms-prop-modal');});
   } else {
     mo.querySelector('.modal').innerHTML=html;
   }
-  mo.style.display='flex';
+  openModal('terms-prop-modal');
 }
 
 async function submitTermsProposal(){
