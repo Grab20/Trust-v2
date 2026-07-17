@@ -1283,6 +1283,15 @@ async function sendNotifEmail(type, appId) {
     });
   } catch(e) { console.warn('Email notification failed', e); }
 }
+async function sendDriverEmail(type, driverProfileId) {
+  try {
+    await fetch('https://qyyflivkmnwikagnvstv.supabase.co/functions/v1/send-match-email', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'},
+      body: JSON.stringify({type: type, driver_profile_id: driverProfileId})
+    });
+  } catch(e) { console.warn('Email notification failed', e); }
+}
 var rRole = 'driver', rName = '', rEmail = '', rPass = '';
 var oCarData = {};
 var docFiles = {};
@@ -3202,6 +3211,8 @@ async function upDocItem(n,col,inp) {
   var upd={};upd[col]=url;
   await sb.from('driver_profiles').update(upd).eq('id',DP.id);
   DP[col]=url; toast('Uploaded!'); pDc();
+  // Notify admin that a document was uploaded (fire-and-forget)
+  sendDriverEmail('doc_uploaded', DP.id);
 }
 async function upOwnerPhoto(boxId,col,inp){
   var file=inp.files[0];if(!file)return;
@@ -4821,8 +4832,9 @@ async function adInc(){
         +'<div style="font-size:12px;color:var(--muted)">'+esc(p.email||'-')+' &middot; '+esc(p.phone||'')+(p.location?' &middot; &#128205;'+esc(p.location):'')+'</div></div>'
         +'<div style="text-align:right"><span class="pill p-p">Incomplete</span><div style="font-size:11px;color:var(--muted);margin-top:4px">'+daysSince+'d ago</div></div>'
         +'</div>'
-        +'<div style="padding:8px 14px 4px">'
+        +'<div style="padding:8px 14px 4px;display:flex;gap:8px;flex-wrap:wrap">'
         +'<button class="btn btn-out btn-sm" data-id="'+d.id+'" onclick="incToggle(this.dataset.id)">&#9998; Edit &amp; Upload Docs</button>'
+        +'<button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" data-did="'+d.id+'" onclick="adSendIncompleteReminder(this.dataset.did,this)">&#128140; Send Reminder</button>'
         +'</div>'
         +'<div id="inc-edit-'+d.id+'" style="display:none;padding:0 14px 14px">'
         // Profile fields
@@ -4892,6 +4904,7 @@ async function adInc(){
         +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
         +'<button class="btn btn-g btn-sm" data-did="'+d.id+'" data-uid="'+d.user_id+'" onclick="incSave(this.dataset.did,this.dataset.uid)">&#128190; Save Changes</button>'
         +'<button class="btn btn-out btn-sm" data-did="'+d.id+'" onclick="incPromote(this.dataset.did)">&#8593; Move to New Registrations</button>'
+        +'<button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" data-did="'+d.id+'" onclick="adSendIncompleteReminder(this.dataset.did,this)">&#128140; Send Reminder Email</button>'
         +'</div>'
         +'<div style="margin-bottom:6px"><textarea id="ie-rej-'+d.id+'" placeholder="Rejection reason (required to decline)" style="width:100%;padding:7px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;height:48px;resize:vertical"></textarea></div>'
         +'<div style="display:flex;gap:8px">'
@@ -5124,7 +5137,18 @@ async function adMoveIncomplete(type,id){
   }
   if(r&&r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   if(r&&(!r.data||!r.data.length)){toast('Update blocked — check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
-  toast('Moved to Incomplete.'); adReg(); adOv();
+  // Auto-send reminder email to driver
+  if(type==='drv') sendDriverEmail('incomplete_reminder', id);
+  toast('Moved to Incomplete — reminder email sent.'); adReg(); adOv();
+}
+
+async function adSendIncompleteReminder(dpId, btn){
+  var orig=btn.textContent;
+  btn.disabled=true; btn.textContent='Sending...';
+  await sendDriverEmail('incomplete_reminder', dpId);
+  btn.textContent='&#10003; Sent!';
+  setTimeout(function(){btn.disabled=false;btn.textContent=orig;},3000);
+  toast('Reminder email sent.');
 }
 
 // ── MANAGE DRIVERS ─────────────────────────────────────
