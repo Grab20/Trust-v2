@@ -3952,9 +3952,13 @@ async function ownerResp(id,s,btn){
     upd.owner_notes=(reason&&reason.trim())?reason.trim():null;
   }
   await sb.from('applications').update(upd).eq('id',id);
-  if(s==='approved'){sendNotifEmail('match_approved_driver_only',id);_carCache=null;_drvCache=null;}
+  if(s==='approved'){
+    sendNotifEmail('match_approved_driver_only',id);
+    _carCache=null;_drvCache=null;
+    showMatchPopup();
+  }
   if(s==='rejected') sendNotifEmail('application_rejected',id);
-  toast(s==='approved'?'Accepted! Match confirmed.':'Declined.');
+  if(s!=='approved') toast('Declined.');
   pAp();
 }
 async function drvResp(btn){
@@ -4020,18 +4024,37 @@ function showMatchPopup(){
   var mo=eid('match-popup-modal');
   if(!mo){
     mo=document.createElement('div');mo.className='overlay';mo.id='match-popup-modal';
-    mo.addEventListener('click',function(e){if(e.target===mo)closeModal('match-popup-modal');});
+    // No click-outside dismiss — user must make an active choice
     document.body.appendChild(mo);
   }
-  mo.innerHTML='<div class="modal" style="max-width:360px;padding:28px 24px;text-align:center">'
+  var notifBlocked=typeof Notification!=='undefined'&&Notification.permission==='denied';
+  var notifGranted=typeof Notification!=='undefined'&&Notification.permission==='granted';
+  mo.innerHTML='<div class="modal" style="max-width:380px;padding:28px 24px;text-align:center">'
     +'<div style="font-size:56px;margin-bottom:12px">&#127881;</div>'
     +'<div style="font-size:22px;font-weight:800;color:var(--g);margin-bottom:8px">You\'re Matched!</div>'
-    +'<div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:20px">Great news! Use the chat to negotiate your rental terms. Contact details are revealed once both parties agree.</div>'
+    +'<div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px">Use the chat to negotiate your rental terms. Contact details are revealed once both parties agree.</div>'
+    +(!notifGranted&&!notifBlocked
+      ?'<div style="background:#fff8e1;border:1.5px solid #E8A520;border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:left">'
+        +'<div style="font-size:13px;font-weight:700;color:#7a5200;margin-bottom:4px">&#128276; Enable Chat Notifications</div>'
+        +'<div style="font-size:12px;color:#7a5200;margin-bottom:10px">Allow notifications so you\'re alerted when your match sends a message — even if you\'re on a different tab.</div>'
+        +'<button class="btn btn-gm btn-w" id="notif-allow-btn" onclick="askNotifThenChat()">&#10003; Allow Notifications &amp; Open Chat</button>'
+        +'</div>'
+      :(notifBlocked
+        ?'<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#7f1d1d;text-align:left">&#128683; Notifications blocked in your browser. Enable them in browser settings to get message alerts.</div>'
+        :'<div style="background:#f0faf2;border:1.5px solid #a5d6a7;border-radius:10px;padding:8px 14px;margin-bottom:16px;font-size:12px;color:var(--gm);text-align:left">&#10003; Notifications are enabled — you\'ll be alerted when a message arrives.</div>'))
     +'<div style="display:flex;flex-direction:column;gap:10px">'
-    +'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:700" onclick="closeModal(\'match-popup-modal\');dpanel(\'ch\')">&#128172; Open Chat &amp; Negotiate Terms</button>'
+    +(notifGranted||notifBlocked?'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:700" onclick="closeModal(\'match-popup-modal\');dpanel(\'ch\')">&#128172; Open Chat &amp; Negotiate Terms</button>':'')
     +'<button class="btn btn-out btn-w" onclick="closeModal(\'match-popup-modal\')">I\'ll do it later</button>'
     +'</div></div>';
   openModal('match-popup-modal');
+}
+
+function askNotifThenChat(){
+  if(typeof Notification==='undefined'){closeModal('match-popup-modal');dpanel('ch');return;}
+  Notification.requestPermission().then(function(perm){
+    closeModal('match-popup-modal');
+    dpanel('ch');
+  });
 }
 async function doUnmatch(btn) {
   var id=btn.getAttribute('data-aid');
@@ -4756,8 +4779,10 @@ async function adOv(){
             +'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+mc+' message'+(mc!==1?'s':'')+(lm?' &middot; Last: '+fmtDT(lm.created_at):'')+'</div>'
             +(tp.rate?'<div style="font-size:11px;color:var(--muted)">Proposed R'+tp.rate+'/wk</div>':'')
             +'</div>'
-            +'<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;flex-shrink:0;border:1px solid '+(termsAgreed?'#a5d6a7':'#E8A520')+';background:'+(termsAgreed?'#e8f5e9':'#fff8e1')+';color:'+(termsAgreed?'#2e7d32':'#7a5200')+'">'
-            +(termsAgreed?'&#10003; Terms Agreed':'&#9201; Negotiating')+'</span>'
+            +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'
+            +'<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;border:1px solid '+(termsAgreed?'#a5d6a7':'#E8A520')+';background:'+(termsAgreed?'#e8f5e9':'#fff8e1')+';color:'+(termsAgreed?'#2e7d32':'#7a5200')+'">'+(termsAgreed?'&#10003; Terms Agreed':'&#9201; Negotiating')+'</span>'
+            +'<button class="btn btn-out btn-sm" style="font-size:11px;padding:4px 10px" data-aid="'+a.id+'" data-drv="'+esc((prMap[a.driver_id]||{}).full_name||'Driver')+'" data-own="'+esc((prMap[a.owner_id]||{}).full_name||'Owner')+'" onclick="adViewChat(this)">&#128172; View Chat</button>'
+            +'</div>'
             +'</div>';
         }).join('')
         +'</div>';
@@ -6051,7 +6076,10 @@ async function adMatch(){
         +(msgCountMap[a.id]
           ?'<div style="font-size:12px;font-weight:600;color:var(--g);margin-bottom:10px">&#128172; '+(msgCountMap[a.id])+' message'+(msgCountMap[a.id]!==1?'s':'')+' &middot; Last: '+fmtDT(lastMsgMap[a.id])+'</div>'
           :'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">&#128172; No messages yet</div>')
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +'<button class="btn btn-out" style="font-size:12px;padding:7px 16px" data-aid="'+a.id+'" data-drv="'+esc(drv.full_name||'Driver')+'" data-own="'+esc(own.full_name||'Owner')+'" onclick="adViewChat(this)">&#128172; View Chat</button>'
         +'<button class="btn btn-red" style="font-size:12px;padding:7px 16px" data-aid="'+a.id+'" onclick="adAdminUnmatch(this)">&#10006; Force Unmatch</button>'
+        +'</div>'
         +'</div></div></div>';
     }).join('')
     +'</div>';
@@ -6081,6 +6109,54 @@ async function adAdminUnmatch(btn){
   }
   toast('Match ended.');
   adMatch();
+}
+
+async function adViewChat(btn){
+  var appId=btn.getAttribute('data-aid');
+  var drvName=btn.getAttribute('data-drv')||'Driver';
+  var ownName=btn.getAttribute('data-own')||'Owner';
+  var mo=eid('admin-chat-modal');
+  if(!mo){
+    mo=document.createElement('div');mo.className='overlay';mo.id='admin-chat-modal';
+    mo.addEventListener('click',function(e){if(e.target===mo)closeModal('admin-chat-modal');});
+    document.body.appendChild(mo);
+  }
+  mo.innerHTML='<div class="modal" style="max-width:480px;padding:0;display:flex;flex-direction:column;max-height:85vh">'
+    +'<div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
+    +'<div><div style="font-size:15px;font-weight:800;color:var(--g)">&#128172; '+esc(drvName)+' &harr; '+esc(ownName)+'</div>'
+    +'<div style="font-size:11px;color:var(--muted)">Admin read-only view</div></div>'
+    +'<button onclick="closeModal(\'admin-chat-modal\')" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)">&#10005;</button>'
+    +'</div>'
+    +'<div id="admin-chat-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px">'+adSpin()+'</div>'
+    +'</div>';
+  openModal('admin-chat-modal');
+  // Load messages
+  var [msgsR,appR]=await Promise.all([
+    sb.from('messages').select('*').eq('application_id',appId).order('created_at',{ascending:true}),
+    sb.from('applications').select('driver_id,owner_id').eq('id',appId).maybeSingle()
+  ]);
+  var msgs=msgsR.data||[];
+  var app=appR.data||{};
+  var box=eid('admin-chat-msgs');
+  if(!box)return;
+  if(!msgs.length){box.innerHTML='<div style="text-align:center;color:var(--muted);font-size:13px;padding:20px">No messages yet.</div>';return;}
+  box.innerHTML=msgs.map(function(m){
+    var isDriver=m.sender_id===app.driver_id;
+    var isSystem=m.type==='system';
+    var isTerms=m.type==='terms_proposal';
+    if(isSystem||isTerms){
+      return '<div style="text-align:center;font-size:11px;color:var(--muted);font-style:italic;padding:4px 8px;background:var(--cream);border-radius:6px;white-space:pre-wrap">'
+        +(isTerms?'&#128221; Terms proposed: ':'')+esc(m.content)
+        +'<div style="font-size:10px;color:var(--muted);margin-top:2px">'+fmtDT(m.created_at)+'</div></div>';
+    }
+    return '<div style="display:flex;flex-direction:column;align-items:'+(isDriver?'flex-start':'flex-end')+';gap:2px">'
+      +'<span style="font-size:10px;font-weight:700;color:'+(isDriver?'var(--gm)':'#0369a1')+'">'+esc(isDriver?drvName:ownName)+'</span>'
+      +'<div style="max-width:80%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.5;'
+        +(isDriver?'background:var(--gs);color:var(--g);border-bottom-left-radius:3px':'background:#dbeafe;color:#1e3a5f;border-bottom-right-radius:3px')+'">'+esc(m.content)+'</div>'
+      +'<span style="font-size:10px;color:var(--muted)">'+fmtDT(m.created_at)+(m.read_by_recipient?' &middot; &#10003; Read':'')+'</span>'
+      +'</div>';
+  }).join('');
+  box.scrollTop=box.scrollHeight;
 }
 
 // ── ALL APPLICATIONS ───────────────────────────────────
