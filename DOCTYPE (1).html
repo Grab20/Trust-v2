@@ -745,8 +745,26 @@ nav div::-webkit-scrollbar{display:none}
     <!-- S2 Driver -->
     <div id="reg-s2-d" style="display:none">
       <div class="frow"><div class="fg"><label>Phone *</label><input id="d-ph" type="tel" placeholder="+27..."/></div><div class="fg"><label>Age *</label><input id="d-ag" type="number" min="18" placeholder="25"/></div></div>
-      <div class="fg"><label>Full Address *</label><input id="d-lo" placeholder="e.g. 12 Oak Street, Sandton, Johannesburg, 2196"/>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">&#128204; Enter your full street address including suburb, city and postal code. This helps owners find drivers near their vehicle.</div>
+      <div class="fg"><label>Full Address *</label>
+        <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;margin-bottom:6px">
+          <input id="d-street-no" type="text" placeholder="No. *" maxlength="10"/>
+          <input id="d-street-name" type="text" placeholder="Street name *"/>
+        </div>
+        <input id="d-suburb" type="text" placeholder="Suburb *" style="margin-bottom:6px"/>
+        <select id="d-province" style="margin-bottom:4px">
+          <option value="">Select Province *</option>
+          <option value="Gauteng">Gauteng</option>
+          <option value="Western Cape">Western Cape</option>
+          <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+          <option value="Eastern Cape">Eastern Cape</option>
+          <option value="Limpopo">Limpopo</option>
+          <option value="Mpumalanga">Mpumalanga</option>
+          <option value="North West">North West</option>
+          <option value="Free State">Free State</option>
+          <option value="Northern Cape">Northern Cape</option>
+        </select>
+        <input id="d-lo" type="hidden"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">&#128204; Your full address helps owners find drivers near their vehicle.</div>
       </div>
       <div class="fg"><label>WhatsApp *</label><input id="d-wa" type="tel" placeholder="+27..." required/></div>
       <div class="fg"><label>Preferred contact method</label>
@@ -929,8 +947,8 @@ nav div::-webkit-scrollbar{display:none}
       <p style="font-size:12px;color:var(--muted);margin-bottom:12px">All documents marked * are required to submit your profile for admin approval.</p>
       <div class="doc-grid">
         <div class="dbox" id="ddf"><input type="file" accept="image/*" onchange="mDoc('ddf','df',this)"><div style="font-size:18px">&#127947;</div><div style="font-size:10px;font-weight:600">Full Body *</div></div>
-        <div class="dbox" id="ddh"><input type="file" accept="image/*" onchange="mDoc('ddh','dh',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Headshot *</div></div>
-        <div class="dbox" id="ddhid"><input type="file" accept="image/*" onchange="mDoc('ddhid','dhid',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Holding ID *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Photo of YOU holding your ID</div></div>
+        <div class="dbox" id="ddh"><input type="file" accept="image/*" capture="user" onchange="mDoc('ddh','dh',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Headshot *</div><div style="font-size:9px;color:var(--muted);margin-top:2px">&#128247; Opens camera</div></div>
+        <div class="dbox" id="ddhid"><input type="file" accept="image/*" capture="user" onchange="mDoc('ddhid','dhid',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Holding ID *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">&#128247; Take a live photo holding your ID</div></div>
         <div class="dbox" id="ddl"><input type="file" accept="image/*,.pdf" onchange="mDoc('ddl','dl',this)"><div style="font-size:18px">&#128203;</div><div style="font-size:10px;font-weight:600">Licence *</div></div>
         <div class="dbox" id="ddid"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddid','did',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID/Passport *</div></div>
         <div class="dbox" id="ddpor"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddpor','por',this)"><div style="font-size:18px">&#127968;</div><div style="font-size:10px;font-weight:600">Proof of Residence *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Bank/account statement, utility bill</div></div>
@@ -1459,11 +1477,11 @@ function pb(p) { var m={Uber:'pb-u',Bolt:'pb-b',inDrive:'pb-i'}; return '<span c
 function fmtD(d) { return d?new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}):'-'; }
 function fmtDT(d) { return d?new Date(d).toLocaleString('en-ZA',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'-'; }
 function scoreInfo(s) {
-  if (s>=90) return ['tp-h','sc-h','lb-h','Trusted Driver'];
-  if (s>=80) return ['tp-h','sc-h','lb-h','Reliable Driver'];
-  if (s>=70) return ['tp-m','sc-m','lb-m','Good Standing'];
-  if (s>=60) return ['tp-o','sc-o','lb-o','Fair Standing'];
-  if (s>=50) return ['tp-l','sc-l','lb-l','Needs Improvement'];
+  if (s>=85) return ['tp-h','sc-h','lb-h','Excellent'];
+  if (s>=70) return ['tp-h','sc-h','lb-h','Super'];
+  if (s>=60) return ['tp-m','sc-m','lb-m','Good'];
+  if (s>=55) return ['tp-o','sc-o','lb-o','Average'];
+  if (s>=50) return ['tp-o','sc-o','lb-o','Below Average'];
   return ['tp-l','sc-l','lb-l','High Risk'];
 }
 function starRow(score, sz) {
@@ -2128,13 +2146,20 @@ function reg1() {
 function backS1(){eid('reg-s1').style.display='block';eid('reg-s2-d').style.display='none';eid('reg-s2-o').style.display='none';eid('rs1').className='sbi on';eid('rs2').className='sbi';}
 function reg2d() {
   clearErr('reg-err');
-  var ph=eid('d-ph').value.trim(),ag=eid('d-ag').value,lo=eid('d-lo').value.trim();
+  var ph=eid('d-ph').value.trim(),ag=eid('d-ag').value;
+  var streetNo=eid('d-street-no').value.trim(),streetName=eid('d-street-name').value.trim();
+  var suburb=eid('d-suburb').value.trim(),province=eid('d-province').value.trim();
   var wa=eid('d-wa').value.trim(),idNo=eid('d-id').value.trim(),lic=eid('d-lic').value.trim();
   var plats=Array.from(document.querySelectorAll('.dpc:checked'));
   if(!ph){showErr('reg-err','Phone number is required.');return;}
   if(!wa){showErr('reg-err','WhatsApp number is required.');return;}
   if(!ag){showErr('reg-err','Age is required.');return;}
-  if(!lo){showErr('reg-err','City / Location is required.');return;}
+  if(!streetNo){showErr('reg-err','Street number is required for your full address.');return;}
+  if(!streetName){showErr('reg-err','Street name is required for your full address.');return;}
+  if(!suburb){showErr('reg-err','Suburb is required for your full address.');return;}
+  if(!province){showErr('reg-err','Please select your province.');return;}
+  var lo=streetNo+' '+streetName+', '+suburb+', '+province;
+  eid('d-lo').value=lo;
   if(!idNo){showErr('reg-err','SA ID Number is required.');return;}
   if(!lic){showErr('reg-err','Licence Number is required.');return;}
   var licdd=eid('d-licdd').value,licmm=eid('d-licmm').value,licyy=eid('d-licyy').value;
@@ -3204,12 +3229,31 @@ async function pDc() {
   if(!DP){el.innerHTML=empty('&#128196;','No driver profile found.');return;}
   var fresh=await sb.from('driver_profiles').select('*').eq('id',DP.id).maybeSingle();
   if(fresh.data)DP=fresh.data;
-  var docs=[{k:'photo_fullbody_url',l:'Full Body',n:'fb'},{k:'photo_headshot_url',l:'Headshot',n:'hs'},{k:'photo_holding_id_url',l:'Holding ID',n:'hid'},{k:'doc_license_url',l:'Licence',n:'lic'},{k:'doc_id_url',l:'ID/Passport',n:'id'},{k:'proof_of_residence_url',l:'Proof of Residence',n:'por'}];
-  el.innerHTML='<div class="shd">Documents</div><div class="doc-grid">'+docs.map(function(d){
-    return '<div class="dbox '+(DP[d.k]?'up':'')+'" id="dc-'+d.n+'"><input type="file" accept="image/*,.pdf" onchange="upDocItem(\''+d.n+'\',\''+d.k+'\',this)"/>'
-      +(DP[d.k]?'<img src="'+DP[d.k]+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">&#128196;</div>')
-      +'<div style="font-size:10px;font-weight:600">'+d.l+'</div><div style="font-size:9px;color:var(--muted)">'+(DP[d.k]?'Uploaded':'Click to upload')+'</div></div>';
-  }).join('')+'</div>';
+  var docs=[
+    {k:'photo_fullbody_url',l:'Full Body',n:'fb',icon:'&#127947;',cam:false},
+    {k:'photo_headshot_url',l:'Headshot',n:'hs',icon:'&#129334;',cam:true},
+    {k:'photo_holding_id_url',l:'Holding ID',n:'hid',icon:'&#129334;',cam:true},
+    {k:'doc_license_url',l:'Licence',n:'lic',icon:'&#128203;',cam:false},
+    {k:'doc_id_url',l:'ID/Passport',n:'id',icon:'&#128196;',cam:false},
+    {k:'proof_of_residence_url',l:'Proof of Residence',n:'por',icon:'&#127968;',cam:false}
+  ];
+  el.innerHTML='<div class="shd">Documents</div>'
+    +'<div style="font-size:11px;color:#1a5c28;background:#f0faf2;border-radius:8px;padding:8px 10px;margin-bottom:10px">&#128247; Headshot and Holding ID photos will open your camera directly for a live photo.</div>'
+    +'<div class="doc-grid">'+docs.map(function(d){
+    var hasFile=!!DP[d.k];
+    if(d.cam){
+      // Camera-only: button triggers captureDocPhoto()
+      return '<div class="dbox '+(hasFile?'up':'')+'" id="dc-'+d.n+'" onclick="captureDocPhoto(\''+d.n+'\',\''+d.k+'\')" style="cursor:pointer">'
+        +(hasFile?'<img src="'+DP[d.k]+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="event.stopPropagation();showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">'+d.icon+'</div>')
+        +'<div style="font-size:10px;font-weight:600">'+d.l+'</div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(hasFile?'Tap to retake':'&#128247; Tap to open camera')+'</div></div>';
+    } else {
+      return '<div class="dbox '+(hasFile?'up':'')+'" id="dc-'+d.n+'"><input type="file" accept="image/*,.pdf" onchange="upDocItem(\''+d.n+'\',\''+d.k+'\',this)"/>'
+        +(hasFile?'<img src="'+DP[d.k]+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">'+d.icon+'</div>')
+        +'<div style="font-size:10px;font-weight:600">'+d.l+'</div><div style="font-size:9px;color:var(--muted)">'+(hasFile?'Uploaded':'Click to upload')+'</div></div>';
+    }
+  }).join('')+'</div>'
+  +'<div id="dc-cam-wrap"></div>';
 }
 async function upDocItem(n,col,inp) {
   var file=inp.files[0];if(!file)return;
@@ -3221,6 +3265,53 @@ async function upDocItem(n,col,inp) {
   // Notify admin that a document was uploaded (fire-and-forget)
   sendDriverEmail('doc_uploaded', DP.id);
 }
+// Camera capture for headshot / holding-ID in driver docs panel
+function captureDocPhoto(n, col) {
+  var wrap = eid('dc-cam-wrap');
+  if (!wrap) return;
+  // If already open for this slot, close it
+  if (wrap.dataset.slot === n && wrap.innerHTML) { wrap.innerHTML = ''; wrap.dataset.slot = ''; return; }
+  wrap.dataset.slot = n;
+  wrap.innerHTML =
+    '<div style="margin-top:12px;background:#000;border-radius:12px;overflow:hidden;position:relative">'
+    + '<video id="dc-cam-video" autoplay playsinline style="width:100%;max-height:280px;display:block;object-fit:cover"></video>'
+    + '<canvas id="dc-cam-canvas" style="display:none"></canvas>'
+    + '<div style="display:flex;gap:10px;padding:10px;background:rgba(0,0,0,.7)">'
+    + '<button onclick="snapDocPhoto(\''+n+'\',\''+col+'\')" style="flex:1;background:#1a5c28;color:#fff;border:none;border-radius:8px;padding:10px;font-size:14px;font-weight:700;cursor:pointer">&#128247; Capture</button>'
+    + '<button onclick="closeDcCam()" style="flex:0;background:#333;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:13px;cursor:pointer">&#10005;</button>'
+    + '</div></div>';
+  var video = eid('dc-cam-video');
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+    .then(function(stream) { video.srcObject = stream; wrap.dataset.stream = 'active'; })
+    .catch(function(err) {
+      wrap.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:10px">Camera access denied. Please allow camera and try again, or upload a file instead.<br><input type="file" accept="image/*" onchange="upDocItem(\''+n+'\',\''+col+'\',this)" style="margin-top:8px"/></div>';
+    });
+}
+function closeDcCam() {
+  var video = eid('dc-cam-video');
+  if (video && video.srcObject) { video.srcObject.getTracks().forEach(function(t){t.stop();}); }
+  var wrap = eid('dc-cam-wrap');
+  if (wrap) { wrap.innerHTML = ''; wrap.dataset.slot = ''; }
+}
+async function snapDocPhoto(n, col) {
+  var video = eid('dc-cam-video'), canvas = eid('dc-cam-canvas');
+  if (!video || !canvas) return;
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  closeDcCam();
+  canvas.toBlob(async function(blob) {
+    var file = new File([blob], n+'-'+Date.now()+'.jpg', {type:'image/jpeg'});
+    var box = eid('dc-'+n); if (box) box.style.opacity='0.5';
+    var url = await upFile('driver-docs', U.id+'/'+n+'-'+Date.now(), file);
+    if (box) box.style.opacity='';
+    if (!url) { toast('Upload failed'); return; }
+    var upd = {}; upd[col] = url;
+    await sb.from('driver_profiles').update(upd).eq('id', DP.id);
+    DP[col] = url; toast('Photo captured & uploaded!'); pDc();
+    sendDriverEmail('doc_uploaded', DP.id);
+  }, 'image/jpeg', 0.9);
+}
+
 async function upOwnerPhoto(boxId,col,inp){
   var file=inp.files[0];if(!file)return;
   var box=eid(boxId);if(box)box.style.opacity='0.5';
