@@ -197,6 +197,9 @@ nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;flex-dire
 .terms-content{overflow-y:auto;max-height:55vh;font-size:13px;color:#444;line-height:1.8;padding-right:6px}
 .terms-content p{margin-bottom:10px}
 .terms-content strong{color:var(--g)}
+@media(max-width:800px){
+  .grid2{grid-template-columns:1fr!important}
+}
 @media(max-width:700px){
   .frow{grid-template-columns:1fr}
   .dash-wrap{grid-template-columns:1fr}
@@ -848,6 +851,14 @@ nav div::-webkit-scrollbar{display:none}
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:3px">Date you first obtained your driver's licence</div>
       </div>
+      <div class="fg"><label>Licence Expiry Date *</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <select id="d-licexpdd"><option value="">Day</option></select>
+          <select id="d-licexpmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
+          <select id="d-licexpyy"><option value="">Year</option></select>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Date your driver's licence expires</div>
+      </div>
       <div class="fg">
         <label>Do you have a valid PDP (Professional Driving Permit)? *</label>
         <div style="display:flex;gap:16px;margin-top:6px">
@@ -857,6 +868,14 @@ nav div::-webkit-scrollbar{display:none}
         <div id="pdp-no-block" style="display:none;margin-top:8px;padding:10px 13px;background:#fff1f2;border:1.5px solid #fecdd3;border-radius:8px;font-size:12px;color:#dc2626;font-weight:600">&#128683; You cannot complete registration without a valid PDP. A Professional Driving Permit is required by law to drive passengers commercially in South Africa.</div>
         <div id="pdp-upload-block" style="display:none;margin-top:8px">
           <div class="dbox" id="dbox-pdp" style="max-width:200px"><input type="file" accept="image/*,.pdf" onchange="mDoc('dbox-pdp','pdp_doc',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">Upload PDP *</div><div style="font-size:9px;color:var(--muted)">Photo or PDF</div></div>
+          <div style="margin-top:10px"><label style="font-size:13px;font-weight:600">PDP Expiry Date *</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:5px">
+              <select id="d-pdpexpdd"><option value="">Day</option></select>
+              <select id="d-pdpexpmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
+              <select id="d-pdpexpyy"><option value="">Year</option></select>
+            </div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">Date your PDP expires</div>
+          </div>
         </div>
       </div>
       <div class="fg">
@@ -1354,10 +1373,15 @@ document.addEventListener('change',function(e){
 });
 (function initLicDateSelects(){
   var dd=document.getElementById('d-licdd'),yy=document.getElementById('d-licyy');
-  if(!dd||!yy)return;
-  for(var i=1;i<=31;i++){var o=document.createElement('option');o.value=String(i).padStart(2,'0');o.textContent=i;dd.appendChild(o);}
+  var expdd=document.getElementById('d-licexpdd'),expyy=document.getElementById('d-licexpyy');
+  var pdpdd=document.getElementById('d-pdpexpdd'),pdpyy=document.getElementById('d-pdpexpyy');
   var curYr=new Date().getFullYear();
-  for(var y=curYr;y>=1960;y--){var o=document.createElement('option');o.value=y;o.textContent=y;yy.appendChild(o);}
+  function fillDays(el){if(!el)return;for(var i=1;i<=31;i++){var o=document.createElement('option');o.value=String(i).padStart(2,'0');o.textContent=i;el.appendChild(o);}}
+  function fillYearsPast(el,from,to){if(!el)return;for(var y=from;y>=to;y--){var o=document.createElement('option');o.value=y;o.textContent=y;el.appendChild(o);}}
+  function fillYearsFuture(el,from,to){if(!el)return;for(var y=from;y<=to;y++){var o=document.createElement('option');o.value=y;o.textContent=y;el.appendChild(o);}}
+  fillDays(dd); fillYearsPast(yy,curYr,1960);
+  fillDays(expdd); fillYearsFuture(expyy,curYr,curYr+20);
+  fillDays(pdpdd); fillYearsFuture(pdpyy,curYr,curYr+10);
 })();
 function mPlatShot(plat,idx,inp){
   if(!inp.files||!inp.files[0])return;
@@ -1993,10 +2017,11 @@ async function loadProfPage(dpId) {
   var r3=await sb.from('reviews').select('*').eq('driver_id',dpId).order('created_at',{ascending:false});
   var revs=r3.data||[];
   // Check if current user (owner) has active match with this driver
-  var isMatchedWithDriver=false;
+  var isMatchedWithDriver=false, termsAgreed=false;
   if(U&&P&&(P.role==='owner'||P.role==='both')){
-    var matchChk=await sb.from('applications').select('id').eq('owner_id',U.id).eq('driver_id',d.user_id).eq('status','approved').is('unmatched_at',null).maybeSingle();
+    var matchChk=await sb.from('applications').select('id,driver_agreed_terms,owner_agreed_terms').eq('owner_id',U.id).eq('driver_id',d.user_id).eq('status','approved').is('unmatched_at',null).maybeSingle();
     isMatchedWithDriver=!!(matchChk.data);
+    termsAgreed=!!(matchChk.data&&matchChk.data.driver_agreed_terms&&matchChk.data.owner_agreed_terms);
   }
   var name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
   var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,100,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
@@ -2020,8 +2045,9 @@ async function loadProfPage(dpId) {
     +'<div class="av" style="width:86px;height:86px;font-size:26px;flex-shrink:0">'+av+'</div>'
     +'<div style="flex:1"><h2 style="font-family:\'Playfair Display\',serif;font-size:20px;margin-bottom:4px">'+name+'</h2>'
     +'<p style="font-size:12px;color:var(--muted);margin-bottom:'+(isMatchedWithDriver?'4':'10')+'px">&#128205; '+(p.location||'Not set')+'</p>'
-    +(isMatchedWithDriver&&(p.phone||p.whatsapp||p.email)?'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(p.phone?'&#128222; '+p.phone+' ':'')+( p.whatsapp?'&nbsp;&middot; &#128241; '+p.whatsapp+' ':'')+( p.email?'&nbsp;&middot; &#9993; '+p.email:'')+'</p>':''
-    )+(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after match</p>':'')
+    +(termsAgreed&&(p.phone||p.whatsapp||p.email)?'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(p.phone?'&#128222; '+p.phone+' ':'')+( p.whatsapp?'&nbsp;&middot; &#128241; '+p.whatsapp+' ':'')+( p.email?'&nbsp;&middot; &#9993; '+p.email:'')+'</p>':''
+    )+(U&&isMatchedWithDriver&&!termsAgreed?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after both parties agree on rental terms in chat</p>':''
+    )+(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after both parties agree on rental terms</p>':'')
     +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:inline-flex;align-items:center;gap:6px"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+btns+'</div></div></div>'
     +(isMatchedWithDriver&&(d.doc_id_url||d.doc_license_url||d.photo_headshot_url||d.photo_fullbody_url||d.photo_holding_id_url)
@@ -2035,7 +2061,22 @@ async function loadProfPage(dpId) {
       +'</div></div>'
       :'')
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Driver Details</h3>'
-    +'<div class="pgrid"><div class="pf"><label>Driving experience</label><span>'+d.years_driving+'+ years</span></div><div class="pf"><label>Safe parking</label><span>'+(d.safe_parking?'Yes':'No')+'</span></div>'+(d.age?'<div class="pf"><label>Age</label><span>'+d.age+'</span></div>':'')+'<div class="pf"><label>Platforms</label><span>'+((d.platforms||[]).join(', ')||'-')+'</span></div>'+(d.license_date?'<div class="pf"><label>Licence obtained</label><span>'+esc(d.license_date)+'</span></div>':'')+(d.weekly_checkin_amount?'<div class="pf"><label>Weekly check-in</label><span>R'+Number(d.weekly_checkin_amount).toLocaleString()+'</span></div>':'')+(d.deposit_amount!=null?'<div class="pf"><label>Deposit</label><span>'+(d.deposit_amount?'R'+Number(d.deposit_amount).toLocaleString():'None')+'</span></div>':'')+'</div></div>'
+    +(function(){
+      var yearsOnPlat=d.created_at?Math.floor((Date.now()-new Date(d.created_at).getTime())/(365.25*864e5)):null;
+      return '<div class="pgrid">'
+        +(d.license_date?'<div class="pf"><label>Licence obtained</label><span>'+esc(d.license_date)+'</span></div>':'')
+        +(d.license_expiry_date?'<div class="pf"><label>Licence expires</label><span>'+esc(d.license_expiry_date)+'</span></div>':'')
+        +(d.has_pdp?'<div class="pf"><label>PDP</label><span>Valid</span></div>':'')
+        +(d.pdp_expiry_date?'<div class="pf"><label>PDP expires</label><span>'+esc(d.pdp_expiry_date)+'</span></div>':'')
+        +(yearsOnPlat!==null?'<div class="pf"><label>Years on platform</label><span>'+(yearsOnPlat<1?'Less than 1 year':yearsOnPlat+' year'+(yearsOnPlat!==1?'s':''))+'</span></div>':'')
+        +'<div class="pf"><label>Safe parking</label><span>'+(d.safe_parking?'Yes':'No')+'</span></div>'
+        +(d.age?'<div class="pf"><label>Age</label><span>'+d.age+'</span></div>':'')
+        +'<div class="pf"><label>Platforms</label><span>'+((d.platforms||[]).join(', ')||'-')+'</span></div>'
+        +(d.weekly_checkin_amount?'<div class="pf"><label>Weekly check-in</label><span>R'+Number(d.weekly_checkin_amount).toLocaleString()+'</span></div>':'')
+        +(d.deposit_amount!=null?'<div class="pf"><label>Deposit</label><span>'+(d.deposit_amount?'R'+Number(d.deposit_amount).toLocaleString():'None')+'</span></div>':'')
+        +'</div>';
+    })()+
+    '</div>'
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Platform History</h3>'
     +'<div style="display:flex;flex-direction:column;gap:8px">'
     +(function(){
@@ -2164,12 +2205,15 @@ function reg2d() {
   if(!lic){showErr('reg-err','Licence Number is required.');return;}
   var licdd=eid('d-licdd').value,licmm=eid('d-licmm').value,licyy=eid('d-licyy').value;
   if(!licdd||!licmm||!licyy){showErr('reg-err','Licence obtained date (day, month and year) is required.');return;}
+  var licexpdd=eid('d-licexpdd').value,licexpmm=eid('d-licexpmm').value,licexpyy=eid('d-licexpyy').value;
+  if(!licexpdd||!licexpmm||!licexpyy){showErr('reg-err','Licence expiry date (day, month and year) is required.');return;}
   var wci=eid('d-wci').value.trim();
   if(!wci){showErr('reg-err','Weekly check-in amount is required.');return;}
   var pdpAns=document.querySelector('input[name="d-pdp"]:checked');
   if(!pdpAns){showErr('reg-err','Please answer the PDP question.');return;}
   if(pdpAns.value==='no'){showErr('reg-err','A valid PDP (Professional Driving Permit) is required to register on TrustMate SA.');return;}
   if(pdpAns.value==='yes'&&!docFiles.pdp_doc){showErr('reg-err','Please upload your PDP document.');return;}
+  if(pdpAns.value==='yes'){var pdpexpdd=eid('d-pdpexpdd').value,pdpexpmm=eid('d-pdpexpmm').value,pdpexpyy=eid('d-pdpexpyy').value;if(!pdpexpdd||!pdpexpmm||!pdpexpyy){showErr('reg-err','PDP expiry date (day, month and year) is required.');return;}}
   var expAns=document.querySelector('input[name="d-exp"]:checked');
   if(!expAns){showErr('reg-err','Please answer the e-hailing experience question.');return;}
   if(expAns.value==='no'){showErr('reg-err','TrustMate SA requires at least 1 year of e-hailing platform experience to register.');return;}
@@ -2355,6 +2399,10 @@ async function doReg() {
     var depAmt=depType==='amount'?parseInt(eid('d-dep').value||0)||null:null;
     var licdd2=eid('d-licdd').value,licmm2=eid('d-licmm').value,licyy2=eid('d-licyy').value;
     var licDate=(licdd2&&licmm2&&licyy2)?(licdd2+'/'+licmm2+'/'+licyy2):null;
+    var licexpdd2=eid('d-licexpdd').value,licexpmm2=eid('d-licexpmm').value,licexpyy2=eid('d-licexpyy').value;
+    var licExpDate=(licexpdd2&&licexpmm2&&licexpyy2)?(licexpdd2+'/'+licexpmm2+'/'+licexpyy2):null;
+    var pdpexpdd2=eid('d-pdpexpdd')?eid('d-pdpexpdd').value:'',pdpexpmm2=eid('d-pdpexpmm')?eid('d-pdpexpmm').value:'',pdpexpyy2=eid('d-pdpexpyy')?eid('d-pdpexpyy').value:'';
+    var pdpExpDate=(pdpexpdd2&&pdpexpmm2&&pdpexpyy2)?(pdpexpdd2+'/'+pdpexpmm2+'/'+pdpexpyy2):null;
     var isNonePlat2=document.getElementById('dpc-none')&&document.getElementById('dpc-none').checked;
     var platList=isNonePlat2?['None']:Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;});
     // PDP upload
@@ -2369,7 +2417,7 @@ async function doReg() {
     var selfBoltRating=parseFloat((eid('d-bolt-rating')||{}).value||0)||null;
     var selfIndriveTrips=parseInt((eid('d-indrive-trips')||{}).value||0)||null;
     var selfIndriveRating=parseFloat((eid('d-indrive-rating')||{}).value||0)||null;
-    var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,license_date:licDate,weekly_checkin_amount:parseInt(eid('d-wci').value||0)||null,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:isNonePlat2?null:shotUrls.uber,screenshot_bolt_url:isNonePlat2?null:shotUrls.bolt,screenshot_indrive_url:isNonePlat2?null:shotUrls.indrive,has_pdp:hasPdp,pdp_url:pdpDocUrl,has_1yr_experience:has1yr,self_uber_trips:selfUberTrips,self_uber_rating:selfUberRating,self_bolt_trips:selfBoltTrips,self_bolt_rating:selfBoltRating,self_indrive_trips:selfIndriveTrips,self_indrive_rating:selfIndriveRating},u);
+    var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,license_date:licDate,license_expiry_date:licExpDate,pdp_expiry_date:pdpExpDate,weekly_checkin_amount:parseInt(eid('d-wci').value||0)||null,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:isNonePlat2?null:shotUrls.uber,screenshot_bolt_url:isNonePlat2?null:shotUrls.bolt,screenshot_indrive_url:isNonePlat2?null:shotUrls.indrive,has_pdp:hasPdp,pdp_url:pdpDocUrl,has_1yr_experience:has1yr,self_uber_trips:selfUberTrips,self_uber_rating:selfUberRating,self_bolt_trips:selfBoltTrips,self_bolt_rating:selfBoltRating,self_indrive_trips:selfIndriveTrips,self_indrive_rating:selfIndriveRating},u);
     // Use SECURITY DEFINER RPC to bypass RLS (anon users can't update via direct query)
     var dpR=await sb.rpc('complete_driver_registration',{payload:dpPayload});
     if(dpR.error){
@@ -5089,6 +5137,10 @@ async function adInc(){
           +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Age</label><input id="ie-age-'+d.id+'" type="number" value="'+(d.age||'')+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
           +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">ID Number</label><input id="ie-idn-'+d.id+'" value="'+esc(d.id_number||'')+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
           +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Licence No.</label><input id="ie-lic-'+d.id+'" value="'+esc(d.license_number||'')+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
+          +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Licence Obtained (dd/mm/yyyy)</label><input id="ie-licdate-'+d.id+'" value="'+esc(d.license_date||'')+'" placeholder="e.g. 15/06/2018" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
+          +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Licence Expiry (dd/mm/yyyy)</label><input id="ie-licexp-'+d.id+'" value="'+esc(d.license_expiry_date||'')+'" placeholder="e.g. 15/06/2028" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
+          +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">PDP Expiry (dd/mm/yyyy)</label><input id="ie-pdpexp-'+d.id+'" value="'+esc(d.pdp_expiry_date||'')+'" placeholder="e.g. 15/06/2026" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
+          +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Bio</label><textarea id="ie-bio-'+d.id+'" style="width:100%;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;height:56px;resize:vertical">'+esc(d.bio||'')+'</textarea></div>'
           +'</div>'
           // TrustScore override
           +'<div class="shd">TrustScore &amp; Platform Stats</div>'
@@ -5166,6 +5218,10 @@ async function incSave(dpId,uid){
   var age=g('ie-age-'+dpId);if(age!==null)du.age=parseInt(age)||null;
   var idn=g('ie-idn-'+dpId);if(idn!==null)du.id_number=idn;
   var lic=g('ie-lic-'+dpId);if(lic!==null)du.license_number=lic;
+  var licdate=g('ie-licdate-'+dpId);if(licdate!==null)du.license_date=licdate;
+  var licexp=g('ie-licexp-'+dpId);if(licexp!==null)du.license_expiry_date=licexp;
+  var pdpexp=g('ie-pdpexp-'+dpId);if(pdpexp!==null)du.pdp_expiry_date=pdpexp;
+  var bio=document.getElementById('ie-bio-'+dpId);if(bio)du.bio=bio.value.trim()||null;
   // TrustScore & rentals
   var ts=g('ie-ts-'+dpId);if(ts!==null)du.trust_score=Math.max(0,Math.min(100,parseInt(ts)||0));
   var rc=g('ie-rc-'+dpId);if(rc!==null)du.rentals_completed=parseInt(rc)||0;
@@ -5232,7 +5288,7 @@ async function adReg(){
         +'<div class="rcard-head"><div style="display:flex;align-items:center;gap:10px">'
         +(d.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+d.photo_headshot_url+'\')"><img src="'+d.photo_headshot_url+'" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(p.full_name)+'</div>')
         +'<div><div style="font-size:15px;font-weight:700">'+( p.full_name||'Unknown')+'</div><div style="font-size:11px;color:var(--muted)">Driver / '+fmtD(p.created_at)+'</div></div></div>'+adPill('pending')+'</div>'
-        +'<div class="rcard-body">'+igrid(['Email: <strong>'+(p.email||'-')+'</strong>','Phone: <strong>'+(p.phone||'-')+'</strong>',p.whatsapp?'WhatsApp: <strong>'+p.whatsapp+'</strong>':'','Location: <strong>'+(p.location||'-')+'</strong>','ID No: <strong>'+(d.id_number||'-')+'</strong>','Licence: <strong>'+(d.license_number||'-')+'</strong>','Driving: <strong>'+d.years_driving+'+ yrs</strong>',d.age?'Age: <strong>'+d.age+'</strong>':'','Platforms: <strong>'+((d.platforms||[]).join(', ')||'-')+'</strong>','Score: <strong style="color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</strong>','Docs: <strong style="color:'+(docValid?'var(--gm)':'#dc2626')+'">'+(docValid?'Valid to '+fmtD(d.doc_expires_at):d.doc_uploaded_at?'EXPIRED':'Not uploaded')+'</strong>','PDP: <strong style="color:'+(d.has_pdp?'var(--gm)':'#dc2626')+'">'+(d.has_pdp===true?'Yes ✓':d.has_pdp===false?'No ✗':'Not answered')+'</strong>','1yr Experience: <strong style="color:'+(d.has_1yr_experience?'var(--gm)':'#dc2626')+'">'+(d.has_1yr_experience===true?'Yes ✓':d.has_1yr_experience===false?'No ✗':'Not answered')+'</strong>',(d.self_uber_trips||d.self_uber_rating)?'Uber (self): <strong>'+(d.self_uber_trips?d.self_uber_trips+' trips':'')+' '+(d.self_uber_rating?'/ '+d.self_uber_rating+' ★':'')+'</strong>':'',(d.self_bolt_trips||d.self_bolt_rating)?'Bolt (self): <strong>'+(d.self_bolt_trips?d.self_bolt_trips+' trips':'')+' '+(d.self_bolt_rating?'/ '+d.self_bolt_rating+' ★':'')+'</strong>':'',(d.self_indrive_trips||d.self_indrive_rating)?'inDrive (self): <strong>'+(d.self_indrive_trips?d.self_indrive_trips+' trips':'')+' '+(d.self_indrive_rating?'/ '+d.self_indrive_rating+' ★':'')+'</strong>':''])
+        +'<div class="rcard-body">'+igrid(['Email: <strong>'+(p.email||'-')+'</strong>','Phone: <strong>'+(p.phone||'-')+'</strong>',p.whatsapp?'WhatsApp: <strong>'+p.whatsapp+'</strong>':'','Location: <strong>'+(p.location||'-')+'</strong>','ID No: <strong>'+(d.id_number||'-')+'</strong>','Licence: <strong>'+(d.license_number||'-')+'</strong>','Driving: <strong>'+d.years_driving+'+ yrs</strong>',d.age?'Age: <strong>'+d.age+'</strong>':'','Lic. Obtained: <strong>'+(d.license_date||'-')+'</strong>','Lic. Expiry: <strong style="color:'+(d.license_expiry_date?'inherit':'var(--muted)')+'">'+(d.license_expiry_date||'Not provided')+'</strong>','PDP Expiry: <strong style="color:'+(d.pdp_expiry_date?'inherit':'var(--muted)')+'">'+(d.pdp_expiry_date||'Not provided')+'</strong>','Platforms: <strong>'+((d.platforms||[]).join(', ')||'-')+'</strong>','Score: <strong style="color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</strong>','Docs: <strong style="color:'+(docValid?'var(--gm)':'#dc2626')+'">'+(docValid?'Valid to '+fmtD(d.doc_expires_at):d.doc_uploaded_at?'EXPIRED':'Not uploaded')+'</strong>','PDP: <strong style="color:'+(d.has_pdp?'var(--gm)':'#dc2626')+'">'+(d.has_pdp===true?'Yes ✓':d.has_pdp===false?'No ✗':'Not answered')+'</strong>','1yr Experience: <strong style="color:'+(d.has_1yr_experience?'var(--gm)':'#dc2626')+'">'+(d.has_1yr_experience===true?'Yes ✓':d.has_1yr_experience===false?'No ✗':'Not answered')+'</strong>',(d.self_uber_trips||d.self_uber_rating)?'Uber (self): <strong>'+(d.self_uber_trips?d.self_uber_trips+' trips':'')+' '+(d.self_uber_rating?'/ '+d.self_uber_rating+' ★':'')+'</strong>':'',(d.self_bolt_trips||d.self_bolt_rating)?'Bolt (self): <strong>'+(d.self_bolt_trips?d.self_bolt_trips+' trips':'')+' '+(d.self_bolt_rating?'/ '+d.self_bolt_rating+' ★':'')+'</strong>':'',(d.self_indrive_trips||d.self_indrive_rating)?'inDrive (self): <strong>'+(d.self_indrive_trips?d.self_indrive_trips+' trips':'')+' '+(d.self_indrive_rating?'/ '+d.self_indrive_rating+' ★':'')+'</strong>':''])
         +(d.bio?'<div style="margin-top:8px;font-size:12px;color:#555;background:var(--cream);padding:7px 9px;border-radius:6px">'+d.bio+'</div>':'')+'</div>'
         +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumb(d.photo_fullbody_url,'Full Body')+dthumb(d.photo_headshot_url,'Headshot')+dthumb(d.photo_holding_id_url,'Holding ID')+dthumb(d.doc_license_url,'Licence')+dthumb(d.doc_id_url,'ID/Passport')+dthumb(d.pdp_url,'PDP')+'</div>'
         +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+parseShotUrls(d.screenshot_uber_url).map(function(u,i){return dthumb(u,'Uber '+(i+1));}).join('')+parseShotUrls(d.screenshot_bolt_url).map(function(u,i){return dthumb(u,'Bolt '+(i+1));}).join('')+parseShotUrls(d.screenshot_indrive_url).map(function(u,i){return dthumb(u,'inDrive '+(i+1));}).join('')+'</div>':'')
@@ -5474,6 +5530,11 @@ async function adDrv(){
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Late</label><input type="number" min="0" id="stat-late-'+d.id+'" value="'+(d.late_payments||0)+'" style="width:58px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Missed</label><input type="number" min="0" id="stat-missed-'+d.id+'" value="'+(d.missed_payments||0)+'" style="width:58px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Accidents</label><input type="number" min="0" id="stat-accidents-'+d.id+'" value="'+(d.accidents||0)+'" style="width:58px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px">'
+        +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Lic. Obtained (dd/mm/yyyy)</label><input type="text" id="stat-licdate-'+d.id+'" value="'+esc(d.license_date||'')+'" placeholder="e.g. 15/06/2018" style="width:140px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit"/></div>'
+        +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Lic. Expiry (dd/mm/yyyy)</label><input type="text" id="stat-licexp-'+d.id+'" value="'+esc(d.license_expiry_date||'')+'" placeholder="e.g. 15/06/2028" style="width:140px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit"/></div>'
+        +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">PDP Expiry (dd/mm/yyyy)</label><input type="text" id="stat-pdpexp-'+d.id+'" value="'+esc(d.pdp_expiry_date||'')+'" placeholder="e.g. 15/06/2026" style="width:140px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit"/></div>'
         +'<button class="btn btn-g btn-sm" style="align-self:flex-end" onclick="adSaveStats(\''+d.id+'\')">Save</button>'
         +'</div>'
         +'<div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);margin-bottom:6px">Platform Stats</div>'
@@ -5650,7 +5711,10 @@ async function adSaveStats(dpId){
     rentals_completed:rentals,ontime_payments:ontime,late_payments:late,missed_payments:missed,accidents:acc,
     uber_trips:gs('plat-uber-trips-'+dpId),uber_rating:gs('plat-uber-rating-'+dpId),
     bolt_trips:gs('plat-bolt-trips-'+dpId),bolt_rating:gs('plat-bolt-rating-'+dpId),
-    indrive_trips:gs('plat-indrive-trips-'+dpId),indrive_rating:gs('plat-indrive-rating-'+dpId)
+    indrive_trips:gs('plat-indrive-trips-'+dpId),indrive_rating:gs('plat-indrive-rating-'+dpId),
+    license_date:gs('stat-licdate-'+dpId),
+    license_expiry_date:gs('stat-licexp-'+dpId),
+    pdp_expiry_date:gs('stat-pdpexp-'+dpId)
   };
   var r=await sb.from('driver_profiles').update(update).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
