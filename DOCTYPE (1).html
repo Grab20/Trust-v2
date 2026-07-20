@@ -2530,15 +2530,6 @@ async function pOv() {
         +'</div>'
         +'</div>';
     }
-    // ── DRIVER SETTINGS ──
-    html+='<div class="tbox" style="margin-top:14px">'
-      +'<div class="shd">&#9881;&#65039; Settings</div>'
-      +'<div style="display:flex;flex-direction:column;gap:8px">'
-      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'pr\')">&#128100; Edit My Profile &amp; Documents</button>'
-      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'dc\')">&#128196; Manage My Documents</button>'
-      +(DP.status==='approved'?'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'ap\')">&#128203; View My Applications</button>':'')
-      +'<button class="btn btn-red btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px;font-weight:600" onclick="doSignOut()">&#128682; Sign Out</button>'
-      +'</div></div>';
     if(DP.status==='pending')html+='<div class="warn-box"><strong>&#9203; Pending Admin Approval</strong><p style="font-size:13px;margin-top:4px">Your profile is under review. You will go live once admin approves. This typically takes 1–2 business days.</p></div>';
     if(DP.status==='incomplete')html+='<div style="background:#fff8e1;border:1.5px solid #E8A520;border-radius:10px;padding:16px 18px;margin-bottom:16px">'
       +'<div style="font-weight:700;color:#7a5200;font-size:15px;margin-bottom:6px">&#9888; Profile Incomplete</div>'
@@ -2617,57 +2608,15 @@ async function pOv() {
         +'</div>';
     }
     // ── RECOMMENDED CARS NEAR DRIVER ──
+    var _drvCarRecLoc='';
     if(DP&&DP.status==='approved'){
-      var drvLoc=(P&&P.location||'').trim();
+      _drvCarRecLoc=(P&&P.location||'').trim();
       html+='<div style="margin-top:20px;margin-bottom:4px"><div class="shd">&#11088; Available Cars Near You</div>'
         +'<div style="font-size:11px;color:var(--muted);margin-bottom:8px">'
-        +(drvLoc?'&#128205; Based on your location':'Add your location in Settings for better matches')
+        +(_drvCarRecLoc?'&#128205; Based on your location':'Add your location in Settings for better matches')
         +'</div>'
         +'<div id="drv-car-rec-wrap"><div class="loading"><div class="spin"></div>Finding cars near you...</div></div>'
         +'</div>';
-      // Load async so dashboard renders fast
-      (async function(){
-        var wrap=eid('drv-car-rec-wrap'); if(!wrap)return;
-        var carsR=await sb.from('cars').select('id,owner_id,make,model,year,color,transmission,price_per_week,deposit,insurance,photo_front_url,location,admin_status,status').eq('admin_status','approved').eq('status','available');
-        var allCars=(carsR.data||[]);
-        // Exclude cars whose owners are already matched
-        var matchedOwnerR=await sb.from('applications').select('owner_id').eq('status','approved').is('unmatched_at',null);
-        var matchedOwners=new Set((matchedOwnerR.data||[]).map(function(a){return a.owner_id;}));
-        var avail=allCars.filter(function(c){return !matchedOwners.has(c.owner_id);});
-        // Score by distance to driver
-        var dCoords=_resolveCoords(drvLoc);
-        avail.forEach(function(c){
-          var cCoords=_resolveCoords((c.location||'').trim());
-          if(!dCoords||!cCoords){c._dist=999;c._distLabel=c.location?'&#128205; '+esc(c.location):'';return;}
-          var d=_haversineG(dCoords[0],dCoords[1],cCoords[0],cCoords[1]);
-          c._dist=d;
-          if(d<=20)c._distLabel='&#128205; Within 20km';
-          else if(d<=40)c._distLabel='&#128205; Within 40km';
-          else if(d<=70)c._distLabel='&#128205; Within 70km';
-          else if(d<=100)c._distLabel='&#128205; Within 100km';
-          else c._distLabel=c.location?'&#128205; '+esc(c.location):'';
-        });
-        avail.sort(function(a,b){
-          function band(c){if(c._dist<=20)return 0;if(c._dist<=40)return 1;if(c._dist<=70)return 2;if(c._dist<=100)return 3;return 4;}
-          return band(a)-band(b)||(a.price_per_week||0)-(b.price_per_week||0);
-        });
-        var rec=avail.slice(0,8);
-        if(!rec.length){wrap.innerHTML='<p style="font-size:13px;color:var(--muted)">No available cars found near you right now.</p>';return;}
-        wrap.innerHTML='<div style="display:flex;overflow-x:auto;gap:12px;padding-bottom:10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-right:24px">'
-          +rec.map(function(c){
-            return '<div style="min-width:200px;max-width:200px;background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;scroll-snap-align:start;flex-shrink:0;cursor:pointer" onclick="go(\'cars\')">'
-              +(c.photo_front_url?'<img src="'+imgUrl(c.photo_front_url,300,75)+'" loading="lazy" style="width:100%;height:110px;object-fit:cover">':'<div style="width:100%;height:110px;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:32px">&#128663;</div>')
-              +'<div style="padding:10px">'
-              +'<div style="font-size:13px;font-weight:800;color:var(--g)">'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</div>'
-              +(c.color?'<div style="font-size:11px;color:var(--muted)">'+esc(c.color)+(c.transmission?' &middot; '+esc(c.transmission):'')+'</div>':'')
-              +'<div style="font-size:14px;font-weight:700;color:var(--gm);margin-top:5px">R'+c.price_per_week+'/wk</div>'
-              +(c.deposit?'<div style="font-size:11px;color:var(--muted)">Deposit: R'+c.deposit+'</div>':'')
-              +'<div style="font-size:11px;color:var(--muted);margin-top:3px">'+c._distLabel+'</div>'
-              +'</div></div>';
-          }).join('')
-          +'</div>'
-          +'<button class="btn btn-out btn-sm" style="margin-top:8px" onclick="go(\'cars\')">Browse All Cars</button>';
-      })();
     }
     // ── DRIVER PAST RENTALS ──
     var dPastR=await sb.from('applications').select('id,owner_id,car_id,unmatched_at,unmatch_reason').eq('driver_id',U.id).eq('status','approved').not('unmatched_at','is',null).order('unmatched_at',{ascending:false});
@@ -2879,9 +2828,73 @@ async function pOv() {
         +'</div>';
     }
   }
+  // Append driver settings at the very bottom (after cars near you)
+  if(U&&P&&(P.role==='driver'||P.role==='both')&&DP){
+    var settingsHtml='<div class="tbox" style="margin-top:14px">'
+      +'<div class="shd">&#9881;&#65039; Settings</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'pr\')">&#128100; Edit My Profile &amp; Documents</button>'
+      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'dc\')">&#128196; Manage My Documents</button>'
+      +(DP.status==='approved'?'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'ap\')">&#128203; View My Applications</button>':'')
+      +'<button class="btn btn-red btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px;font-weight:600" onclick="doSignOut()">&#128682; Sign Out</button>'
+      +'</div></div>';
+    html+=settingsHtml;
+  }
   el.innerHTML=html;
   // Load recommended drivers for owner (location + TrustScore based)
   if(P&&(P.role==='owner'||P.role==='both')) loadOwnerRec();
+  // Load available cars for approved drivers (must run after el.innerHTML is set)
+  if(eid('drv-car-rec-wrap')) loadDrvCarRec(_drvCarRecLoc);
+}
+
+function loadDrvCarRec(drvLoc){
+  var wrap=eid('drv-car-rec-wrap');
+  if(!wrap)return;
+  (async function(){
+    try{
+      var carsR=await sb.from('cars').select('id,owner_id,make,model,year,color,transmission,price_per_week,deposit,insurance,photo_front_url,location,admin_status,status').eq('admin_status','approved').eq('status','available');
+      var allCars=(carsR.data||[]);
+      var matchedOwnerR=await sb.from('applications').select('owner_id').eq('status','approved').is('unmatched_at',null);
+      var matchedOwners=new Set((matchedOwnerR.data||[]).map(function(a){return a.owner_id;}));
+      var avail=allCars.filter(function(c){return !matchedOwners.has(c.owner_id);});
+      var dCoords=_resolveCoords(drvLoc);
+      avail.forEach(function(c){
+        var cCoords=_resolveCoords((c.location||'').trim());
+        if(!dCoords||!cCoords){c._dist=999;c._distLabel=c.location?'&#128205; '+esc(c.location):'';return;}
+        var d=_haversineG(dCoords[0],dCoords[1],cCoords[0],cCoords[1]);
+        c._dist=d;
+        if(d<=20)c._distLabel='&#128205; Within 20km';
+        else if(d<=40)c._distLabel='&#128205; Within 40km';
+        else if(d<=70)c._distLabel='&#128205; Within 70km';
+        else if(d<=100)c._distLabel='&#128205; Within 100km';
+        else c._distLabel=c.location?'&#128205; '+esc(c.location):'';
+      });
+      avail.sort(function(a,b){
+        function band(c){if(c._dist<=20)return 0;if(c._dist<=40)return 1;if(c._dist<=70)return 2;if(c._dist<=100)return 3;return 4;}
+        return band(a)-band(b)||(a.price_per_week||0)-(b.price_per_week||0);
+      });
+      var rec=avail.slice(0,8);
+      var w=eid('drv-car-rec-wrap');if(!w)return;
+      if(!rec.length){w.innerHTML='<p style="font-size:13px;color:var(--muted)">No available cars found near you right now.</p>';return;}
+      w.innerHTML='<div style="display:flex;overflow-x:auto;gap:12px;padding-bottom:10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-right:24px">'
+        +rec.map(function(c){
+          return '<div style="min-width:200px;max-width:200px;background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;scroll-snap-align:start;flex-shrink:0;cursor:pointer" onclick="go(\'cars\')">'
+            +(c.photo_front_url?'<img src="'+imgUrl(c.photo_front_url,300,75)+'" loading="lazy" style="width:100%;height:110px;object-fit:cover">':'<div style="width:100%;height:110px;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:32px">&#128663;</div>')
+            +'<div style="padding:10px">'
+            +'<div style="font-size:13px;font-weight:800;color:var(--g)">'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</div>'
+            +(c.color?'<div style="font-size:11px;color:var(--muted)">'+esc(c.color)+(c.transmission?' &middot; '+esc(c.transmission):'')+'</div>':'')
+            +'<div style="font-size:14px;font-weight:700;color:var(--gm);margin-top:5px">R'+c.price_per_week+'/wk</div>'
+            +(c.deposit?'<div style="font-size:11px;color:var(--muted)">Deposit: R'+c.deposit+'</div>':'')
+            +'<div style="font-size:11px;color:var(--muted);margin-top:3px">'+c._distLabel+'</div>'
+            +'</div></div>';
+        }).join('')
+        +'</div>'
+        +'<button class="btn btn-out btn-sm" style="margin-top:8px" onclick="go(\'cars\')">Browse All Cars</button>';
+    }catch(e){
+      var w=eid('drv-car-rec-wrap');
+      if(w)w.innerHTML='<p style="font-size:13px;color:var(--muted)">Could not load cars right now.</p>';
+    }
+  })();
 }
 
 function loadOwnerRec(){
@@ -5186,6 +5199,7 @@ async function incPromote(dpId){
 }
 async function incApprove(dpId){
   await sb.from('driver_profiles').update({status:'approved'}).eq('id',dpId);
+  sendDriverEmail('driver_approved', dpId);
   toast('Approved! Welcome email sent.');adInc();
 }
 async function incDecline(dpId){
