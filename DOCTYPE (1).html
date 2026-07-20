@@ -1642,7 +1642,7 @@ async function fetchCars(lim) {
 
 // ── CARD HTML ──────────────────────────────────────────
 function carHTML(c) {
-  var img=c.photo_front_url||c.image_url?'<img src="'+(c.photo_front_url||c.image_url)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover"/>':'<div class="card-img-ph">&#128663;</div>';
+  var _cimg=c.photo_front_url||c.image_url;var img=_cimg?'<img src="'+imgUrl(_cimg,400,75)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover"/>':'<div class="card-img-ph">&#128663;</div>';
   var fuel=c.fuel_policy==='driver_pays'?'Driver pays':c.fuel_policy==='owner_pays'?'Owner pays':'Split';
   var plats=(c.platforms||[]).map(pb).join('');
   var isD=P&&(P.role==='driver'||P.role==='both');
@@ -1672,7 +1672,7 @@ function applyForCar(btn) {
 
 function drvHTML(d) {
   var p=d.profile||{}, name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
-  var av=d.photo_headshot_url?'<img src="'+d.photo_headshot_url+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
+  var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,100,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
   var vbadge=(d.doc_id_url&&d.doc_license_url)?'<span class="vbadge">&#10003; Verified</span>':'';
   var plats=(d.platforms||[]).map(pb).join('')||'<span style="font-size:10px;color:var(--muted)">Not set</span>';
   var mbadge=d.isMatched?'<span class="matched">Matched</span>':'<span class="avail">Available</span>';
@@ -1999,7 +1999,7 @@ async function loadProfPage(dpId) {
     isMatchedWithDriver=!!(matchChk.data);
   }
   var name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
-  var av=d.photo_headshot_url?'<img src="'+d.photo_headshot_url+'" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
+  var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,100,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
   var avg=revs.length?(revs.reduce(function(a,r){return a+r.rating;},0)/revs.length).toFixed(1):null;
   var isOwn=P&&(P.role==='owner'||P.role==='both')&&U&&U.id!==d.user_id;
   var btns=isOwn?'<button class="btn btn-gm btn-sm" data-dpid="'+d.id+'" data-dn="'+name+'" onclick="ownerMatchBtn(this)">Request Match</button> ':'';
@@ -2027,11 +2027,11 @@ async function loadProfPage(dpId) {
     +(isMatchedWithDriver&&(d.doc_id_url||d.doc_license_url||d.photo_headshot_url||d.photo_fullbody_url||d.photo_holding_id_url)
       ?'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">&#128274; Verified Documents</h3>'
       +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
-      +(d.photo_headshot_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_headshot_url)+'\')"><img src="'+esc(d.photo_headshot_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Headshot</div></div>':'')
-      +(d.photo_fullbody_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_fullbody_url)+'\')"><img src="'+esc(d.photo_fullbody_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Full Body</div></div>':'')
-      +(d.photo_holding_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_holding_id_url)+'\')"><img src="'+esc(d.photo_holding_id_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Holding ID</div></div>':'')
-      +(d.doc_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_id_url)+'\')"><img src="'+esc(d.doc_id_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">ID Document</div></div>':'')
-      +(d.doc_license_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_license_url)+'\')"><img src="'+esc(d.doc_license_url)+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Licence</div></div>':'')
+      +(d.photo_headshot_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_headshot_url)+'\')"><img src="'+imgUrl(d.photo_headshot_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Headshot</div></div>':'')
+      +(d.photo_fullbody_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_fullbody_url)+'\')"><img src="'+imgUrl(d.photo_fullbody_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Full Body</div></div>':'')
+      +(d.photo_holding_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_holding_id_url)+'\')"><img src="'+imgUrl(d.photo_holding_id_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Holding ID</div></div>':'')
+      +(d.doc_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_id_url)+'\')"><img src="'+imgUrl(d.doc_id_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">ID Document</div></div>':'')
+      +(d.doc_license_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_license_url)+'\')"><img src="'+imgUrl(d.doc_license_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Licence</div></div>':'')
       +'</div></div>'
       :'')
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Driver Details</h3>'
@@ -2491,7 +2491,7 @@ async function pOv() {
       var dOwner=dOwnerR.data||{};
       var dCar=dCarR.data||null;
       var dOav=dOwner.photo_holding_id_url
-        ?'<img src="'+esc(dOwner.photo_holding_id_url)+'" style="width:64px;height:64px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0">'
+        ?'<img src="'+imgUrl(dOwner.photo_holding_id_url,80,80)+'" loading="lazy" style="width:64px;height:64px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0">'
         :'<div class="av" style="width:64px;height:64px;font-size:20px;flex-shrink:0">'+ini(dOwner.full_name||'?')+'</div>';
       html+='<div class="shd" style="margin-top:16px">&#9889; Your Current Match</div>';
       html+='<div style="background:#fff;border:2px solid var(--gm);border-radius:12px;padding:16px;margin-bottom:16px">'
@@ -2502,7 +2502,7 @@ async function pOv() {
         +'<span style="font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;border:1px solid #a5d6a7;display:inline-block;margin-top:4px">&#127968; Owner</span>'
         +'</div></div>'
         +(dCar?'<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:12px">'
-          +(dCar.photo_front_url?'<img src="'+esc(dCar.photo_front_url)+'" style="width:100%;height:160px;object-fit:cover;display:block">':'')
+          +(dCar.photo_front_url?'<img src="'+imgUrl(dCar.photo_front_url,600,80)+'" loading="lazy" style="width:100%;height:160px;object-fit:cover;display:block">':'')
           +'<div style="padding:10px 12px">'
           +'<div style="font-size:15px;font-weight:800;color:var(--g);margin-bottom:8px">'+esc(dCar.make)+' '+esc(dCar.model)+' '+dCar.year+(dCar.color?' &middot; '+esc(dCar.color):'')+'</div>'
           +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">'
@@ -2578,7 +2578,7 @@ async function pOv() {
           var carBlock='';
           function renderCarDetail(c){
             var b='<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:10px">';
-            if(c.photo_front_url) b+='<img src="'+esc(c.photo_front_url)+'" style="width:100%;height:160px;object-fit:cover;display:block">';
+            if(c.photo_front_url) b+='<img src="'+imgUrl(c.photo_front_url,600,80)+'" loading="lazy" style="width:100%;height:160px;object-fit:cover;display:block">';
             b+='<div style="padding:10px 12px">';
             b+='<div style="font-size:16px;font-weight:800;color:var(--g);margin-bottom:8px">'+esc(c.make)+' '+esc(c.model)+' '+c.year+(c.color?' &middot; '+esc(c.color):'')+'</div>';
             b+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">';
@@ -2656,7 +2656,7 @@ async function pOv() {
         wrap.innerHTML='<div style="display:flex;overflow-x:auto;gap:12px;padding-bottom:10px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-right:24px">'
           +rec.map(function(c){
             return '<div style="min-width:200px;max-width:200px;background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;scroll-snap-align:start;flex-shrink:0;cursor:pointer" onclick="go(\'cars\')">'
-              +(c.photo_front_url?'<img src="'+esc(c.photo_front_url)+'" style="width:100%;height:110px;object-fit:cover">':'<div style="width:100%;height:110px;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:32px">&#128663;</div>')
+              +(c.photo_front_url?'<img src="'+imgUrl(c.photo_front_url,300,75)+'" loading="lazy" style="width:100%;height:110px;object-fit:cover">':'<div style="width:100%;height:110px;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:32px">&#128663;</div>')
               +'<div style="padding:10px">'
               +'<div style="font-size:13px;font-weight:800;color:var(--g)">'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</div>'
               +(c.color?'<div style="font-size:11px;color:var(--muted)">'+esc(c.color)+(c.transmission?' &middot; '+esc(c.transmission):'')+'</div>':'')
@@ -2743,7 +2743,7 @@ async function pOv() {
         var si=scoreInfo(dp.trust_score||0);
         var alreadyRated=ratedIds.has(a.id);
         var av=dp.photo_headshot_url
-          ?'<img src="'+esc(dp.photo_headshot_url)+'" style="width:64px;height:64px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0">'
+          ?'<img src="'+imgUrl(dp.photo_headshot_url,80,80)+'" loading="lazy" style="width:64px;height:64px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0">'
           :'<div class="av" style="width:64px;height:64px;font-size:20px;flex-shrink:0">'+ini(pf.full_name||'?')+'</div>';
         return '<div style="background:#fff;border:2px solid var(--gm);border-radius:12px;padding:16px;margin-bottom:16px">'
           +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">'+av
@@ -2797,7 +2797,7 @@ async function pOv() {
             var pf=ppm[a.driver_id]||{};
             var dp=pdpm[a.driver_id]||{};
             var rated=pratedIds.has(a.id);
-            var av=dp.photo_headshot_url?'<img src="'+esc(dp.photo_headshot_url)+'" style="width:40px;height:40px;object-fit:cover;object-position:top;border-radius:50%">':'<div class="av">'+ini(pf.full_name||'?')+'</div>';
+            var av=dp.photo_headshot_url?'<img src="'+imgUrl(dp.photo_headshot_url,80,80)+'" loading="lazy" style="width:40px;height:40px;object-fit:cover;object-position:top;border-radius:50%">':'<div class="av">'+ini(pf.full_name||'?')+'</div>';
             return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)">'+av
               +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--g)">'+(pf.full_name||'Driver')+'</div>'
               +'<div style="font-size:11px;color:var(--muted)">Ended '+fmtD(a.unmatched_at)+'</div>'
@@ -3089,7 +3089,7 @@ function loadOwnerRec(){
           var scoreColour=si[1]==='sc-h'?'var(--gm)':si[1]==='sc-m'?'#7c5c00':si[1]==='sc-o'?'#9a3412':'#8b2020';
           // Photo — circular avatar matching main drivers page
           var photo=d.photo_headshot_url
-            ?'<img src="'+esc(d.photo_headshot_url)+'" style="width:72px;height:72px;object-fit:cover;object-position:top;border-radius:50%;border:2.5px solid var(--gm);flex-shrink:0">'
+            ?'<img src="'+imgUrl(d.photo_headshot_url,100,80)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;object-position:top;border-radius:50%;border:2.5px solid var(--gm);flex-shrink:0">'
             :'<div style="width:72px;height:72px;background:var(--gs);border-radius:50%;border:2.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">'+ini(p.full_name||'D')+'</div>';
           // Platform trips row
           var platTrips=[{n:'Uber',k:'uber',bg:'#111'},{n:'Bolt',k:'bolt',bg:'#1cc64e'},{n:'inDrive',k:'indrive',bg:'#ff6600'}]
@@ -3176,13 +3176,13 @@ async function pPr() {
       +'<div class="doc-grid">'
       +'<div class="dbox '+(P.photo_headshot_url?'up':'')+'" id="ow-hs">'
         +'<input type="file" accept="image/*" onchange="upOwnerPhoto(\'ow-hs\',\'photo_headshot_url\',this)"/>'
-        +(P.photo_headshot_url?'<img src="'+P.photo_headshot_url+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_headshot_url+'\')"/>':'<div style="font-size:18px">&#128247;</div>')
+        +(P.photo_headshot_url?'<img src="'+imgUrl(P.photo_headshot_url,80,80)+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_headshot_url+'\')"/>':'<div style="font-size:18px">&#128247;</div>')
         +'<div style="font-size:10px;font-weight:600">Headshot</div>'
         +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_headshot_url?'Uploaded — click to replace':'Click to upload')+'</div>'
       +'</div>'
       +'<div class="dbox '+(P.photo_holding_id_url?'up':'')+'" id="ow-hid">'
         +'<input type="file" accept="image/*" onchange="upOwnerPhoto(\'ow-hid\',\'photo_holding_id_url\',this)"/>'
-        +(P.photo_holding_id_url?'<img src="'+P.photo_holding_id_url+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_holding_id_url+'\')"/>':'<div style="font-size:18px">&#129091;</div>')
+        +(P.photo_holding_id_url?'<img src="'+imgUrl(P.photo_holding_id_url,80,80)+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_holding_id_url+'\')"/>':'<div style="font-size:18px">&#129091;</div>')
         +'<div style="font-size:10px;font-weight:600">Holding ID</div>'
         +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_holding_id_url?'Uploaded — click to replace':'Photo of you holding your ID')+'</div>'
       +'</div>'
@@ -3257,7 +3257,7 @@ async function pDc() {
 }
 async function upDocItem(n,col,inp) {
   var file=inp.files[0];if(!file)return;
-  var url=await upFile('driver-docs',U.id+'/'+n+'-'+Date.now(),file);
+  var url=await upFile('driver-docs',U.id+'/'+n,file);
   if(!url){toast('Upload failed');return;}
   var upd={};upd[col]=url;
   await sb.from('driver_profiles').update(upd).eq('id',DP.id);
@@ -3302,7 +3302,7 @@ async function snapDocPhoto(n, col) {
   canvas.toBlob(async function(blob) {
     var file = new File([blob], n+'-'+Date.now()+'.jpg', {type:'image/jpeg'});
     var box = eid('dc-'+n); if (box) box.style.opacity='0.5';
-    var url = await upFile('driver-docs', U.id+'/'+n+'-'+Date.now(), file);
+    var url = await upFile('driver-docs', U.id+'/'+n, file);
     if (box) box.style.opacity='';
     if (!url) { toast('Upload failed'); return; }
     var upd = {}; upd[col] = url;
@@ -3315,7 +3315,7 @@ async function snapDocPhoto(n, col) {
 async function upOwnerPhoto(boxId,col,inp){
   var file=inp.files[0];if(!file)return;
   var box=eid(boxId);if(box)box.style.opacity='0.5';
-  var url=await upFile('profile-photos',U.id+'/owner-'+col+'-'+Date.now(),file);
+  var url=await upFile('profile-photos',U.id+'/owner-'+col,file);
   if(box)box.style.opacity='';
   if(!url){toast('Upload failed');return;}
   var upd={};upd[col]=url;
@@ -3461,7 +3461,7 @@ async function pChat(){
   // Build chat html
   var chatHtml='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
     +(other.photo_headshot_url||other.photo_holding_id_url
-      ?'<img src="'+esc(other.photo_headshot_url||other.photo_holding_id_url)+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0">'
+      ?'<img src="'+imgUrl(other.photo_headshot_url||other.photo_holding_id_url,80,80)+'" loading="lazy" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0">'
       :'<div class="av" style="width:44px;height:44px;font-size:16px;flex-shrink:0">'+ini(_chatOtherName)+'</div>')
     +'<div><div style="font-size:16px;font-weight:800;color:var(--g)">'+esc(_chatOtherName)+'</div>'
     +(car?'<div style="font-size:11px;color:var(--muted)">'+esc(car.make)+' '+esc(car.model)+' '+car.year+' &middot; R'+car.price_per_week+'/wk</div>':'')
@@ -5171,7 +5171,7 @@ async function incUploadDoc(inp){
   var file=inp.files[0]; if(!file) return;
   var box=document.getElementById('ie-box-'+dpId+'-'+field);
   if(box){box.style.opacity='.5';}
-  var path='driver-docs-admin/'+dpId+'/'+field+'-'+Date.now()+'.'+file.name.split('.').pop();
+  var path='driver-docs-admin/'+dpId+'/'+field+'.'+file.name.split('.').pop();
   var up=await sb.storage.from('driver-docs').upload(path,file,{upsert:true});
   if(up.error){toast('Upload error: '+up.error.message);if(box)box.style.opacity='1';return;}
   var url=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
@@ -5306,7 +5306,7 @@ async function adUploadDoc(dpId,field,inp){
   if(!inp.files||!inp.files[0])return;
   var file=inp.files[0];
   var ext=(file.name.split('.').pop()||'pdf').toLowerCase();
-  var path=dpId+'/'+field+'-admin-'+Date.now()+'.'+ext;
+  var path=dpId+'/'+field+'-admin.'+ext;
   var btn=inp.closest('.admin-doc-row');
   var status=btn?btn.querySelector('.ad-status'):null;
   if(status)status.textContent='Uploading...';
