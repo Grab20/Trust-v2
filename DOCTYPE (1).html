@@ -1491,7 +1491,7 @@ async function loadP() {
 // ── HELPERS ───────────────────────────────────────────
 function eid(id) { return document.getElementById(id); }
 function ini(n) { return ((n||'?').split(' ').map(function(x){return x[0]||'?';}).join('').toUpperCase().slice(0,2)); }
-function imgUrl(url,w,q){if(!url)return url;var u=url.replace('/storage/v1/object/public/','/storage/v1/render/image/public/');return u+(u.indexOf('?')>=0?'&':'?')+'width='+(w||400)+'&quality='+(q||70);}
+function imgUrl(url,w,q){return url||'';}
 function toast(msg) { var t=eid('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(function(){t.classList.remove('on');},3000); }
 function showErr(id,msg) { var e=eid(id); if(e){e.textContent=msg;e.classList.add('on');e.scrollIntoView({behavior:'smooth',block:'center'});} }
 function clearErr(id) { var e=eid(id); if(e){e.textContent='';e.classList.remove('on');} }
@@ -1613,12 +1613,12 @@ function trackView(page) {
 // ── FETCH DATA ─────────────────────────────────────────
 async function fetchDrivers(lim) {
   if(!lim&&_drvCache&&(Date.now()-_drvCacheTs)<300000)return _drvCache;
-  // Single query via DB view (replaces 3 round trips)
   var r = await sb.from('v_driver_listing')
     .select('*')
-    .limit(lim||100);
+    .limit(lim||500);
   if(!r.data||!r.data.length) return [];
-  var _rd=r.data.map(function(d){
+  var seen=new Set();
+  var _rd=r.data.filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;}).map(function(d){
     d.profile={full_name:d.full_name||'Driver', location:d.location||''};
     d.isMatched=!!d.is_matched;
     return d;
@@ -1666,7 +1666,7 @@ async function fetchCars(lim) {
 
 // ── CARD HTML ──────────────────────────────────────────
 function carHTML(c) {
-  var _cimg=c.photo_front_url||c.image_url;var img=_cimg?'<img src="'+imgUrl(_cimg,400,75)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover"/>':'<div class="card-img-ph">&#128663;</div>';
+  var _cimg=c.photo_front_url||c.image_url;var img=_cimg?'<img src="'+imgUrl(_cimg,600,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center bottom"/>':'<div class="card-img-ph">&#128663;</div>';
   var fuel=c.fuel_policy==='driver_pays'?'Driver pays':c.fuel_policy==='owner_pays'?'Owner pays':'Split';
   var plats=(c.platforms||[]).map(pb).join('');
   var isD=P&&(P.role==='driver'||P.role==='both');
@@ -1696,7 +1696,7 @@ function applyForCar(btn) {
 
 function drvHTML(d) {
   var p=d.profile||{}, name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
-  var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,100,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
+  var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,300,85)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center top"/>':ini(name);
   var vbadge=(d.doc_id_url&&d.doc_license_url)?'<span class="vbadge">&#10003; Verified</span>':'';
   var plats=(d.platforms||[]).map(pb).join('')||'<span style="font-size:10px;color:var(--muted)">Not set</span>';
   var mbadge=d.isMatched?'<span class="matched">Matched</span>':'<span class="avail">Available</span>';
@@ -2024,7 +2024,7 @@ async function loadProfPage(dpId) {
     termsAgreed=!!(matchChk.data&&matchChk.data.driver_agreed_terms&&matchChk.data.owner_agreed_terms);
   }
   var name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
-  var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,100,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/>':ini(name);
+  var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,300,85)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center top"/>':ini(name);
   var avg=revs.length?(revs.reduce(function(a,r){return a+r.rating;},0)/revs.length).toFixed(1):null;
   var isOwn=P&&(P.role==='owner'||P.role==='both')&&U&&U.id!==d.user_id;
   var btns=isOwn?'<button class="btn btn-gm btn-sm" data-dpid="'+d.id+'" data-dn="'+name+'" onclick="ownerMatchBtn(this)">Request Match</button> ':'';
@@ -3150,7 +3150,7 @@ function loadOwnerRec(){
           var scoreColour=si[1]==='sc-h'?'var(--gm)':si[1]==='sc-m'?'#7c5c00':si[1]==='sc-o'?'#9a3412':'#8b2020';
           // Photo — circular avatar matching main drivers page
           var photo=d.photo_headshot_url
-            ?'<img src="'+imgUrl(d.photo_headshot_url,100,80)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;object-position:top;border-radius:50%;border:2.5px solid var(--gm);flex-shrink:0">'
+            ?'<img src="'+imgUrl(d.photo_headshot_url,300,85)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;object-position:center top;border-radius:50%;border:2.5px solid var(--gm);flex-shrink:0">'
             :'<div style="width:72px;height:72px;background:var(--gs);border-radius:50%;border:2.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">'+ini(p.full_name||'D')+'</div>';
           // Platform trips row
           var platTrips=[{n:'Uber',k:'uber',bg:'#111'},{n:'Bolt',k:'bolt',bg:'#1cc64e'},{n:'inDrive',k:'indrive',bg:'#ff6600'}]
