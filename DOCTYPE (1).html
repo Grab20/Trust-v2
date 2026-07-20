@@ -5657,16 +5657,27 @@ async function adOwn(){
   var carMap={};(carR.data||[]).forEach(function(c){if(!carMap[c.owner_id])carMap[c.owner_id]=[];carMap[c.owner_id].push(c);});
 
   var adOwnQ=window._adOwnQ||'';
-  var filteredOwners=adOwnQ?owners.filter(function(o){
-    return ((o.full_name||'')+(o.email||'')+(o.location||'')).toLowerCase().indexOf(adOwnQ.toLowerCase())>-1;
-  }):owners;
+  var adOwnSt=window._adOwnSt||'all';
+  var counts={all:owners.length,pending:0,approved:0,rejected:0,incomplete:0};
+  owners.forEach(function(o){var s=o.admin_status||'pending';if(counts[s]!==undefined)counts[s]++;});
+  var filteredOwners=owners.filter(function(o){
+    var s=o.admin_status||'pending';
+    if(adOwnSt!=='all'&&s!==adOwnSt)return false;
+    if(adOwnQ&&((o.full_name||'')+(o.email||'')+(o.location||'')).toLowerCase().indexOf(adOwnQ.toLowerCase())<0)return false;
+    return true;
+  });
 
   el.innerHTML='<div class="ptitle">Manage Owners</div>'
-    +'<div style="margin-bottom:10px"><input id="adm-own-q" type="text" placeholder="&#128269; Search owner name, email or location..." value="'+esc(adOwnQ)+'" style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adOwnSearch()"/></div>'
+    +'<div style="margin-bottom:8px"><input id="adm-own-q" type="text" placeholder="&#128269; Search owner name, email or location..." value="'+esc(adOwnQ)+'" style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adOwnSearch()"/></div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'
+    +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')']].map(function(t){
+      return '<button class="tbb'+(adOwnSt===t[0]?' on':'')+'" onclick="window._adOwnSt=\''+t[0]+'\';adOwn()">'+t[1]+'</button>';
+    }).join('')
+    +'</div>'
     +'<div class="psub">'+filteredOwners.length+' of '+owners.length+' owner'+(owners.length!==1?'s':'')+'</div>'
     +filteredOwners.map(function(o){
       var oCars=carMap[o.id]||[];
-      var isInc=!o.admin_status||o.admin_status==='pending';
+      var isInc=o.admin_status==='incomplete'||!o.admin_status||o.admin_status==='pending';
       return '<div class="rcard" style="border-left:4px solid '+(isInc?'var(--amber)':o.admin_status==='approved'?'var(--gm)':'#dc2626')+'">'
         +'<div class="rcard-head">'
         +'<div><div style="font-size:14px;font-weight:700">'+esc(o.full_name||'Unknown')
