@@ -427,6 +427,9 @@ nav div::-webkit-scrollbar{display:none}
       </select>
     </div>
     <div id="cars-grid" class="grid2"><div class="loading"><div class="spin"></div>Loading...</div></div>
+    <div id="cars-more-wrap" style="text-align:center;margin-top:18px;display:none">
+      <button class="btn btn-out" onclick="carsLoadMore()">Load more cars</button>
+    </div>
   </div></div>
 </div>
 
@@ -468,6 +471,9 @@ nav div::-webkit-scrollbar{display:none}
       </select>
     </div>
     <div id="drvs-grid" class="grid2"><div class="loading"><div class="spin"></div>Loading...</div></div>
+    <div id="drvs-more-wrap" style="text-align:center;margin-top:18px;display:none">
+      <button class="btn btn-out" onclick="drvsLoadMore()">Load more drivers</button>
+    </div>
   </div></div>
 </div>
 
@@ -1492,6 +1498,63 @@ async function loadP() {
 function eid(id) { return document.getElementById(id); }
 function ini(n) { return ((n||'?').split(' ').map(function(x){return x[0]||'?';}).join('').toUpperCase().slice(0,2)); }
 function imgUrl(url,w,q){return url||'';}
+
+// Image usage analytics
+var _imgLog={};
+var _imgPage='unknown';
+var _imgFlushTimer=null;
+function _parseImgUrl(url){
+  if(!url)return null;
+  var m=url.match(/\/storage\/v1\/object\/(?:public|authenticated)\/([^\/]+)\/(.+)/);
+  if(!m)return null;
+  return {bucket:m[1],path:m[2].split('?')[0]};
+}
+function trackImg(url){
+  var p=_parseImgUrl(url);
+  if(!p)return;
+  var key=p.bucket+'|'+p.path+'|'+_imgPage;
+  _imgLog[key]=(_imgLog[key]||0)+1;
+  if(!_imgFlushTimer)_imgFlushTimer=setTimeout(_flushImgLog,30000);
+}
+async function _flushImgLog(){
+  _imgFlushTimer=null;
+  var entries=Object.entries(_imgLog);
+  if(!entries.length)return;
+  _imgLog={};
+  var rows=entries.map(function(e){
+    var parts=e[0].split('|');
+    return {bucket:parts[0],path:parts[1],page:parts[2]||'unknown',request_count:e[1]};
+  });
+  for(var i=0;i<rows.length;i++){
+    var row=rows[i];
+    try{
+      var ex=await sb.from('image_analytics').select('id,request_count').eq('bucket',row.bucket).eq('path',row.path).eq('page',row.page).maybeSingle();
+      if(ex.data){
+        await sb.from('image_analytics').update({request_count:ex.data.request_count+row.request_count,last_seen_at:new Date().toISOString()}).eq('id',ex.data.id);
+      } else {
+        await sb.from('image_analytics').insert({bucket:row.bucket,path:row.path,page:row.page,request_count:row.request_count,last_seen_at:new Date().toISOString()});
+      }
+    }catch(e){}
+  }
+}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&Object.keys(_imgLog).length)_flushImgLog();});
+// MutationObserver to auto-track img loads
+(function(){
+  var obs=new MutationObserver(function(muts){
+    muts.forEach(function(m){
+      m.addedNodes.forEach(function(n){
+        if(n.nodeType!==1)return;
+        var imgs=n.tagName==='IMG'?[n]:Array.from(n.querySelectorAll('img'));
+        imgs.forEach(function(img){
+          if(img.src)trackImg(img.src);
+          img.addEventListener('load',function(){trackImg(img.src);},{once:true});
+        });
+      });
+    });
+  });
+  obs.observe(document.body||document.documentElement,{childList:true,subtree:true});
+})();
+
 function toast(msg) { var t=eid('toast'); t.textContent=msg; t.classList.add('on'); setTimeout(function(){t.classList.remove('on');},3000); }
 function showErr(id,msg) { var e=eid(id); if(e){e.textContent=msg;e.classList.add('on');e.scrollIntoView({behavior:'smooth',block:'center'});} }
 function clearErr(id) { var e=eid(id); if(e){e.textContent='';e.classList.remove('on');} }
@@ -1544,6 +1607,7 @@ function go(page, arg, noPush) {
   pg.classList.add('on');
   window.scrollTo(0,0);
   if(!noPush){try{window.location.hash=page+(arg?'/'+arg:'');}catch(e){}}
+  _imgPage=page+(arg?'/'+arg:'');
   trackView(page);
   if (typeof gtag === 'function') {
     gtag('event', 'page_view', {
@@ -1611,11 +1675,14 @@ function trackView(page) {
 }
 
 // ── FETCH DATA ─────────────────────────────────────────
+
+// Lightweight fetch used by home page and owner match panel (returns cached array)
 async function fetchDrivers(lim) {
   if(!lim&&_drvCache&&(Date.now()-_drvCacheTs)<300000)return _drvCache;
   var r = await sb.from('v_driver_listing')
     .select('*')
-    .limit(lim||500);
+    .order('trust_score',{ascending:false})
+    .limit(lim||200);
   if(!r.data||!r.data.length) return [];
   var seen=new Set();
   var _rd=r.data.filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;}).map(function(d){
@@ -1626,9 +1693,83 @@ async function fetchDrivers(lim) {
   if(!lim){_drvCache=_rd;_drvCacheTs=Date.now();}
   return _rd;
 }
+
+// ── SERVER-SIDE PAGINATED QUERY FOR DRIVERS PAGE ───────
+// State shared between filterDrivers and drvsLoadMore
+var _drvsQuery={q:'',sort:'score',plat:'',status:'',city:''};
+var _drvsOffset=0;
+var _DRVS_PAGE=20;
+var _drvsHasMore=false;
+// "nearest" sort must be done client-side (requires geo coords); cache all
+// available drivers once when user selects that sort option
+var _drvsNearestCache=null;
+
+async function _execDriversQuery(offset){
+  var q=_drvsQuery.q, sort=_drvsQuery.sort, plat=_drvsQuery.plat,
+      status=_drvsQuery.status, city=_drvsQuery.city;
+
+  // "nearest" is purely client-side — fetch all available, sort, slice
+  if(sort==='nearest'){
+    if(!_drvsNearestCache){
+      // Reuse the shared driver cache if available; otherwise fetch a reasonable cap
+      var srcData=(_drvCache&&_drvCache.length)?_drvCache:null;
+      if(!srcData){
+        var all=await sb.from('v_driver_listing').select('*').order('trust_score',{ascending:false}).limit(500);
+        if(all.error||!all.data) return {data:[],hasMore:false,total:0};
+        var seen=new Set();
+        srcData=all.data.filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;})
+          .map(function(d){d.profile={full_name:d.full_name||'Driver',location:d.location||''};d.isMatched=!!d.is_matched;return d;});
+      }
+      _drvsNearestCache=srcData;
+    }
+    var ownerLoc=window.P&&window.P.location?window.P.location:'';
+    var ownerCoords=ownerLoc?_resolveCoords(ownerLoc):null;
+    var filtered=_drvsNearestCache.filter(function(d){
+      var text=((d.full_name||'')+' '+(d.location||'')).toLowerCase();
+      if(q&&text.indexOf(q)<0)return false;
+      if(plat&&(d.platforms||[]).indexOf(plat)<0)return false;
+      if(status==='matched'&&!d.isMatched)return false;
+      if(status==='available'&&d.isMatched)return false;
+      if(city&&text.indexOf(city)<0)return false;
+      return true;
+    });
+    if(ownerCoords){
+      filtered=filtered.slice().sort(function(a,b){return _drvDist(a,ownerCoords)-_drvDist(b,ownerCoords);});
+    } else {
+      filtered=filtered.slice().sort(function(a,b){
+        var aL=!!((a.profile&&a.profile.location)||'').trim(), bL=!!((b.profile&&b.profile.location)||'').trim();
+        return aL!==bL?(aL?-1:1):(b.trust_score||0)-(a.trust_score||0);
+      });
+    }
+    var slice=filtered.slice(offset,offset+_DRVS_PAGE);
+    return {data:slice, hasMore:(offset+_DRVS_PAGE)<filtered.length, total:filtered.length};
+  }
+
+  // All other sorts go server-side
+  var qb=sb.from('v_driver_listing').select('*',{count:'exact'});
+
+  // Text search: name or location
+  if(q) qb=qb.or('full_name.ilike.%'+q+'%,location.ilike.%'+q+'%');
+  if(plat) qb=qb.contains('platforms',[plat]);
+  if(status==='matched') qb=qb.eq('is_matched',true);
+  if(status==='available') qb=qb.eq('is_matched',false);
+  if(city) qb=qb.ilike('location','%'+city+'%');
+
+  if(sort==='score') qb=qb.order('trust_score',{ascending:false});
+  else if(sort==='rentals') qb=qb.order('rentals_completed',{ascending:false});
+  else qb=qb.order('created_at',{ascending:false}); // newest
+
+  qb=qb.range(offset, offset+_DRVS_PAGE-1);
+  var r=await qb;
+  if(r.error){console.error('drivers query',r.error);return {data:[],hasMore:false,total:0};}
+  var seen=new Set();
+  var rows=(r.data||[]).filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;})
+    .map(function(d){d.profile={full_name:d.full_name||'Driver',location:d.location||''};d.isMatched=!!d.is_matched;return d;});
+  return {data:rows, hasMore:(offset+_DRVS_PAGE)<(r.count||0), total:r.count||0};
+}
+// Lightweight fetch used by home page (returns cached array of first 100 cars)
 async function fetchCars(lim) {
   if(!lim&&_carCache&&(Date.now()-_carCacheTs)<300000)return _carCache;
-  // 2 parallel queries instead of 4 sequential
   var [carsRes, matchRes] = await Promise.all([
     sb.from('cars')
       .select('id,owner_id,make,model,year,color,transmission,location,deposit,insurance,platforms,price_per_week,photo_front_url,image_url,weekly_checkin_day,checkin_time,fuel_policy,admin_status,profiles(id,full_name,location)')
@@ -1639,13 +1780,11 @@ async function fetchCars(lim) {
       .eq('status','approved').is('unmatched_at',null)
   ]);
   if(!carsRes.data||!carsRes.data.length) return [];
-  // Build matched car lookup — by car_id AND by owner_id (owner-initiated matches have no car_id)
   var matchedSet=new Set(), matchedOwners=new Set(), matchedDriverIds={};
   (matchRes.data||[]).forEach(function(a){
     if(a.car_id){matchedSet.add(a.car_id); matchedDriverIds[a.car_id]=a.driver_id;}
     if(a.owner_id) matchedOwners.add(a.owner_id);
   });
-  // Fetch driver names for matched cars
   var driverIdList=Object.values(matchedDriverIds).filter(Boolean);
   var driverNameMap={};
   if(driverIdList.length){
@@ -1653,8 +1792,7 @@ async function fetchCars(lim) {
     (dnRes.data||[]).forEach(function(p){driverNameMap[p.id]=p.full_name||'Driver';});
   }
   var _rc=carsRes.data.map(function(c){
-    c.owner=c.profiles||{};
-    delete c.profiles;
+    c.owner=c.profiles||{};delete c.profiles;
     c.isMatched=matchedSet.has(c.id)||matchedOwners.has(c.owner_id);
     var did=matchedDriverIds[c.id];
     c.matchedDriver=did?driverNameMap[did]||'Driver':null;
@@ -1662,6 +1800,71 @@ async function fetchCars(lim) {
   });
   if(!lim){_carCache=_rc;_carCacheTs=Date.now();}
   return _rc;
+}
+
+// ── SERVER-SIDE PAGINATED QUERY FOR CARS PAGE ──────────
+var _carsQuery={q:'',sort:'newest',trans:'',status:'',city:''};
+var _carsOffset=0;
+var _CARS_PAGE=20;
+var _carsHasMore=false;
+// Matched-car lookup — fetched once, cached for the session
+var _matchCache=null, _matchCacheTs=0;
+
+async function _getMatchCache(){
+  if(_matchCache&&(Date.now()-_matchCacheTs)<300000)return _matchCache;
+  var r=await sb.from('applications').select('car_id,driver_id,owner_id')
+    .eq('status','approved').is('unmatched_at',null);
+  var matchedCarIds=new Set(), matchedOwnerIds=new Set(), driverIds={};
+  (r.data||[]).forEach(function(a){
+    if(a.car_id){matchedCarIds.add(a.car_id);driverIds[a.car_id]=a.driver_id;}
+    if(a.owner_id) matchedOwnerIds.add(a.owner_id);
+  });
+  _matchCache={matchedCarIds:matchedCarIds,matchedOwnerIds:matchedOwnerIds,driverIds:driverIds};
+  _matchCacheTs=Date.now();
+  return _matchCache;
+}
+
+async function _execCarsQuery(offset){
+  var q=_carsQuery.q, sort=_carsQuery.sort, trans=_carsQuery.trans,
+      status=_carsQuery.status, city=_carsQuery.city;
+
+  var mc=await _getMatchCache();
+  var matchedCarIds=mc.matchedCarIds, matchedOwnerIds=mc.matchedOwnerIds, driverIds=mc.driverIds;
+
+  var qb=sb.from('cars')
+    .select('id,owner_id,make,model,year,color,transmission,location,deposit,insurance,platforms,price_per_week,photo_front_url,image_url,weekly_checkin_day,checkin_time,fuel_policy,admin_status,applications_paused,profiles(id,full_name,location)',{count:'exact'})
+    .eq('status','available').eq('admin_status','approved');
+
+  if(q) qb=qb.or('make.ilike.%'+q+'%,model.ilike.%'+q+'%,location.ilike.%'+q+'%');
+  if(trans) qb=qb.eq('transmission',trans);
+  if(city) qb=qb.ilike('location','%'+city+'%');
+
+  // Matched filter: IDs known client-side from _matchCache
+  if(status==='matched'){
+    var mids=Array.from(matchedCarIds);
+    if(!mids.length) return {data:[],hasMore:false,total:0};
+    qb=qb.in('id',mids);
+  } else if(status==='available'){
+    var mids=Array.from(matchedCarIds);
+    if(mids.length) qb=qb.not('id','in',mids);
+  }
+
+  if(sort==='price_asc') qb=qb.order('price_per_week',{ascending:true});
+  else if(sort==='price_desc') qb=qb.order('price_per_week',{ascending:false});
+  else qb=qb.order('created_at',{ascending:false});
+
+  qb=qb.range(offset, offset+_CARS_PAGE-1);
+  var r=await qb;
+  if(r.error){console.error('cars query',r.error);return {data:[],hasMore:false,total:0};}
+  // Annotate with match info
+  var rows=(r.data||[]).map(function(c){
+    c.owner=c.profiles||{};delete c.profiles;
+    c.isMatched=matchedCarIds.has(c.id)||matchedOwnerIds.has(c.owner_id);
+    var did=driverIds[c.id];
+    c.matchedDriver=did||null;
+    return c;
+  });
+  return {data:rows, hasMore:(offset+_CARS_PAGE)<(r.count||0), total:r.count||0};
 }
 
 // ── CARD HTML ──────────────────────────────────────────
@@ -1799,11 +2002,11 @@ function loadHome() {
   if(!_drvCache) fetchDrivers();
   fetchCars().then(function(cars){
     eid('h-cs').textContent='';
-    eid('h-cars').innerHTML=cars.length?cars.map(carHTML).join(''):empty('&#128663;','No cars listed yet.');
+    eid('h-cars').innerHTML=cars.slice(0,6).map(carHTML).join('')||empty('&#128663;','No cars listed yet.');
   }).catch(function(){eid('h-cars').innerHTML=empty('&#128663;','Could not load.');});
   fetchDrivers().then(function(drvs){
     eid('h-ds').textContent='';
-    eid('h-drvs').innerHTML=drvs.length?drvs.map(drvHTML).join(''):empty('&#128100;','No drivers yet.');
+    eid('h-drvs').innerHTML=drvs.slice(0,8).map(drvHTML).join('')||empty('&#128100;','No drivers yet.');
   }).catch(function(){eid('h-drvs').innerHTML=empty('&#128100;','Could not load.');});
   // Load testimonials
   sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(6).then(function(res){
@@ -1898,7 +2101,7 @@ async function loadReviews(){
   }
   // Load approved reviews
   grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">Loading...</div>';
-  var r=await sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false});
+  var r=await sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(100);
   var revs=r.data||[];
   if(!revs.length){grid.innerHTML='<div style="text-align:center;padding:60px 20px;color:var(--muted)"><div style="font-size:40px;margin-bottom:12px">&#11088;</div><p>No reviews yet — be the first!</p></div>';return;}
   grid.innerHTML=revs.map(function(rv){
@@ -1937,75 +2140,93 @@ function _drvDist(d,ownerCoords){
   return _haversineG(ownerCoords[0],ownerCoords[1],dc[0],dc[1]);
 }
 function loadCars() {
-  if(!_carCache) eid('cars-grid').innerHTML=skelCards(4);
-  fetchCars().then(function(cars){_allCars=cars;filterCars();}).catch(function(){eid('cars-grid').innerHTML=empty('&#128663;','Could not load.');});
+  eid('cars-grid').innerHTML=skelCards(4);
+  _carsQuery={q:'',sort:'newest',trans:'',status:'',city:''};
+  _carsOffset=0;
+  _runCarsQuery(true);
 }
 function filterCars(){
   var q=(eid('cars-search')?eid('cars-search').value.trim().toLowerCase():'');
-  var sort=eid('cars-sort')?eid('cars-sort').value:'newest';
-  var trans=eid('cars-trans')?eid('cars-trans').value:'';
-  var status=eid('cars-status')?eid('cars-status').value:'';
-  var city=eid('cars-city')?eid('cars-city').value.toLowerCase():'';
-  var cars=_allCars.filter(function(c){
-    var text=((c.make||'')+' '+(c.model||'')+' '+(c.location||'')+(c.owner&&c.owner.location?' '+c.owner.location:'')).toLowerCase();
-    var matchQ=!q||text.indexOf(q)>=0;
-    var matchT=!trans||c.transmission===trans;
-    var matchS=!status||(status==='matched'?!!c.isMatched:!c.isMatched);
-    var matchC=!city||text.indexOf(city)>=0;
-    return matchQ&&matchT&&matchS&&matchC;
-  });
-  if(sort==='price_asc')cars=cars.slice().sort(function(a,b){return (a.price_per_week||0)-(b.price_per_week||0);});
-  else if(sort==='price_desc')cars=cars.slice().sort(function(a,b){return (b.price_per_week||0)-(a.price_per_week||0);});
-  var carsFiltered=status||q||trans;
-  if(eid('cars-sub'))eid('cars-sub').innerHTML=carsFiltered?(cars.length+' result'+(cars.length!==1?'s':'')):'';
-  eid('cars-grid').innerHTML=cars.length?cars.map(carHTML).join(''):empty('&#128663;','No cars match your search.');
+  _carsQuery={
+    q:q,
+    sort:eid('cars-sort')?eid('cars-sort').value:'newest',
+    trans:eid('cars-trans')?eid('cars-trans').value:'',
+    status:eid('cars-status')?eid('cars-status').value:'',
+    city:eid('cars-city')?eid('cars-city').value.toLowerCase():''
+  };
+  _carsOffset=0;
+  eid('cars-grid').innerHTML=skelCards(4);
+  _runCarsQuery(true);
+}
+async function _runCarsQuery(replace){
+  var res=await _execCarsQuery(_carsOffset);
+  var grid=eid('cars-grid');
+  var moreWrap=eid('cars-more-wrap');
+  if(replace){
+    grid.innerHTML=res.data.length?res.data.map(carHTML).join(''):empty('&#128663;','No cars match your search.');
+  } else {
+    if(res.data.length) grid.insertAdjacentHTML('beforeend',res.data.map(carHTML).join(''));
+  }
+  _carsOffset+=res.data.length;
+  _carsHasMore=res.hasMore;
+  if(moreWrap) moreWrap.style.display=_carsHasMore?'block':'none';
+  var sub=eid('cars-sub');
+  if(sub){
+    var isFiltered=!!(  _carsQuery.q||_carsQuery.trans||_carsQuery.status||_carsQuery.city);
+    sub.innerHTML=isFiltered?(res.total+' result'+(res.total!==1?'s':'')):'';
+  }
+}
+function carsLoadMore(){
+  if(!_carsHasMore)return;
+  _runCarsQuery(false);
 }
 function loadDrivers() {
-  if(!_drvCache) eid('drvs-grid').innerHTML=skelCards(6);
-  fetchDrivers().then(function(drvs){_allDrvs=drvs;filterDrivers();}).catch(function(){eid('drvs-grid').innerHTML=empty('&#128100;','Could not load.');});
+  eid('drvs-grid').innerHTML=skelCards(6);
+  _drvsQuery={q:'',sort:'score',plat:'',status:'',city:''};
+  _drvsOffset=0;
+  _drvsNearestCache=null;
+  _runDriversQuery(true);
 }
 function filterDrivers(){
-  var q=(eid('drvs-search')?eid('drvs-search').value.trim().toLowerCase():'');
   var sort=eid('drvs-sort')?eid('drvs-sort').value:'score';
-  var plat=eid('drvs-plat')?eid('drvs-plat').value:'';
-  var status=eid('drvs-status')?eid('drvs-status').value:'';
-  var city=eid('drvs-city')?eid('drvs-city').value.toLowerCase():'';
-  var drvs=_allDrvs.filter(function(d){
-    var p=d.profile||{};
-    var text=((p.full_name||'')+' '+(p.location||'')).toLowerCase();
-    var matchQ=!q||text.indexOf(q)>=0;
-    var matchP=!plat||(d.platforms||[]).indexOf(plat)>=0;
-    var matchS=!status||(status==='matched'?!!d.isMatched:!d.isMatched);
-    var matchC=!city||text.indexOf(city)>=0;
-    return matchQ&&matchP&&matchS&&matchC;
-  });
-  if(sort==='score')drvs=drvs.slice().sort(function(a,b){return (b.trust_score||0)-(a.trust_score||0);});
-  else if(sort==='rentals')drvs=drvs.slice().sort(function(a,b){return (b.rentals_completed||0)-(a.rentals_completed||0);});
-  else if(sort==='newest')drvs=drvs.slice().sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);});
-  else if(sort==='nearest'){
-    var ownerLoc=window.P&&window.P.location?window.P.location:'';
-    var ownerCoords=ownerLoc?_resolveCoords(ownerLoc):null;
-    if(!ownerCoords){
-      if(eid('drvs-sub'))eid('drvs-sub').innerHTML='<span style="color:#dc2626;font-size:12px">&#128205; Set your profile location to sort by nearest.</span>';
-      // still sort by drivers who have a location first, then by score
-      drvs=drvs.slice().sort(function(a,b){
-        var aHasLoc=!!((a.profile&&a.profile.location)||'').trim();
-        var bHasLoc=!!((b.profile&&b.profile.location)||'').trim();
-        if(aHasLoc!==bHasLoc) return aHasLoc?-1:1;
-        return (b.trust_score||0)-(a.trust_score||0);
-      });
-    } else {
-      drvs=drvs.slice().sort(function(a,b){
-        var ad=_drvDist(a,ownerCoords);
-        var bd=_drvDist(b,ownerCoords);
-        return ad-bd;
-      });
+  _drvsQuery={
+    q:eid('drvs-search')?eid('drvs-search').value.trim().toLowerCase():'',
+    sort:sort,
+    plat:eid('drvs-plat')?eid('drvs-plat').value:'',
+    status:eid('drvs-status')?eid('drvs-status').value:'',
+    city:eid('drvs-city')?eid('drvs-city').value.toLowerCase():''
+  };
+  _drvsOffset=0;
+  if(sort!=='nearest') _drvsNearestCache=null;
+  eid('drvs-grid').innerHTML=skelCards(6);
+  _runDriversQuery(true);
+}
+async function _runDriversQuery(replace){
+  var res=await _execDriversQuery(_drvsOffset);
+  var grid=eid('drvs-grid');
+  var moreWrap=eid('drvs-more-wrap');
+  if(replace){
+    if(_drvsQuery.sort==='nearest'&&!(_resolveCoords(window.P&&window.P.location||''))){
+      var sub=eid('drvs-sub');
+      if(sub)sub.innerHTML='<span style="color:#dc2626;font-size:12px">&#128205; Set your profile location to sort by nearest.</span>';
     }
+    grid.innerHTML=res.data.length?res.data.map(drvHTML).join(''):empty('&#128100;','No drivers match your search.');
+  } else {
+    if(res.data.length) grid.insertAdjacentHTML('beforeend',res.data.map(drvHTML).join(''));
   }
-  var drvsFiltered=status||q||plat;
-  if(eid('drvs-sub'))eid('drvs-sub').innerHTML=drvsFiltered?(drvs.length+' result'+(drvs.length!==1?'s':'')+''):'';
-
-  eid('drvs-grid').innerHTML=drvs.length?drvs.map(drvHTML).join(''):empty('&#128100;','No drivers match your search.');
+  _drvsOffset+=res.data.length;
+  _drvsHasMore=res.hasMore;
+  if(moreWrap) moreWrap.style.display=_drvsHasMore?'block':'none';
+  var sub=eid('drvs-sub');
+  if(sub&&(_drvsQuery.q||_drvsQuery.plat||_drvsQuery.status||_drvsQuery.city)){
+    sub.innerHTML=res.total+' result'+(res.total!==1?'s':'');
+  } else if(sub&&_drvsQuery.sort!=='nearest'){
+    sub.innerHTML='';
+  }
+}
+function drvsLoadMore(){
+  if(!_drvsHasMore)return;
+  _runDriversQuery(false);
 }
 async function loadProfPage(dpId) {
   var elb=eid('prof-wrap'); elb.innerHTML=spin();
@@ -2236,7 +2457,10 @@ function reg2d() {
 function backS2(){eid('reg-s2-d').style.display='block';eid('reg-s3').style.display='none';eid('rs2').className='sbi on';eid('rs3').className='sbi';}
 var _oclabels={o_selfie:'Selfie photo',oid_f:'ID / Passport copy',cf:'Car front photo',cs:'Car side photo',cb:'Car back photo'};
 function mDoc(boxId,key,inp){
-  docFiles[key]=inp.files[0];
+  var file=inp.files[0]; if(!file) return;
+  var verr=_validateUpload(file,'','');
+  if(verr){toast(verr);inp.value='';return;}
+  docFiles[key]=file;
   eid(boxId).classList.add('up');
   // Tick owner checklist
   var clId={o_selfie:'oc-selfie',oid_f:'oc-oid',cf:'oc-cf',cs:'oc-cs',cb:'oc-cb'}[key];
@@ -2296,8 +2520,57 @@ function captureOwnerSelfie(){
     toast('Selfie captured!');
   },'image/jpeg',0.88);
 }
-async function upFile(bucket,path,file) {
-  var r=await sb.storage.from(bucket).upload(path,file,{upsert:true});
+// ── IMAGE VALIDATION & COMPRESSION ─────────────────────────
+var _BLOCKED_TYPES=['video/','image/heic','image/heif'];
+var _BLOCKED_EXTS=['heic','heif','mp4','mov','avi','mkv','webm','3gp'];
+var _MAX_UPLOAD_MB=15;
+// Image-only buckets — PDFs not allowed here
+var _IMG_ONLY_BUCKETS=['car-photos','profile-photos','driver-photos'];
+var _IMG_ONLY_FIELDS=['photo_front_url','photo_side_url','photo_back_url','photo_interior_url','photo_headshot_url','photo_fullbody_url','photo_holding_id_url'];
+
+function _validateUpload(file, bucket, field){
+  var type=(file.type||'').toLowerCase();
+  var ext=(file.name.split('.').pop()||'').toLowerCase();
+  for(var i=0;i<_BLOCKED_TYPES.length;i++){if(type.startsWith(_BLOCKED_TYPES[i])){return 'Videos and HEIC/HEIF images are not supported. Please convert to JPG or PNG first.';}}
+  if(_BLOCKED_EXTS.indexOf(ext)>=0){return 'File type .'+ext+' is not supported. Please upload a JPG or PNG image.';}
+  if(file.size>_MAX_UPLOAD_MB*1024*1024){return 'File is too large ('+Math.round(file.size/1024/1024)+'MB). Maximum is '+_MAX_UPLOAD_MB+'MB.';}
+  var isImgOnly=(_IMG_ONLY_BUCKETS.indexOf(bucket||'')>=0)||(_IMG_ONLY_FIELDS.indexOf(field||'')>=0);
+  if(isImgOnly&&type==='application/pdf'){return 'PDF files are not allowed for photo fields. Please upload a JPG or PNG image.';}
+  return null;
+}
+
+function _compressImage(file, maxPx, quality){
+  maxPx=maxPx||2048; quality=quality||0.82;
+  return new Promise(function(resolve){
+    if(!file.type.startsWith('image/')||file.type==='image/gif'){resolve(file);return;}
+    var url=URL.createObjectURL(file);
+    var img=new Image();
+    img.onload=function(){
+      URL.revokeObjectURL(url);
+      var w=img.naturalWidth, h=img.naturalHeight;
+      var scale=Math.min(1, maxPx/Math.max(w,h));
+      var cw=Math.round(w*scale), ch=Math.round(h*scale);
+      var canvas=document.createElement('canvas');
+      canvas.width=cw; canvas.height=ch;
+      canvas.getContext('2d').drawImage(img,0,0,cw,ch);
+      canvas.toBlob(function(blob){
+        resolve(blob&&blob.size<file.size?new File([blob],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'}):file);
+      },'image/jpeg',quality);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);resolve(file);};
+    img.src=url;
+  });
+}
+
+async function upFile(bucket,path,file,field){
+  var err=_validateUpload(file,bucket,field||'');
+  if(err){toast(err);return null;}
+  var compressed=await _compressImage(file);
+  if(compressed!==file){
+    // compressed to jpeg — strip any existing extension and use .jpg
+    path=path.replace(/\.[^./]+$/,'')+'.jpg';
+  }
+  var r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:compressed.type||file.type||'image/jpeg'});
   if(r.error||!r.data){console.error('upload fail',r.error);return null;}
   return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
@@ -2348,9 +2621,11 @@ async function doReg() {
   if(rRole==='owner'){
     var safeEmail=rEmail.replace(/[^a-z0-9]/gi,'_');
     if(docFiles.oid_f){
-      var preExt=(docFiles.oid_f.name.split('.').pop()||'pdf').toLowerCase();
-      var preUp=await sb.storage.from('profile-photos').upload('pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt,docFiles.oid_f,{upsert:true});
-      if(!preUp.error)ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(preUp.data.path||('pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt)).data.publicUrl;
+      var oidComp=await _compressImage(docFiles.oid_f);
+      var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
+      var prePath='pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt;
+      var preUp=await sb.storage.from('profile-photos').upload(prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
+      if(!preUp.error)ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath).data.publicUrl;
     }
     if(docFiles.o_selfie){
       var selfieBlob=docFiles.o_selfie;
@@ -2387,9 +2662,13 @@ async function doReg() {
       if(files.length){
         var urls=[];
         for(var fi=0;fi<files.length;fi++){
-          var sExt=(files[fi].name.split('.').pop()||'jpg').toLowerCase();
+          var sFile=files[fi];
+          var sErr=_validateUpload(sFile,'driver-docs','');
+          if(sErr){toast(sErr);continue;}
+          var sComp=await _compressImage(sFile,1920,0.80);
+          var sExt=sComp!==sFile?'jpg':(sFile.name.split('.').pop()||'jpg').toLowerCase();
           var sPath='screenshots/'+uid+'-'+sp+'-'+fi+'-'+Date.now()+'.'+sExt;
-          var sUp=await sb.storage.from('driver-docs').upload(sPath,files[fi],{upsert:true});
+          var sUp=await sb.storage.from('driver-docs').upload(sPath,sComp,{upsert:true,contentType:sComp.type||sFile.type});
           if(!sUp.error){urls.push(sb.storage.from('driver-docs').getPublicUrl(sPath).data.publicUrl);}
         }
         if(urls.length) shotUrls[sp]=JSON.stringify(urls);
@@ -2900,9 +3179,11 @@ function loadDrvCarRec(drvLoc){
   if(!wrap)return;
   (async function(){
     try{
-      var carsR=await sb.from('cars').select('id,owner_id,make,model,year,color,transmission,price_per_week,deposit,insurance,photo_front_url,location,admin_status,status').eq('admin_status','approved').eq('status','available');
+      var [carsR, matchedOwnerR]=await Promise.all([
+        sb.from('cars').select('id,owner_id,make,model,year,color,transmission,price_per_week,deposit,insurance,photo_front_url,location,admin_status,status').eq('admin_status','approved').eq('status','available').limit(200),
+        sb.from('applications').select('owner_id').eq('status','approved').is('unmatched_at',null)
+      ]);
       var allCars=(carsR.data||[]);
-      var matchedOwnerR=await sb.from('applications').select('owner_id').eq('status','approved').is('unmatched_at',null);
       var matchedOwners=new Set((matchedOwnerR.data||[]).map(function(a){return a.owner_id;}));
       var avail=allCars.filter(function(c){return !matchedOwners.has(c.owner_id);});
       var dCoords=_resolveCoords(drvLoc);
@@ -3076,6 +3357,7 @@ function loadOwnerRec(){
     var refLocs=carLocs.concat(ownerLoc?[ownerLoc]:[]);
     var refCoords=refLocs.map(resolveCoords).filter(Boolean);
 
+    // Reuse the shared driver cache (already capped at 200 and 5-min cached)
     fetchDrivers().then(function(drvs){
       var avail=drvs.filter(function(d){return !d.isMatched;});
       var ownerProvince=getProvince(ownerLoc);
@@ -3237,13 +3519,13 @@ async function pPr() {
       +'<div class="doc-grid">'
       +'<div class="dbox '+(P.photo_headshot_url?'up':'')+'" id="ow-hs">'
         +'<input type="file" accept="image/*" onchange="upOwnerPhoto(\'ow-hs\',\'photo_headshot_url\',this)"/>'
-        +(P.photo_headshot_url?'<img src="'+imgUrl(P.photo_headshot_url,80,80)+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_headshot_url+'\')"/>':'<div style="font-size:18px">&#128247;</div>')
+        +(P.photo_headshot_url?'<img src="'+imgUrl(P.photo_headshot_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_headshot_url+'\')"/>':'<div style="font-size:18px">&#128247;</div>')
         +'<div style="font-size:10px;font-weight:600">Headshot</div>'
         +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_headshot_url?'Uploaded — click to replace':'Click to upload')+'</div>'
       +'</div>'
       +'<div class="dbox '+(P.photo_holding_id_url?'up':'')+'" id="ow-hid">'
         +'<input type="file" accept="image/*" onchange="upOwnerPhoto(\'ow-hid\',\'photo_holding_id_url\',this)"/>'
-        +(P.photo_holding_id_url?'<img src="'+imgUrl(P.photo_holding_id_url,80,80)+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_holding_id_url+'\')"/>':'<div style="font-size:18px">&#129091;</div>')
+        +(P.photo_holding_id_url?'<img src="'+imgUrl(P.photo_holding_id_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_holding_id_url+'\')"/>':'<div style="font-size:18px">&#129091;</div>')
         +'<div style="font-size:10px;font-weight:600">Holding ID</div>'
         +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_holding_id_url?'Uploaded — click to replace':'Photo of you holding your ID')+'</div>'
       +'</div>'
@@ -3305,12 +3587,12 @@ async function pDc() {
     if(d.cam){
       // Camera-only: button triggers captureDocPhoto()
       return '<div class="dbox '+(hasFile?'up':'')+'" id="dc-'+d.n+'" onclick="captureDocPhoto(\''+d.n+'\',\''+d.k+'\')" style="cursor:pointer">'
-        +(hasFile?'<img src="'+DP[d.k]+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="event.stopPropagation();showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">'+d.icon+'</div>')
+        +(hasFile?'<img src="'+imgUrl(DP[d.k],120,75)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="event.stopPropagation();showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">'+d.icon+'</div>')
         +'<div style="font-size:10px;font-weight:600">'+d.l+'</div>'
         +'<div style="font-size:9px;color:var(--muted)">'+(hasFile?'Tap to retake':'&#128247; Tap to open camera')+'</div></div>';
     } else {
       return '<div class="dbox '+(hasFile?'up':'')+'" id="dc-'+d.n+'"><input type="file" accept="image/*,.pdf" onchange="upDocItem(\''+d.n+'\',\''+d.k+'\',this)"/>'
-        +(hasFile?'<img src="'+DP[d.k]+'" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">'+d.icon+'</div>')
+        +(hasFile?'<img src="'+imgUrl(DP[d.k],120,75)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">'+d.icon+'</div>')
         +'<div style="font-size:10px;font-weight:600">'+d.l+'</div><div style="font-size:9px;color:var(--muted)">'+(hasFile?'Uploaded':'Click to upload')+'</div></div>';
     }
   }).join('')+'</div>'
@@ -3512,7 +3794,7 @@ async function pChat(){
         +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
         +docItems.map(function(d){
           return '<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.url)+'\')">'
-            +'<img src="'+esc(d.url)+'" style="width:60px;height:44px;object-fit:cover;border-radius:7px;border:1.5px solid var(--border)">'
+            +'<img src="'+imgUrl(d.url,140,75)+'" loading="lazy" style="width:60px;height:44px;object-fit:cover;border-radius:7px;border:1.5px solid var(--border)">'
             +'<div style="font-size:9px;color:var(--muted);margin-top:3px">'+d.label+'</div>'
             +'</div>';
         }).join('')
@@ -3747,7 +4029,7 @@ async function pLc(){
       var statusLabel=isMatched?'In Use':c.admin_status==='approved'?'Active':c.admin_status==='rejected'?'Declined':'Under Review';
       return '<div class="acard" style="margin-bottom:10px'+(isMatched?';border-left:4px solid #0369a1':'')+'">'
         +'<div style="display:flex;gap:10px;align-items:flex-start">'
-        +(c.photo_front_url?'<img src="'+esc(c.photo_front_url)+'" style="width:72px;height:52px;object-fit:cover;border-radius:7px;flex-shrink:0">':'<div style="width:72px;height:52px;background:var(--sand);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">&#128663;</div>')
+        +(c.photo_front_url?'<img src="'+imgUrl(esc(c.photo_front_url),160,75)+'" loading="lazy" style="width:72px;height:52px;object-fit:cover;border-radius:7px;flex-shrink:0">':'<div style="width:72px;height:52px;background:var(--sand);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">&#128663;</div>')
         +'<div style="flex:1">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
         +'<div style="font-size:14px;font-weight:700;color:var(--g)">'+esc(c.make)+' '+esc(c.model)+' '+c.year+(c.color?' &middot; '+esc(c.color):'')+'</div>'
@@ -3904,7 +4186,7 @@ async function pAp() {
   if(isO){
     // ── OWNER VIEW ──
     try{sb.from('application_views').insert({owner_id:U.id}).then(function(){});}catch(e){}
-    var r=await sb.from('applications').select('*').eq('owner_id',U.id).order('created_at',{ascending:false});
+    var r=await sb.from('applications').select('id,driver_id,owner_id,car_id,status,initiated_by,message,counter_price,unmatched_at,created_at').eq('owner_id',U.id).order('created_at',{ascending:false}).limit(200);
     var apps=r.data||[];
     if(!apps.length){el.innerHTML=empty('&#128203;','No applications yet. Browse drivers and connect with them.');return;}
 
@@ -3935,7 +4217,7 @@ async function pAp() {
 
       // Avatar
       var headshot=dp.photo_headshot_url
-        ?'<img src="'+dp.photo_headshot_url+'" onclick="showLbox(\''+dp.photo_headshot_url+'\')" style="width:52px;height:52px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0;cursor:pointer">'
+        ?'<img src="'+imgUrl(dp.photo_headshot_url,120,80)+'" loading="lazy" onclick="showLbox(\''+esc(dp.photo_headshot_url)+'\')" style="width:52px;height:52px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0;cursor:pointer">'
         :'<div class="av" style="flex-shrink:0">'+ini(pf.full_name||'?')+'</div>';
 
       // Status badge + actions
@@ -3951,7 +4233,7 @@ async function pAp() {
       var carHtml='';
       if(car){
         carHtml='<div style="display:flex;gap:10px;align-items:center;padding:7px 10px;background:var(--cream);border-radius:8px;margin-bottom:8px">'
-          +(car.photo_front_url?'<img src="'+car.photo_front_url+'" style="width:56px;height:40px;object-fit:cover;border-radius:5px">':'<span style="font-size:20px">&#128663;</span>')
+          +(car.photo_front_url?'<img src="'+imgUrl(car.photo_front_url,160,75)+'" loading="lazy" style="width:56px;height:40px;object-fit:cover;border-radius:5px">':'<span style="font-size:20px">&#128663;</span>')
           +'<div><div style="font-size:13px;font-weight:700">'+esc(car.make)+' '+esc(car.model)+' '+car.year+'</div>'
           +'<div style="font-size:11px;color:var(--muted)">&#128205; '+esc(car.location)+' &middot; R'+car.price_per_week+'/wk</div></div></div>';
       }
@@ -4013,7 +4295,7 @@ async function pAp() {
 
   } else {
     // ── DRIVER VIEW ──
-    var r=await sb.from('applications').select('*').eq('driver_id',U.id).order('created_at',{ascending:false});
+    var r=await sb.from('applications').select('id,driver_id,owner_id,car_id,status,initiated_by,message,counter_price,unmatched_at,created_at').eq('driver_id',U.id).order('created_at',{ascending:false}).limit(200);
     var apps=r.data||[];
     if(!apps.length){el.innerHTML=empty('&#128203;','No requests yet. Browse cars and apply, or wait for owners to contact you.');return;}
 
@@ -4063,7 +4345,7 @@ async function pAp() {
       var carHtml='';
       if(car){
         carHtml='<div style="display:flex;gap:10px;align-items:center;padding:7px 10px;background:var(--cream);border-radius:8px;margin-bottom:8px">'
-          +(car.photo_front_url?'<img src="'+car.photo_front_url+'" style="width:56px;height:40px;object-fit:cover;border-radius:5px">':'<span style="font-size:20px">&#128663;</span>')
+          +(car.photo_front_url?'<img src="'+imgUrl(car.photo_front_url,160,75)+'" loading="lazy" style="width:56px;height:40px;object-fit:cover;border-radius:5px">':'<span style="font-size:20px">&#128663;</span>')
           +'<div><div style="font-size:13px;font-weight:700">'+esc(car.make)+' '+esc(car.model)+' '+car.year+'</div>'
           +'<div style="font-size:11px;color:var(--muted)">&#128205; '+esc(car.location)+' &middot; R'+car.price_per_week+'/wk</div></div></div>';
       } else if(oCars.length){
@@ -4071,7 +4353,7 @@ async function pAp() {
           +'<div style="display:flex;flex-direction:column;gap:5px">'
           +oCars.slice(0,3).map(function(c){
             return '<div style="display:flex;gap:8px;align-items:center;padding:6px 10px;background:var(--cream);border-radius:7px">'
-              +(c.photo_front_url?'<img src="'+c.photo_front_url+'" style="width:50px;height:36px;object-fit:cover;border-radius:4px">':'<span style="font-size:18px">&#128663;</span>')
+              +(c.photo_front_url?'<img src="'+imgUrl(c.photo_front_url,140,75)+'" loading="lazy" style="width:50px;height:36px;object-fit:cover;border-radius:4px">':'<span style="font-size:18px">&#128663;</span>')
               +'<div><div style="font-size:12px;font-weight:700">'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</div>'
               +'<div style="font-size:11px;color:var(--muted)">R'+c.price_per_week+'/wk &middot; '+esc(c.location)+'</div>'
               +(c.admin_status!=='approved'?'<div style="font-size:10px;color:#E8A520;font-weight:600">&#8987; Pending approval</div>':'')
@@ -4654,7 +4936,26 @@ function adSc(s){if(s>=80)return 'var(--gm)';if(s>=60)return 'var(--amber)';retu
 function adSl(s){if(s>=90)return 'Trusted Driver';if(s>=80)return 'Reliable Driver';if(s>=70)return 'Good Standing';if(s>=60)return 'Fair Standing';if(s>=50)return 'Needs Improvement';return 'High Risk';}
 function dthumb(url,label){
   if(!url)return '<div class="dthumb" style="opacity:.35;cursor:default">&#128196;<div class="dthumb-lbl">'+label+'</div></div>';
-  return '<div class="dthumb" onclick="showLbox(\''+url+'\')" title="'+label+'"><img src="'+url+'" onerror="this.style.display=\'none\'"/><a href="'+url+'" download target="_blank" onclick="event.stopPropagation()" style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px;font-size:8px;text-decoration:none">DL</a><div class="dthumb-lbl">'+label+'</div></div>';
+  // Render a click-to-load placeholder; actual image fetched only when clicked (Phase 3 lazy doc viewer)
+  var thumb=imgUrl(url,140,70);
+  return '<div class="dthumb" data-src="'+esc(thumb)+'" data-full="'+esc(url)+'" title="'+label+'" onclick="_dtLoad(this)" style="cursor:pointer">'
+    +'<span style="font-size:16px">&#128196;</span>'
+    +'<a href="'+esc(url)+'" download target="_blank" onclick="event.stopPropagation()" style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,.55);color:#fff;border-radius:3px;padding:1px 3px;font-size:8px;text-decoration:none">DL</a>'
+    +'<div class="dthumb-lbl">'+label+'</div>'
+    +'</div>';
+}
+function _dtLoad(el){
+  // First click: load thumbnail and open lightbox; subsequent clicks just open lightbox
+  if(!el.dataset.loaded){
+    el.dataset.loaded='1';
+    var img=document.createElement('img');
+    img.src=el.dataset.src;
+    img.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover';
+    img.onerror=function(){img.style.display='none';};
+    el.insertBefore(img,el.firstChild);
+    el.querySelector('span') && (el.querySelector('span').style.display='none');
+  }
+  showLbox(el.dataset.full);
 }
 function igrid(rows){return '<div class="igrid">'+rows.filter(Boolean).map(function(r){return '<div>'+r+'</div>';}).join('')+'</div>';}
 
@@ -4942,6 +5243,67 @@ async function adStats(){
   });
   html+=tbl('Applications Received per Owner',['Owner Name','Email','# Received'],or2,'No applications yet.');
 
+  // Image analytics section
+  var imgR=await sb.from('image_analytics').select('bucket,path,page,request_count,last_seen_at').order('request_count',{ascending:false}).limit(200);
+  var imgs=imgR.data||[];
+  if(imgs.length){
+    // Estimate avg file size per bucket heuristic (KB)
+    var bucketSizeKb={'driver-photos':150,'car-photos':200,'profile-photos':80};
+    var DEFAULT_KB=120;
+    // Top images
+    var topImgs=imgs.slice(0,30).map(function(r){
+      var kb=bucketSizeKb[r.bucket]||DEFAULT_KB;
+      var bw=(r.request_count*kb/1024).toFixed(2)+' MB';
+      var short=r.path.length>40?'...'+r.path.slice(-38):r.path;
+      var dt=r.last_seen_at?new Date(r.last_seen_at).toLocaleString('en-ZA',{dateStyle:'short',timeStyle:'short'}):'-';
+      return [
+        '<span style="font-size:11px;color:var(--muted)">'+r.bucket+'</span>',
+        '<span style="font-size:11px;font-family:monospace" title="'+r.path+'">'+short+'</span>',
+        '<span style="font-size:11px;color:var(--muted)">'+r.page+'</span>',
+        '<span style="font-weight:800;font-size:15px;color:var(--gm)">'+r.request_count+'</span>',
+        '<span style="font-size:11px;color:#0369a1">'+bw+'</span>',
+        '<span style="font-size:11px;color:var(--muted)">'+dt+'</span>'
+      ];
+    });
+    html+=tbl('Top Images by Request Count (showing top 30)',['Bucket','Path','Page','Requests','Est. Bandwidth','Last Seen'],topImgs,'No data.');
+
+    // Bucket rollup
+    var bktMap={};
+    imgs.forEach(function(r){
+      if(!bktMap[r.bucket])bktMap[r.bucket]={reqs:0,bw:0};
+      var kb=bucketSizeKb[r.bucket]||DEFAULT_KB;
+      bktMap[r.bucket].reqs+=r.request_count;
+      bktMap[r.bucket].bw+=r.request_count*kb/1024;
+    });
+    var bktRows=Object.entries(bktMap).sort(function(a,b){return b[1].reqs-a[1].reqs;}).map(function(e){
+      return [
+        '<strong>'+e[0]+'</strong>',
+        '<span style="font-weight:800;font-size:15px;color:var(--gm)">'+e[1].reqs+'</span>',
+        '<span style="font-size:13px;color:#0369a1">'+e[1].bw.toFixed(2)+' MB</span>'
+      ];
+    });
+    html+=tbl('Requests by Bucket',['Bucket','Total Requests','Est. Bandwidth'],bktRows,'No data.');
+
+    // Page rollup
+    var pgMap={};
+    imgs.forEach(function(r){
+      if(!pgMap[r.page])pgMap[r.page]={reqs:0,bw:0};
+      var kb=bucketSizeKb[r.bucket]||DEFAULT_KB;
+      pgMap[r.page].reqs+=r.request_count;
+      pgMap[r.page].bw+=r.request_count*kb/1024;
+    });
+    var pgRows=Object.entries(pgMap).sort(function(a,b){return b[1].reqs-a[1].reqs;}).map(function(e){
+      return [
+        '<strong>'+e[0]+'</strong>',
+        '<span style="font-weight:800;font-size:15px;color:var(--gm)">'+e[1].reqs+'</span>',
+        '<span style="font-size:13px;color:#0369a1">'+e[1].bw.toFixed(2)+' MB</span>'
+      ];
+    });
+    html+=tbl('Requests by Page',['Page','Total Requests','Est. Bandwidth'],pgRows,'No data.');
+  } else {
+    html+='<div style="margin-bottom:20px"><div class="shd">Image Usage Analytics</div><p style="font-size:13px;color:var(--muted);padding:12px 0">No image requests tracked yet. Data will appear after users browse the site.</p></div>';
+  }
+
   el.innerHTML=html;
 }
 
@@ -4952,7 +5314,7 @@ async function adOv(){
     sb.from('profiles').select('id,full_name,email,role,admin_status,location,created_at'),
     sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended'),
     sb.from('cars').select('id,status,admin_status,location,owner_id,make,model,year'),
-    sb.from('applications').select('id,status,created_at'),
+    sb.from('applications').select('id,driver_id,owner_id,status,initiated_by,created_at'),
     sb.from('reviews').select('id,rating'),
     sb.from('trust_actions').select('id,points')
   ]);
@@ -4961,7 +5323,7 @@ async function adOv(){
   var today=new Date().toISOString().slice(0,10);
   var logRes=await sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false});
   var viewRes=await sb.from('application_views').select('id,owner_id,created_at').order('created_at',{ascending:false});
-  var appStatRes=await sb.from('applications').select('id,driver_id,owner_id,status,initiated_by,created_at');
+  var appStatRes={data:apps};
 
   // profiles already include full_name+email from main fetch above
   var logins=logRes.data||[];
@@ -5238,10 +5600,14 @@ async function incSave(dpId,uid){
 async function incUploadDoc(inp){
   var dpId=inp.dataset.dpid, field=inp.dataset.field;
   var file=inp.files[0]; if(!file) return;
+  var verr=_validateUpload(file,'driver-docs',field);
+  if(verr){toast(verr);return;}
   var box=document.getElementById('ie-box-'+dpId+'-'+field);
   if(box){box.style.opacity='.5';}
-  var path='driver-docs-admin/'+dpId+'/'+field+'.'+file.name.split('.').pop();
-  var up=await sb.storage.from('driver-docs').upload(path,file,{upsert:true});
+  var comp=await _compressImage(file);
+  var ext=comp!==file?'jpg':(file.name.split('.').pop()||'jpg');
+  var path='driver-docs-admin/'+dpId+'/'+field+'.'+ext;
+  var up=await sb.storage.from('driver-docs').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
   if(up.error){toast('Upload error: '+up.error.message);if(box)box.style.opacity='1';return;}
   var url=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
   var upd={};upd[field]=url;
@@ -5286,7 +5652,7 @@ async function adReg(){
       var docValid=d.doc_expires_at&&new Date(d.doc_expires_at)>new Date();
       return '<div class="rcard" id="rc-'+d.id+'">'
         +'<div class="rcard-head"><div style="display:flex;align-items:center;gap:10px">'
-        +(d.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+d.photo_headshot_url+'\')"><img src="'+d.photo_headshot_url+'" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(p.full_name)+'</div>')
+        +(d.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+d.photo_headshot_url+'\')"><img src="'+imgUrl(d.photo_headshot_url,120,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(p.full_name)+'</div>')
         +'<div><div style="font-size:15px;font-weight:700">'+( p.full_name||'Unknown')+'</div><div style="font-size:11px;color:var(--muted)">Driver / '+fmtD(p.created_at)+'</div></div></div>'+adPill('pending')+'</div>'
         +'<div class="rcard-body">'+igrid(['Email: <strong>'+(p.email||'-')+'</strong>','Phone: <strong>'+(p.phone||'-')+'</strong>',p.whatsapp?'WhatsApp: <strong>'+p.whatsapp+'</strong>':'','Location: <strong>'+(p.location||'-')+'</strong>','ID No: <strong>'+(d.id_number||'-')+'</strong>','Licence: <strong>'+(d.license_number||'-')+'</strong>','Driving: <strong>'+d.years_driving+'+ yrs</strong>',d.age?'Age: <strong>'+d.age+'</strong>':'','Lic. Obtained: <strong>'+(d.license_date||'-')+'</strong>','Lic. Expiry: <strong style="color:'+(d.license_expiry_date?'inherit':'var(--muted)')+'">'+(d.license_expiry_date||'Not provided')+'</strong>','PDP Expiry: <strong style="color:'+(d.pdp_expiry_date?'inherit':'var(--muted)')+'">'+(d.pdp_expiry_date||'Not provided')+'</strong>','Platforms: <strong>'+((d.platforms||[]).join(', ')||'-')+'</strong>','Score: <strong style="color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</strong>','Docs: <strong style="color:'+(docValid?'var(--gm)':'#dc2626')+'">'+(docValid?'Valid to '+fmtD(d.doc_expires_at):d.doc_uploaded_at?'EXPIRED':'Not uploaded')+'</strong>','PDP: <strong style="color:'+(d.has_pdp?'var(--gm)':'#dc2626')+'">'+(d.has_pdp===true?'Yes ✓':d.has_pdp===false?'No ✗':'Not answered')+'</strong>','1yr Experience: <strong style="color:'+(d.has_1yr_experience?'var(--gm)':'#dc2626')+'">'+(d.has_1yr_experience===true?'Yes ✓':d.has_1yr_experience===false?'No ✗':'Not answered')+'</strong>',(d.self_uber_trips||d.self_uber_rating)?'Uber (self): <strong>'+(d.self_uber_trips?d.self_uber_trips+' trips':'')+' '+(d.self_uber_rating?'/ '+d.self_uber_rating+' ★':'')+'</strong>':'',(d.self_bolt_trips||d.self_bolt_rating)?'Bolt (self): <strong>'+(d.self_bolt_trips?d.self_bolt_trips+' trips':'')+' '+(d.self_bolt_rating?'/ '+d.self_bolt_rating+' ★':'')+'</strong>':'',(d.self_indrive_trips||d.self_indrive_rating)?'inDrive (self): <strong>'+(d.self_indrive_trips?d.self_indrive_trips+' trips':'')+' '+(d.self_indrive_rating?'/ '+d.self_indrive_rating+' ★':'')+'</strong>':''])
         +(d.bio?'<div style="margin-top:8px;font-size:12px;color:#555;background:var(--cream);padding:7px 9px;border-radius:6px">'+d.bio+'</div>':'')+'</div>'
@@ -5375,12 +5741,15 @@ function adDocUploads(dpId){
 async function adUploadDoc(dpId,field,inp){
   if(!inp.files||!inp.files[0])return;
   var file=inp.files[0];
-  var ext=(file.name.split('.').pop()||'pdf').toLowerCase();
+  var verr=_validateUpload(file,'driver-docs',field);
+  if(verr){toast(verr);return;}
+  var comp=await _compressImage(file);
+  var ext=comp!==file?'jpg':(file.name.split('.').pop()||'jpg').toLowerCase();
   var path=dpId+'/'+field+'-admin.'+ext;
   var btn=inp.closest('.admin-doc-row');
   var status=btn?btn.querySelector('.ad-status'):null;
   if(status)status.textContent='Uploading...';
-  var up=await sb.storage.from('driver-docs').upload(path,file,{upsert:true});
+  var up=await sb.storage.from('driver-docs').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
   if(up.error){toast('Upload failed: '+up.error.message);return;}
   var url=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
   var update={};update[field]=url;
@@ -5475,10 +5844,14 @@ async function ownSaveCar(cid){
 async function ownUploadId(inp){
   var oid=inp.dataset.oid;
   var file=inp.files[0]; if(!file) return;
+  var verr=_validateUpload(file,'profile-photos','doc_id_url');
+  if(verr){toast(verr);return;}
   var box=document.getElementById('oe-idbox-'+oid);
   if(box) box.classList.add('up');
-  var path='owner-id/'+oid+'/id-'+Date.now()+'.'+file.name.split('.').pop();
-  var up=await sb.storage.from('profile-photos').upload(path,file,{upsert:true});
+  var comp=await _compressImage(file);
+  var ext=comp!==file?'jpg':(file.name.split('.').pop()||'jpg');
+  var path='owner-id/'+oid+'/id-'+Date.now()+'.'+ext;
+  var up=await sb.storage.from('profile-photos').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
   if(up.error){toast('Upload error: '+up.error.message);return;}
   var url=sb.storage.from('profile-photos').getPublicUrl(path).data.publicUrl;
   await sb.from('profiles').update({doc_id_url:url}).eq('id',oid);
@@ -5517,7 +5890,7 @@ async function adDrv(){
       var docValid=d.doc_expires_at&&new Date(d.doc_expires_at)>new Date();
       return '<div class="rcard" id="dc-'+d.id+'">'
         +'<div class="rcard-head"><div style="display:flex;align-items:center;gap:9px">'
-        +(d.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+d.photo_headshot_url+'\')"><img src="'+d.photo_headshot_url+'" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(p.full_name)+'</div>')
+        +(d.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+d.photo_headshot_url+'\')"><img src="'+imgUrl(d.photo_headshot_url,120,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(p.full_name)+'</div>')
         +'<div><div style="font-size:14px;font-weight:700">'+(p.full_name||'-')+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">'+(p.email||'-')+' / '+(p.phone||'-')+(p.whatsapp?' / '+p.whatsapp:'')+' / '+(p.location||'-')+'</div></div></div>'
         +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><div style="font-size:13px;font-weight:700;color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</div>'+adPill(d.status||'pending')+(d.suspended?'<span class="pill p-r">SUSPENDED</span>':'')+'</div></div>'
@@ -5794,7 +6167,7 @@ async function adOwn(){
         // SA ID doc
         +'<div class="shd">SA ID Document</div>'
         +'<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">'
-        +(o.doc_id_url?'<img src="'+esc(o.doc_id_url)+'" onclick="showLbox(\''+esc(o.doc_id_url)+'\')" style="width:60px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer" title="Click to view full ID"><button class="btn btn-out btn-sm" onclick="showLbox(\''+esc(o.doc_id_url)+'\')" style="font-size:11px">&#128196; View ID</button>':'<span style="font-size:12px;color:#dc2626;font-weight:600">&#9888; No ID uploaded</span>')
+        +(o.doc_id_url?'<img src="'+imgUrl(o.doc_id_url,140,75)+'" loading="lazy" onclick="showLbox(\''+esc(o.doc_id_url)+'\')" style="width:60px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer" title="Click to view full ID"><button class="btn btn-out btn-sm" onclick="showLbox(\''+esc(o.doc_id_url)+'\')" style="font-size:11px">&#128196; View ID</button>':'<span style="font-size:12px;color:#dc2626;font-weight:600">&#9888; No ID uploaded</span>')
         +'<div class="dbox" style="flex:1;min-height:50px" id="oe-idbox-'+o.id+'">'
         +'<input type="file" accept="image/*,.pdf" data-oid="'+o.id+'" onchange="ownUploadId(this)">'
         +'<div style="font-size:11px;font-weight:600">&#128196; '+(o.doc_id_url?'Replace':'Upload')+' ID</div>'
@@ -5838,7 +6211,7 @@ async function adOwn(){
               +[['photo_front_url','Front'],['photo_side_url','Side'],['photo_back_url','Back'],['photo_interior_url','Interior']].map(function(ph){
                 var existing=c[ph[0]];
                 return '<div style="border:1.5px solid var(--border);border-radius:7px;overflow:hidden;background:var(--cream)">'
-                  +(existing?'<img src="'+esc(existing)+'" style="width:100%;height:55px;object-fit:cover;display:block">':'<div style="height:55px;display:flex;align-items:center;justify-content:center;font-size:18px">&#128663;</div>')
+                  +(existing?'<img src="'+imgUrl(existing,200,75)+'" loading="lazy" style="width:100%;height:55px;object-fit:cover;display:block">':'<div style="height:55px;display:flex;align-items:center;justify-content:center;font-size:18px">&#128663;</div>')
                   +'<label style="display:block;cursor:pointer;padding:3px 5px;background:#fff;border-top:1px solid var(--border);text-align:center">'
                   +'<input type="file" accept="image/*" style="display:none" data-cid="'+c.id+'" data-field="'+ph[0]+'" onchange="adUploadCarPhoto(this)">'
                   +'<span style="font-size:9px;font-weight:600;color:var(--gm)">&#128247; '+ph[1]+'</span>'
@@ -5959,7 +6332,7 @@ async function adCar(){
       var fuel=c.fuel_policy==='driver_pays'?'Driver pays':c.fuel_policy==='owner_pays'?'Owner pays':'Split';
       return '<div class="rcard" id="cc-'+c.id+'">'
         +'<div class="rcard-head"><div style="display:flex;align-items:center;gap:9px">'
-        +(photos.length?'<img src="'+photos[0]+'" onclick="showLbox(\''+photos[0]+'\')\" style="width:75px;height:54px;object-fit:cover;border-radius:6px;cursor:pointer;flex-shrink:0"/>':'<div style="width:75px;height:54px;background:var(--sand);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">&#128663;</div>')
+        +(photos.length?'<img src="'+imgUrl(photos[0],160,75)+'" loading="lazy" onclick="showLbox(\''+photos[0]+'\')\" style="width:75px;height:54px;object-fit:cover;border-radius:6px;cursor:pointer;flex-shrink:0"/>':'<div style="width:75px;height:54px;background:var(--sand);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">&#128663;</div>')
         +'<div><div style="font-size:14px;font-weight:700">'+c.make+' '+c.model+' '+c.year+(c.color?' / '+c.color:'')+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">R'+c.price_per_week+'/wk / '+c.location+' / '+fuel+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">Owner: <strong>'+(op.full_name||'-')+'</strong> / '+(op.phone||'-')+'</div></div></div><div style="display:flex;gap:5px;align-items:center">'+adPill(c.admin_status||'pending')+(c.applications_paused?'<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid #fcd34d">PAUSED</span>':'')+'</div></div>'
@@ -5992,7 +6365,7 @@ async function adCar(){
         +[['photo_front_url','Front'],['photo_side_url','Side'],['photo_back_url','Back'],['photo_interior_url','Interior']].map(function(ph){
           var existing=c[ph[0]];
           return '<div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden;background:var(--cream)">'
-            +(existing?'<img src="'+esc(existing)+'" style="width:100%;height:80px;object-fit:cover;display:block">':'<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:24px">&#128663;</div>')
+            +(existing?'<img src="'+imgUrl(existing,300,75)+'" loading="lazy" style="width:100%;height:80px;object-fit:cover;display:block">':'<div style="height:80px;display:flex;align-items:center;justify-content:center;font-size:24px">&#128663;</div>')
             +'<label style="display:block;cursor:pointer;padding:5px 8px;background:#fff;border-top:1px solid var(--border)">'
             +'<input type="file" accept="image/*" style="display:none" data-cid="'+c.id+'" data-field="'+ph[0]+'" onchange="adUploadCarPhoto(this)">'
             +'<span style="font-size:10px;font-weight:600;color:var(--gm)">&#128247; '+(existing?'Replace ':'Upload ')+ph[1]+'</span>'
@@ -6383,7 +6756,7 @@ async function adMatch(){
       }
       return '<div class="rcard" data-terms="'+(termsAgreed?'agreed':'pending')+'" style="border-left:4px solid '+(termsAgreed?'var(--gm)':'#E8A520')+'">'
         +'<div style="display:flex;gap:12px;align-items:flex-start;padding:14px">'
-        +(c.photo_front_url?'<img src="'+c.photo_front_url+'" style="width:80px;height:58px;object-fit:cover;border-radius:8px;flex-shrink:0"/>':'<div style="width:80px;height:58px;background:var(--sand);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px">&#128663;</div>')
+        +(c.photo_front_url?'<img src="'+imgUrl(c.photo_front_url,160,75)+'" loading="lazy" style="width:80px;height:58px;object-fit:cover;border-radius:8px;flex-shrink:0"/>':'<div style="width:80px;height:58px;background:var(--sand);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px">&#128663;</div>')
         +'<div style="flex:1;min-width:0">'
         +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px">'
         +'<span style="font-size:15px;font-weight:700;color:var(--g)">'+(c.make||'-')+' '+(c.model||'')+' '+(c.year||'')+(c.color?' &middot; '+c.color:'')+'</span>'
@@ -6603,7 +6976,7 @@ async function adSet(){
       html+='<div>'
         +'<div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px">Example '+slot+(slot===1?' (Primary)':'')+' '+(url?'<span style="color:var(--gm)">&#10003; Uploaded</span>':'<span style="color:#ccc">Empty</span>')+'</div>'
         +(url?'<div style="margin-bottom:8px;position:relative">'
-          +'<img src="'+url+'" style="width:100%;height:90px;object-fit:cover;border-radius:6px;display:block">'
+          +'<img src="'+imgUrl(url,300,75)+'" loading="lazy" style="width:100%;height:90px;object-fit:cover;border-radius:6px;display:block">'
           +'<button data-k="'+key+'" onclick="adDeleteExample(this.dataset.k)" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(220,38,38,.9);color:#fff;border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1">&#215;</button>'
           +'</div>':'')
         +'<div class="dbox '+(url?'up':'')+'" id="exbox-'+key+'" style="min-height:60px">'
@@ -6619,10 +6992,14 @@ async function adSet(){
 async function adUploadEx(inp){
   var key=inp.dataset.key;
   var file=inp.files[0]; if(!file) return;
+  var verr=_validateUpload(file,'profile-photos','photo_headshot_url');
+  if(verr){toast(verr);return;}
   var box=document.getElementById('exbox-'+key);
   if(box){box.style.opacity='.5';}
-  var path='examples/'+key+'.'+file.name.split('.').pop();
-  var up=await sb.storage.from('profile-photos').upload(path,file,{upsert:true});
+  var comp=await _compressImage(file,1920,0.85);
+  var ext=comp!==file?'jpg':(file.name.split('.').pop()||'jpg');
+  var path='examples/'+key+'.'+ext;
+  var up=await sb.storage.from('profile-photos').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
   if(up.error){toast('Upload error: '+up.error.message);if(box)box.style.opacity='1';return;}
   var url=sb.storage.from('profile-photos').getPublicUrl(path).data.publicUrl;
   await sb.from('app_settings').upsert({key:key,value:url},{onConflict:'key'});
