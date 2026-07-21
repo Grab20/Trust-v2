@@ -976,7 +976,7 @@ nav div::-webkit-scrollbar{display:none}
         <div class="dbox" id="ddhid"><input type="file" accept="image/*" capture="user" onchange="mDoc('ddhid','dhid',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Holding ID *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">&#128247; Take a live photo holding your ID</div></div>
         <div class="dbox" id="ddl"><input type="file" accept="image/*,.pdf" onchange="mDoc('ddl','dl',this)"><div style="font-size:18px">&#128203;</div><div style="font-size:10px;font-weight:600">Licence *</div></div>
         <div class="dbox" id="ddid"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddid','did',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID/Passport *</div></div>
-        <div class="dbox" id="ddpor"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddpor','por',this)"><div style="font-size:18px">&#127968;</div><div style="font-size:10px;font-weight:600">Proof of Residence *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Bank/account statement, utility bill</div></div>
+        <div class="dbox" id="ddpor" style="border-color:#dc2626;background:#fff8f8"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddpor','por',this)"><div style="font-size:18px">&#127968;</div><div style="font-size:10px;font-weight:600;color:#dc2626">Proof of Residence &#10033; Required</div><div style="font-size:9px;color:#dc2626;margin-top:3px;text-align:center">Bank statement or utility bill</div></div>
       </div>
       <!-- Criminal Check - Optional -->
       <div style="background:var(--cream);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
@@ -2651,7 +2651,8 @@ async function doReg() {
     if(docFiles.df){var x=await upFile('driver-docs',uid+'/fullbody-'+t,docFiles.df);if(x)u.photo_fullbody_url=x;}
     if(docFiles.dh){var x=await upFile('driver-docs',uid+'/headshot-'+t,docFiles.dh);if(x)u.photo_headshot_url=x;}
     if(docFiles.dhid){var x=await upFile('driver-docs',uid+'/holdingid-'+t,docFiles.dhid);if(x)u.photo_holding_id_url=x;}
-    if(docFiles.dl){var x=await upFile('driver-docs',uid+'/license-'+t,docFiles.dl);if(x)u.doc_license_url=x;}
+    if(docFiles.dl){var x=await upFile('driver-docs',uid+'/license-front-'+t,docFiles.dl);if(x)u.doc_license_url=x;}
+    if(docFiles.dlb){var x=await upFile('driver-docs',uid+'/license-back-'+t,docFiles.dlb);if(x)u.doc_license_back_url=x;}
     if(docFiles.did){var x=await upFile('driver-docs',uid+'/idcopy-'+t,docFiles.did);if(x)u.doc_id_url=x;}
     if(docFiles.por){var x=await upFile('driver-docs',uid+'/por-'+t,docFiles.por);if(x)u.proof_of_residence_url=x;}
     if(docFiles.crim){var x=await upFile('driver-docs',uid+'/criminal-'+t,docFiles.crim);if(x){u.criminal_check_url=x;u.criminal_check_submitted=true;}}
@@ -3576,12 +3577,14 @@ async function pDc() {
     {k:'photo_fullbody_url',l:'Full Body',n:'fb',icon:'&#127947;',cam:false},
     {k:'photo_headshot_url',l:'Headshot',n:'hs',icon:'&#129334;',cam:true},
     {k:'photo_holding_id_url',l:'Holding ID',n:'hid',icon:'&#129334;',cam:true},
-    {k:'doc_license_url',l:'Licence',n:'lic',icon:'&#128203;',cam:false},
+    {k:'doc_license_url',l:'Licence Front',n:'lic',icon:'&#128203;',cam:true},
+    {k:'doc_license_back_url',l:'Licence Back',n:'licb',icon:'&#128203;',cam:true},
     {k:'doc_id_url',l:'ID/Passport',n:'id',icon:'&#128196;',cam:false},
     {k:'proof_of_residence_url',l:'Proof of Residence',n:'por',icon:'&#127968;',cam:false}
   ];
   el.innerHTML='<div class="shd">Documents</div>'
-    +'<div style="font-size:11px;color:#1a5c28;background:#f0faf2;border-radius:8px;padding:8px 10px;margin-bottom:10px">&#128247; Headshot and Holding ID photos will open your camera directly for a live photo.</div>'
+    +(!DP.proof_of_residence_url?'<div style="background:#fef2f2;border:1.5px solid #dc2626;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><span style="font-size:18px;flex-shrink:0">&#127968;</span><div><div style="font-size:12px;font-weight:700;color:#dc2626">Proof of Residence required</div><div style="font-size:11px;color:#7f1d1d;margin-top:2px">Your application cannot be reviewed until you upload a bank statement or utility bill.</div></div></div>':'')
+    +'<div style="font-size:11px;color:#1a5c28;background:#f0faf2;border-radius:8px;padding:8px 10px;margin-bottom:10px">&#128247; Headshot, Holding ID, and Licence photos will open your camera directly. Upload front and back of your licence.</div>'
     +'<div class="doc-grid">'+docs.map(function(d){
     var hasFile=!!DP[d.k];
     if(d.cam){
@@ -3591,9 +3594,12 @@ async function pDc() {
         +'<div style="font-size:10px;font-weight:600">'+d.l+'</div>'
         +'<div style="font-size:9px;color:var(--muted)">'+(hasFile?'Tap to retake':'&#128247; Tap to open camera')+'</div></div>';
     } else {
-      return '<div class="dbox '+(hasFile?'up':'')+'" id="dc-'+d.n+'"><input type="file" accept="image/*,.pdf" onchange="upDocItem(\''+d.n+'\',\''+d.k+'\',this)"/>'
+      var isPor=d.k==='proof_of_residence_url';
+      var reqStyle=(!hasFile&&isPor)?';border-color:#dc2626;background:#fff8f8':'';
+      return '<div class="dbox '+(hasFile?'up':'')+'" id="dc-'+d.n+'" style="position:relative'+reqStyle+'"><input type="file" accept="image/*,.pdf" onchange="upDocItem(\''+d.n+'\',\''+d.k+'\',this)"/>'
         +(hasFile?'<img src="'+imgUrl(DP[d.k],120,75)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">'+d.icon+'</div>')
-        +'<div style="font-size:10px;font-weight:600">'+d.l+'</div><div style="font-size:9px;color:var(--muted)">'+(hasFile?'Uploaded':'Click to upload')+'</div></div>';
+        +'<div style="font-size:10px;font-weight:600;'+(isPor&&!hasFile?'color:#dc2626':'')+'">'+d.l+(isPor?' &#10033;':'')+'</div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(hasFile?'Uploaded':'Click to upload')+'</div></div>';
     }
   }).join('')+'</div>'
   +'<div id="dc-cam-wrap"></div>';
@@ -3713,7 +3719,7 @@ async function pChat(){
     app.car_id?sb.from('cars').select('id,make,model,year,price_per_week,deposit,location').eq('id',app.car_id).maybeSingle():{data:null},
     sb.from('messages').select('*').eq('application_id',app.id).order('created_at',{ascending:true}),
     // Owner fetches driver docs from driver_profiles
-    !isD?sb.from('driver_profiles').select('doc_id_url,doc_license_url,photo_holding_id_url,photo_fullbody_url').eq('user_id',app.driver_id).maybeSingle():{data:null}
+    !isD?sb.from('driver_profiles').select('doc_id_url,doc_license_url,doc_license_back_url,photo_holding_id_url,photo_fullbody_url').eq('user_id',app.driver_id).maybeSingle():{data:null}
   ]);
   var other=otherR.data||{};
   var driverDocs=(!isD&&driverDocR&&driverDocR.data)||null;
@@ -3786,7 +3792,8 @@ async function pChat(){
       {url:other.photo_fullbody_url||dd.photo_fullbody_url,label:'Full Body'},
       {url:dd.photo_holding_id_url,label:'Holding ID'},
       {url:dd.doc_id_url,label:'ID Document'},
-      {url:dd.doc_license_url,label:'Licence'}
+      {url:dd.doc_license_url,label:'Licence Front'},
+      {url:dd.doc_license_back_url,label:'Licence Back'}
     ].filter(function(d){return !!d.url;});
     if(docItems.length){
       docsHtml='<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">'
@@ -4029,7 +4036,7 @@ async function pLc(){
       var statusLabel=isMatched?'In Use':c.admin_status==='approved'?'Active':c.admin_status==='rejected'?'Declined':'Under Review';
       return '<div class="acard" style="margin-bottom:10px'+(isMatched?';border-left:4px solid #0369a1':'')+'">'
         +'<div style="display:flex;gap:10px;align-items:flex-start">'
-        +(c.photo_front_url?'<img src="'+imgUrl(esc(c.photo_front_url),160,75)+'" loading="lazy" style="width:72px;height:52px;object-fit:cover;border-radius:7px;flex-shrink:0">':'<div style="width:72px;height:52px;background:var(--sand);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">&#128663;</div>')
+        +(c.photo_front_url?'<img src="'+imgUrl(c.photo_front_url,160,75)+'" loading="lazy" style="width:72px;height:52px;object-fit:cover;border-radius:7px;flex-shrink:0">':'<div style="width:72px;height:52px;background:var(--sand);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">&#128663;</div>')
         +'<div style="flex:1">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
         +'<div style="font-size:14px;font-weight:700;color:var(--g)">'+esc(c.make)+' '+esc(c.model)+' '+c.year+(c.color?' &middot; '+esc(c.color):'')+'</div>'
@@ -5093,12 +5100,13 @@ function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
   }
   function inactiveTbl(list,showCars){
     if(!list.length)return '<p style="font-size:12px;color:var(--muted)">None — all active ✓</p>';
-    return '<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Name</th><th>Email</th><th>Last Login</th>'+(showCars?'<th>Cars</th>':'')+'</tr></thead><tbody>'
+    return '<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Name</th><th>Email</th><th>Registered</th><th>Last Login</th>'+(showCars?'<th>Cars</th>':'')+'</tr></thead><tbody>'
       +list.map(function(u){
         var carsHtml='';
         if(showCars){var uc=ownerCars[u.id]||[];carsHtml='<td style="font-size:11px">'+(uc.length?uc.map(function(c){return esc([c.year,c.make,c.model].filter(Boolean).join(' '));}).join('<br>'):'<span style="color:var(--muted)">None</span>')+'</td>';}
         return '<tr><td><strong>'+esc(u.full_name||'Unknown')+'</strong></td>'
           +'<td style="font-size:11px;color:var(--muted)">'+esc(u.email||'-')+'</td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+(u.created_at?fmtD(u.created_at):'-')+'</td>'
           +'<td style="font-size:11px">'+lastLoginStr(u.id)+'</td>'+carsHtml+'</tr>';
       }).join('')
       +'</tbody></table></div>';
@@ -5932,10 +5940,15 @@ async function adDrv(){
         +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumb(d.photo_fullbody_url,'Full Body')+dthumb(d.photo_headshot_url,'Headshot')+dthumb(d.photo_holding_id_url,'Holding ID')+dthumb(d.doc_license_url,'Licence')+dthumb(d.doc_id_url,'ID/Passport')+'</div>'
         +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+parseShotUrls(d.screenshot_uber_url).map(function(u,i){return dthumb(u,'Uber '+(i+1));}).join('')+parseShotUrls(d.screenshot_bolt_url).map(function(u,i){return dthumb(u,'Bolt '+(i+1));}).join('')+parseShotUrls(d.screenshot_indrive_url).map(function(u,i){return dthumb(u,'inDrive '+(i+1));}).join('')+'</div>':'')
         +adDocUploads(d.id)
+        +(d.status!=='rejected'?'<div style="padding:8px 14px;border-top:1px solid var(--border);background:#fff8f8">'
+          +'<label style="font-size:10px;font-weight:600;color:#dc2626;display:block;margin-bottom:3px">Rejection reason (required to decline):</label>'
+          +'<textarea id="rej-reason-'+d.id+'" placeholder="e.g. Expired licence, blurry documents, failed verification..." style="width:100%;padding:7px 10px;border:1.5px solid #fca5a5;border-radius:6px;font-size:12px;font-family:inherit;height:48px;resize:vertical"></textarea>'
+          +'</div>':'')
         +'<div class="rcard-acts">'
         +(d.status!=='approved'?'<button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button>':'')
         +(d.status!=='rejected'?'<button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Reject</button>':'')
         +(!d.suspended?'<button class="btn btn-red btn-sm" onclick="adSuspend(\''+d.id+'\',true)">Suspend</button>':'<button class="btn btn-gm btn-sm" onclick="adSuspend(\''+d.id+'\',false)">Unsuspend</button>')
+        +'<input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/>'
         +'<button class="btn btn-amb btn-sm" onclick="openRatingModal2(\''+d.id+'\',null,\''+(p.full_name||'Driver').replace(/[\'\"]/g,'')+'\',true)">Rate / Override</button>'
         +'<button class="btn btn-out btn-sm" onclick="adToggleReviews(\''+d.id+'\',\''+(p.full_name||'Driver').replace(/[\'\"]/g,'')+'\')">&#11088; Reviews</button>'
         +'</div>'
@@ -6142,7 +6155,7 @@ async function adOwn(){
         +(oCars.length?'<div style="padding:6px 14px;display:flex;gap:8px;flex-wrap:wrap">'
           +oCars.map(function(c){
             return '<div style="display:flex;align-items:center;gap:6px;background:var(--cream);padding:5px 8px;border-radius:7px;border:1px solid var(--border)">'
-              +(c.photo_front_url?'<img src="'+esc(c.photo_front_url)+'" style="width:40px;height:30px;object-fit:cover;border-radius:4px">':'<span style="font-size:16px">&#128663;</span>')
+              +(c.photo_front_url?'<img src="'+imgUrl(c.photo_front_url,120,75)+'" loading="lazy" style="width:40px;height:30px;object-fit:cover;border-radius:4px">':'<span style="font-size:16px">&#128663;</span>')
               +'<div><div style="font-size:11px;font-weight:700">'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</div>'
               +'<div style="font-size:10px;color:var(--muted)">R'+c.price_per_week+'/wk</div>'
               +'<span class="pill '+(c.admin_status==='approved'?'p-a':'p-p')+'" style="font-size:9px">'+c.admin_status+'</span></div>'
