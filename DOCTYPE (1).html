@@ -790,10 +790,11 @@ nav div::-webkit-scrollbar{display:none}
           <label class="chk"><input type="checkbox" value="None" id="dpc-none" onchange="togglePlatNone(this)"> None (not on any platform)</label>
         </div></div>
       <div id="shot-uber" style="display:none" class="fg">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;padding:10px;background:#111;border-radius:8px">
-          <div><label style="font-size:10px;font-weight:700;color:#fff;opacity:.7;display:block;margin-bottom:4px">Total trips on Uber</label><input id="d-uber-trips" type="number" min="0" placeholder="e.g. 1200" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
-          <div><label style="font-size:10px;font-weight:700;color:#fff;opacity:.7;display:block;margin-bottom:4px">Your Uber rating</label><input id="d-uber-rating" type="number" step="0.1" min="1" max="5" placeholder="e.g. 4.8" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:10px;background:#111;border-radius:8px">
+          <div><label style="font-size:10px;font-weight:700;color:#fff;opacity:.7;display:block;margin-bottom:4px">Total trips on Uber</label><input id="d-uber-trips" type="number" min="0" placeholder="e.g. 1200" oninput="document.getElementById('hint-uber').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
+          <div><label style="font-size:10px;font-weight:700;color:#fff;opacity:.7;display:block;margin-bottom:4px">Your Uber rating</label><input id="d-uber-rating" type="number" step="0.1" min="1" max="5" placeholder="e.g. 4.8" oninput="document.getElementById('hint-uber').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
         </div>
+        <div id="hint-uber" style="display:none;align-items:flex-start;gap:8px;background:#fef9c3;border:1.5px solid #f59e0b;border-radius:8px;padding:9px 11px;margin-bottom:8px"><span style="font-size:18px;flex-shrink:0">&#128247;</span><div><div style="font-size:12px;font-weight:700;color:#7c5c00">Now upload screenshots to prove these numbers</div><div style="font-size:11px;color:#7c5c00;margin-top:2px">Your screenshots must clearly show your <strong>name, rating and trip count</strong>. See the example image below &darr; for exactly what to submit.</div></div></div>
         <label>Uber profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
         <div id="example-uber-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Uber screenshot:</div>
@@ -808,10 +809,11 @@ nav div::-webkit-scrollbar{display:none}
         <div id="plat-count-uber" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
       <div id="shot-bolt" style="display:none" class="fg">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;padding:10px;background:#1cc64e;border-radius:8px">
-          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Total trips on Bolt</label><input id="d-bolt-trips" type="number" min="0" placeholder="e.g. 850" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
-          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Your Bolt rating</label><input id="d-bolt-rating" type="number" step="0.1" min="1" max="5" placeholder="e.g. 4.9" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:10px;background:#1cc64e;border-radius:8px">
+          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Total trips on Bolt</label><input id="d-bolt-trips" type="number" min="0" placeholder="e.g. 850" oninput="document.getElementById('hint-bolt').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
+          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Your Bolt rating</label><input id="d-bolt-rating" type="number" step="0.1" min="1" max="5" placeholder="e.g. 4.9" oninput="document.getElementById('hint-bolt').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
         </div>
+        <div id="hint-bolt" style="display:none;align-items:flex-start;gap:8px;background:#fef9c3;border:1.5px solid #f59e0b;border-radius:8px;padding:9px 11px;margin-bottom:8px"><span style="font-size:18px;flex-shrink:0">&#128247;</span><div><div style="font-size:12px;font-weight:700;color:#7c5c00">Now upload screenshots to prove these numbers</div><div style="font-size:11px;color:#7c5c00;margin-top:2px">Your screenshots must clearly show your <strong>name, rating and trip count</strong>. See the example image below &darr; for exactly what to submit.</div></div></div>
         <label>Bolt profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
         <div style="font-weight:700;color:var(--g);font-size:13px;margin-bottom:10px;padding:11px 13px;background:#f0fdf4;border-radius:8px;border-left:3px solid var(--gm);line-height:1.55">
           &#128222; <strong>Bolt drivers:</strong> Contact <strong>Bolt Support</strong> and request your <strong>total number of trips completed since you started on Bolt</strong> (e.g. since 2023). Ask them for your all-time trip total and mention it in your profile. <strong>Including your total trip history greatly increases your chances of being matched with a vehicle owner.</strong>
@@ -829,10 +831,11 @@ nav div::-webkit-scrollbar{display:none}
         <div id="plat-count-bolt" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
       <div id="shot-indrive" style="display:none" class="fg">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;padding:10px;background:#ff6600;border-radius:8px">
-          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Total trips on inDrive</label><input id="d-indrive-trips" type="number" min="0" placeholder="e.g. 320" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
-          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Your inDrive rating</label><input id="d-indrive-rating" type="number" step="0.1" min="1" max="5" placeholder="e.g. 4.7" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:10px;background:#ff6600;border-radius:8px">
+          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Total trips on inDrive</label><input id="d-indrive-trips" type="number" min="0" placeholder="e.g. 320" oninput="document.getElementById('hint-indrive').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
+          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Your inDrive rating</label><input id="d-indrive-rating" type="number" step="0.1" min="1" max="5" placeholder="e.g. 4.7" oninput="document.getElementById('hint-indrive').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
         </div>
+        <div id="hint-indrive" style="display:none;align-items:flex-start;gap:8px;background:#fef9c3;border:1.5px solid #f59e0b;border-radius:8px;padding:9px 11px;margin-bottom:8px"><span style="font-size:18px;flex-shrink:0">&#128247;</span><div><div style="font-size:12px;font-weight:700;color:#7c5c00">Now upload screenshots to prove these numbers</div><div style="font-size:11px;color:#7c5c00;margin-top:2px">Your screenshots must clearly show your <strong>name, rating and trip count</strong>. See the example image below &darr; for exactly what to submit.</div></div></div>
         <label>inDrive profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
         <div id="example-indrive-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
           <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example inDrive screenshot:</div>
@@ -1869,7 +1872,7 @@ async function _execCarsQuery(offset){
 
 // ── CARD HTML ──────────────────────────────────────────
 function carHTML(c) {
-  var _cimg=c.photo_front_url||c.image_url;var img=_cimg?'<img src="'+imgUrl(_cimg,600,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center bottom"/>':'<div class="card-img-ph">&#128663;</div>';
+  var _cimg=c.photo_front_url||c.image_url;var img=_cimg?'<img src="'+imgUrl(_cimg,600,80)+'" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(_cimg)+'\'" style="width:100%;height:100%;object-fit:cover;object-position:center bottom"/>':'<div class="card-img-ph">&#128663;</div>';
   var fuel=c.fuel_policy==='driver_pays'?'Driver pays':c.fuel_policy==='owner_pays'?'Owner pays':'Split';
   var plats=(c.platforms||[]).map(pb).join('');
   var isD=P&&(P.role==='driver'||P.role==='both');
@@ -2830,7 +2833,7 @@ async function pOv() {
         +'<span style="font-size:10px;font-weight:700;background:#e8f5e9;color:#2e7d32;padding:3px 8px;border-radius:999px;border:1px solid #a5d6a7;display:inline-block;margin-top:4px">&#127968; Owner</span>'
         +'</div></div>'
         +(dCar?'<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:12px">'
-          +(dCar.photo_front_url?'<img src="'+imgUrl(dCar.photo_front_url,600,80)+'" loading="lazy" style="width:100%;height:160px;object-fit:cover;display:block">':'')
+          +(dCar.photo_front_url?'<img src="'+imgUrl(dCar.photo_front_url,600,80)+'" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(dCar.photo_front_url)+'\'" style="width:100%;height:160px;object-fit:cover;display:block">':'')
           +'<div style="padding:10px 12px">'
           +'<div style="font-size:15px;font-weight:800;color:var(--g);margin-bottom:8px">'+esc(dCar.make)+' '+esc(dCar.model)+' '+dCar.year+(dCar.color?' &middot; '+esc(dCar.color):'')+'</div>'
           +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">'
@@ -2897,7 +2900,7 @@ async function pOv() {
           var carBlock='';
           function renderCarDetail(c){
             var b='<div style="background:var(--cream);border-radius:10px;overflow:hidden;margin-bottom:10px">';
-            if(c.photo_front_url) b+='<img src="'+imgUrl(c.photo_front_url,600,80)+'" loading="lazy" style="width:100%;height:160px;object-fit:cover;display:block">';
+            if(c.photo_front_url) b+='<img src="'+imgUrl(c.photo_front_url,600,80)+'" loading="lazy" onerror="this.onerror=null;this.src=\''+esc(c.photo_front_url)+'\'" style="width:100%;height:160px;object-fit:cover;display:block">';
             b+='<div style="padding:10px 12px">';
             b+='<div style="font-size:16px;font-weight:800;color:var(--g);margin-bottom:8px">'+esc(c.make)+' '+esc(c.model)+' '+c.year+(c.color?' &middot; '+esc(c.color):'')+'</div>';
             b+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;font-size:12px">';
