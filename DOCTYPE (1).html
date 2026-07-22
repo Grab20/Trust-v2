@@ -1409,7 +1409,7 @@ function updatePlatCount(plat){
 }
 var _drvCache=null,_drvCacheTs=0,_carCache=null,_carCacheTs=0;
 var curStar = 0, incSel = null;
-var matchDpId = null, matchCarId = null, matchOwnerId = null, matchMode = 'driver';
+var matchDpId = null, matchCarId = null, matchOwnerId = null, matchMode = 'driver', matchDpUid = null;
 var rateDpId = null, rateAppId = null;
 var rmDpId = null, rmAppId = null, rmIsAdmin = false;
 
@@ -1438,7 +1438,7 @@ sb.auth.onAuthStateChange(function(ev, session) {
           var cdInit = JSON.parse(pendingCarInit);
           if (cdInit && cdInit.uid === session.user.id) {
             localStorage.removeItem('tm_pending_car');
-            sb.from('cars').insert(cdInit.carData);
+            sb.from('cars').insert(cdInit.carData).then(function(r){if(r.error)console.warn('Pending car insert failed',r.error);});
           }
         }
       } catch(e) {}
@@ -1464,7 +1464,7 @@ sb.auth.onAuthStateChange(function(ev, session) {
         var cd = JSON.parse(pendingCar);
         if (cd && cd.uid === session.user.id) {
           localStorage.removeItem('tm_pending_car');
-          sb.from('cars').insert(cd.carData);
+          sb.from('cars').insert(cd.carData).then(function(r){if(r.error)console.warn('Pending car insert failed',r.error);});
         }
       }
     } catch(e) {}
@@ -4103,7 +4103,7 @@ async function submitNewCar(){
     deposit:dep,
     description:(eid('nc-desc').value||'').trim()||null,
     admin_status:'pending'
-  });
+  }).select('id').maybeSingle();
   if(r.error){toast('Error: '+r.error.message);return;}
   _carCache=null;
   toast('Car submitted for review!');
@@ -4148,6 +4148,7 @@ async function ownerRemoveCarConfirm(btn){
   var reason=sel==='Other'?other:sel+(other?' — '+other:'');
   // Block removal if car is part of an active match
   var chk=await sb.from('applications').select('id').eq('car_id',cid).eq('status','approved').is('unmatched_at',null);
+  if(chk.error){toast('Could not verify car status. Please try again.');return;}
   if(chk.data&&chk.data.length){
     toast('Cannot remove — this car is currently matched with a driver. Unmatch first.');
     eid('remove-car-modal').remove();
@@ -4197,7 +4198,7 @@ async function pAp() {
   if(isO){
     // ── OWNER VIEW ──
     try{sb.from('application_views').insert({owner_id:U.id}).then(function(){});}catch(e){}
-    var r=await sb.from('applications').select('id,driver_id,owner_id,car_id,status,initiated_by,message,counter_price,unmatched_at,created_at').eq('owner_id',U.id).order('created_at',{ascending:false}).limit(200);
+    var r=await sb.from('applications').select('id,driver_id,owner_id,car_id,status,initiated_by,message,counter_price,owner_notes,unmatch_reason,unmatched_at,created_at').eq('owner_id',U.id).order('created_at',{ascending:false}).limit(200);
     var apps=r.data||[];
     if(!apps.length){el.innerHTML=empty('&#128203;','No applications yet. Browse drivers and connect with them.');return;}
 
@@ -4233,8 +4234,8 @@ async function pAp() {
 
       // Status badge + actions
       var ownerInitiated=a.initiated_by==='owner';
-      var statusBadge='<span class="atag tag-'+(a.status==='approved'?'a':a.status==='rejected'?'r':'p')+'">'+
-        (isMatched?'Matched':a.status==='rejected'?'Declined':(ownerInitiated&&a.status==='pending')?'Waiting for driver':'Pending')+'</span>';
+      var statusBadge='<span class="atag tag-'+(a.status==='approved'?'a':a.status==='rejected'||a.status==='unmatched'?'r':'p')+'">'+
+        (isMatched?'Matched':a.status==='unmatched'?'Ended':a.status==='rejected'?'Declined':(ownerInitiated&&a.status==='pending')?'Waiting for driver':'Pending')+'</span>';
       var acts=statusBadge;
       if(a.status==='pending'&&!ownerInitiated) acts+=' <button class="btn btn-gm btn-sm" data-iby="'+esc(a.initiated_by||'')+'" onclick="ownerResp(\''+a.id+'\',\'approved\',this)">Accept</button>'
         +' <button class="btn btn-red btn-sm" data-iby="'+esc(a.initiated_by||'')+'" onclick="ownerResp(\''+a.id+'\',\'rejected\',this)">Decline</button>';
@@ -4306,7 +4307,7 @@ async function pAp() {
 
   } else {
     // ── DRIVER VIEW ──
-    var r=await sb.from('applications').select('id,driver_id,owner_id,car_id,status,initiated_by,message,counter_price,unmatched_at,created_at').eq('driver_id',U.id).order('created_at',{ascending:false}).limit(200);
+    var r=await sb.from('applications').select('id,driver_id,owner_id,car_id,status,initiated_by,message,counter_price,owner_notes,unmatch_reason,unmatched_at,created_at').eq('driver_id',U.id).order('created_at',{ascending:false}).limit(200);
     var apps=r.data||[];
     if(!apps.length){el.innerHTML=empty('&#128203;','No requests yet. Browse cars and apply, or wait for owners to contact you.');return;}
 
@@ -4341,8 +4342,8 @@ async function pAp() {
       var isPending=a.status==='pending';
       var isMatched=a.status==='approved'&&!a.unmatched_at;
 
-      var statusBadge='<span class="atag tag-'+(a.status==='approved'?'a':a.status==='rejected'?'r':'p')+'">'
-        +(isOwnerReq&&isPending?'Owner Request':isMatched?'Matched':a.status==='rejected'?'Declined':'Pending')+'</span>';
+      var statusBadge='<span class="atag tag-'+(a.status==='approved'?'a':a.status==='rejected'||a.status==='unmatched'?'r':'p')+'">'
+        +(isOwnerReq&&isPending?'Owner Request':isMatched?'Matched':a.status==='unmatched'?'Ended':a.status==='rejected'?'Declined':'Pending')+'</span>';
       var acts=statusBadge;
       if(isOwnerReq&&isPending){
         acts+='<div style="display:flex;gap:8px;margin-top:10px">'
@@ -4415,7 +4416,8 @@ async function ownerResp(id,s,btn){
     var reason=prompt('Reason for declining (optional — driver will see this):');
     upd.owner_notes=(reason&&reason.trim())?reason.trim():null;
   }
-  await sb.from('applications').update(upd).eq('id',id);
+  var updR=await sb.from('applications').update(upd).eq('id',id).select();
+  if(updR.error){toast('Error: '+updR.error.message);return;}
   if(s==='approved'){
     sendNotifEmail('match_approved_driver_only',id);
     sendNotifEmail('owner_rate_driver',id);
@@ -4442,8 +4444,8 @@ async function drvResp(btn){
   if(s==='approved') update.matched_at=new Date().toISOString();
   var r=await sb.from('applications').update(update).eq('id',id);
   if(r.error){toast('Error: '+r.error.message);return;}
-  if(s==='approved'){sendNotifEmail('match_approved_owner_only', id);sendNotifEmail('owner_rate_driver', id);_carCache=null;_drvCache=null;}
-  toast(s==='approved'?'Match accepted! Owner contact details are now visible.':'Request declined.');
+  if(s==='approved'){sendNotifEmail('match_approved_owner_only', id);sendNotifEmail('owner_rate_driver', id);_carCache=null;_drvCache=null;showMatchPopup();}
+  else toast('Request declined.');
   pAp();
 }
 async function drvResubmit(){
@@ -4657,7 +4659,7 @@ async function doUnmatch(btn) {
   // First get the driver_id so we can increment rentals_completed
   var appR=await sb.from('applications').select('driver_id,car_id').eq('id',id).maybeSingle();
   var unby=P&&P.role?P.role:'owner';
-  await sb.from('applications').update({status:'rejected',unmatched_at:new Date().toISOString(),unmatched_by:unby,unmatch_reason:reason}).eq('id',id);
+  await sb.from('applications').update({status:'unmatched',unmatched_at:new Date().toISOString(),unmatched_by:unby,unmatch_reason:reason}).eq('id',id);
   _carCache=null;_drvCache=null;
   if(appR.data&&appR.data.driver_id){
     var dpR=await sb.from('driver_profiles').select('id,rentals_completed').eq('user_id',appR.data.driver_id).maybeSingle();
@@ -6101,9 +6103,9 @@ async function adSaveStats(dpId){
     trust_score:Math.max(0,Math.min(100,ts)),
     years_driving:exp,
     rentals_completed:rentals,ontime_payments:ontime,late_payments:late,missed_payments:missed,accidents:acc,
-    uber_trips:gs('plat-uber-trips-'+dpId),uber_rating:gs('plat-uber-rating-'+dpId),
-    bolt_trips:gs('plat-bolt-trips-'+dpId),bolt_rating:gs('plat-bolt-rating-'+dpId),
-    indrive_trips:gs('plat-indrive-trips-'+dpId),indrive_rating:gs('plat-indrive-rating-'+dpId),
+    uber_trips:gn('plat-uber-trips-'+dpId)||null,uber_rating:parseFloat((document.getElementById('plat-uber-rating-'+dpId)||{}).value)||null,
+    bolt_trips:gn('plat-bolt-trips-'+dpId)||null,bolt_rating:parseFloat((document.getElementById('plat-bolt-rating-'+dpId)||{}).value)||null,
+    indrive_trips:gn('plat-indrive-trips-'+dpId)||null,indrive_rating:parseFloat((document.getElementById('plat-indrive-rating-'+dpId)||{}).value)||null,
     license_date:gs('stat-licdate-'+dpId),
     license_expiry_date:gs('stat-licexp-'+dpId),
     pdp_expiry_date:gs('stat-pdpexp-'+dpId)
@@ -7245,16 +7247,30 @@ function ownerUnmatch(aidOrBtn){
   var aid=typeof aidOrBtn==='string'?aidOrBtn:(aidOrBtn.dataset&&aidOrBtn.dataset.aid?aidOrBtn.dataset.aid:aidOrBtn);
   if(!aid){toast('Could not identify application.');return;}
   if(!confirm('Are you sure you want to unmatch this driver?')) return;
-  sb.from('applications').update({status:'rejected',unmatched_at:new Date().toISOString(),unmatched_by:'owner'}).eq('id',aid).then(function(r){
+  var reason=prompt('Reason for unmatching (optional):');
+  if(reason===null)return;
+  sb.from('applications').update({status:'unmatched',unmatched_at:new Date().toISOString(),unmatched_by:'owner',unmatch_reason:reason.trim()||null}).eq('id',aid).then(async function(r){
     if(r.error){toast('Error: '+r.error.message);return;}
+    var appR=await sb.from('applications').select('driver_id').eq('id',aid).maybeSingle();
+    if(appR.data&&appR.data.driver_id){
+      var dpR=await sb.from('driver_profiles').select('id,rentals_completed').eq('user_id',appR.data.driver_id).maybeSingle();
+      if(dpR.data) await sb.from('driver_profiles').update({rentals_completed:(dpR.data.rentals_completed||0)+1}).eq('id',dpR.data.id);
+    }
     _drvCache=null; toast('Unmatched successfully.'); pOv();
   });
 }
 function driverUnmatch(aid){
   if(!aid){toast('Could not identify application.');return;}
   if(!confirm('Are you sure you want to unmatch from this owner?')) return;
-  sb.from('applications').update({status:'rejected',unmatched_at:new Date().toISOString(),unmatched_by:'driver'}).eq('id',aid).then(function(r){
+  var reason=prompt('Reason for unmatching (optional):');
+  if(reason===null)return;
+  sb.from('applications').update({status:'unmatched',unmatched_at:new Date().toISOString(),unmatched_by:'driver',unmatch_reason:reason.trim()||null}).eq('id',aid).then(async function(r){
     if(r.error){toast('Error: '+r.error.message);return;}
+    var appR=await sb.from('applications').select('driver_id').eq('id',aid).maybeSingle();
+    if(appR.data&&appR.data.driver_id){
+      var dpR=await sb.from('driver_profiles').select('id,rentals_completed').eq('user_id',appR.data.driver_id).maybeSingle();
+      if(dpR.data) await sb.from('driver_profiles').update({rentals_completed:(dpR.data.rentals_completed||0)+1}).eq('id',dpR.data.id);
+    }
     toast('Unmatched successfully.'); pOv();
   });
 }
