@@ -5975,12 +5975,14 @@ async function adToggleReviews(dpId,driverName){
   _adRevNames[dpId]=driverName;
   box.style.display='block';
   box.innerHTML='<div style="padding:10px 14px;border-top:1px solid var(--border);background:var(--cream)"><div class="loading"><div class="spin"></div>Loading reviews...</div></div>';
-  var r=await sb.from('reviews').select('*').eq('driver_id',dpId).order('created_at',{ascending:false});
+  var r=await sb.from('reviews').select('*, profiles:reviewer_id(full_name)').eq('driver_id',dpId).order('created_at',{ascending:false});
   var revs=r.data||[];
   var listHTML=revs.length?revs.map(function(rv){
+    var realName=rv.profiles&&rv.profiles.full_name?rv.profiles.full_name:null;
     return '<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:9px 11px;margin-bottom:7px" id="adrv-item-'+rv.id+'">'
+      +(realName?'<div style="font-size:11px;color:var(--muted);margin-bottom:5px">&#128100; Reviewed by: <strong>'+esc(realName)+'</strong></div>':'')
       +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap">'
-      +'<input type="text" id="adrv-name-'+rv.id+'" value="'+(rv.reviewer_name_override||'Owner').replace(/"/g,'&quot;')+'" placeholder="Reviewer name" style="flex:1;min-width:110px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/>'
+      +'<input type="text" id="adrv-name-'+rv.id+'" value="'+(rv.reviewer_name_override||realName||'Owner').replace(/"/g,'&quot;')+'" placeholder="Reviewer name" style="flex:1;min-width:110px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/>'
       +'<select id="adrv-stars-'+rv.id+'" style="padding:5px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit">'
       +[1,2,3,4,5].map(function(n){return '<option value="'+n+'"'+(rv.rating===n?' selected':'')+'>'+n+' star'+(n>1?'s':'')+'</option>';}).join('')
       +'</select>'
