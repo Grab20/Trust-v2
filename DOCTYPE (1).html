@@ -3633,9 +3633,7 @@ function captureDocPhoto(n, col) {
     + '<button onclick="closeDcCam()" style="flex:0;background:#333;color:#fff;border:none;border-radius:8px;padding:10px 14px;font-size:13px;cursor:pointer">&#10005;</button>'
     + '</div></div>';
   var video = eid('dc-cam-video');
-  var docSlots=['lic','licb','id','por'];
-  var facing=docSlots.indexOf(n)>=0?'environment':'user';
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: facing }, audio: false })
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
     .then(function(stream) { video.srcObject = stream; wrap.dataset.stream = 'active'; })
     .catch(function(err) {
       wrap.innerHTML = '<div style="color:#dc2626;font-size:13px;padding:10px">Camera access denied. Please allow camera and try again, or upload a file instead.<br><input type="file" accept="image/*" onchange="upDocItem(\''+n+'\',\''+col+'\',this)" style="margin-top:8px"/></div>';
@@ -3871,7 +3869,6 @@ async function chatSend(){
   if(r.error){toast('Failed to send: '+r.error.message);inp.value=txt;return;}
   // Append immediately (realtime will also fire but we dedupe by id)
   if(r.data&&r.data[0]) appendChatMsg(r.data[0]);
-  // Notify the other party by email (fire-and-forget)
   sendNotifEmail('new_message',_chatAppId,{sender_id:U.id});
 }
 
