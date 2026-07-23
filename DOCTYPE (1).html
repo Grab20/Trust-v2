@@ -2994,9 +2994,9 @@ async function pOv() {
     }
   }
   if(isO){
-    var ar=await sb.from('applications').select('id,status,unmatched_at,unmatched_by,unmatch_reason,driver_id,terms_proposed,driver_agreed_terms,owner_agreed_terms').eq('owner_id',U.id);
+    var ar=await sb.from('applications').select('id,status,unmatched_at,unmatched_by,unmatch_reason,driver_id,initiated_by,terms_proposed,driver_agreed_terms,owner_agreed_terms').eq('owner_id',U.id);
     var apps=ar.data||[];
-    var pendingCount=apps.filter(function(a){return a.status==='pending';}).length;
+    var pendingCount=apps.filter(function(a){return a.status==='pending'&&a.initiated_by!=='owner';}).length;
     var matchedApps=apps.filter(function(a){return a.status==='approved'&&!a.unmatched_at;});
     var isMatched=matchedApps.length>0;
     var carRes=await sb.from('cars').select('id,admin_status,status').eq('owner_id',U.id).neq('status','removed');
@@ -3013,19 +3013,11 @@ async function pOv() {
     }
 
     if(isMatched){
-      // ════ MATCHED STATE: Rating prominent, no recommended ════
+      // ════ MATCHED STATE: Current match first, stats below ════
 
       html+='<div style="font-family:Playfair Display,serif;font-size:20px;font-weight:800;color:var(--g);margin-bottom:16px">Welcome Back, '+firstName+' &#128075;</div>';
 
-      // Stat grid
-      html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">'
-        +statCard(matchedApps.length,'Matched','var(--gm)','View match &#8594;','ap')
-        +statCard(pendingCount,'Pending',pendingCount>0?'#E8A520':'var(--muted)',pendingCount>0?'Tap to review &#8594;':'No pending','ap')
-        +statCard(approvedCars,'My Cars','var(--g)','View cars &#8594;','lc')
-        +'<div onclick="ownerOpenRateDriver()" style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:14px;cursor:pointer"><div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px">Ratings</div><div style="font-size:11px;color:var(--g);margin-top:6px;font-weight:600">Rate your driver &#8594;</div></div>'
-      +'</div>';
-
-      // ── ACTIVE MATCH CARD (prominent) ──
+      // ── ACTIVE MATCH CARD (prominent — FIRST) ──
       var mDriverIds=matchedApps.map(function(a){return a.driver_id;}).filter(Boolean);
       var mAppIds=matchedApps.map(function(a){return a.id;});
       var mResults=await Promise.all([
@@ -3071,13 +3063,23 @@ async function pOv() {
           // Rate button
           +(alreadyRated
             ?'<div style="padding:10px 14px;background:var(--gs);border-radius:8px;font-size:13px;font-weight:700;color:var(--gm);text-align:center;margin-bottom:8px">&#10003; You have rated this driver</div>'
-            :'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:800;margin-bottom:8px" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openRatingModal2(this.dataset.dpid,this.dataset.aid,this.dataset.dn,false)">&#11088; Rate This Driver</button>')
+            :(a.driver_agreed_terms&&a.owner_agreed_terms
+              ?'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:800;margin-bottom:8px" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openRatingModal2(this.dataset.dpid,this.dataset.aid,this.dataset.dn,false)">&#11088; Rate This Driver</button>'
+              :'<div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:8px 10px;background:var(--cream);border-radius:7px">&#11088; Rating available once both parties agree to rental terms in Chat.</div>'))
           +'<div style="display:flex;gap:8px;margin-top:6px">'
           +'<button class="btn btn-gm btn-sm" style="flex:1" onclick="dpanel(\'ch\')">&#128172; Open Chat</button>'
           +'<button class="btn btn-out btn-sm" data-aid="'+a.id+'" onclick="ownerUnmatch(this.dataset.aid)">Unmatch</button>'
           +'</div>'
           +'</div>';
       }).join('');
+
+      // Stat grid — below the match card
+      html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">'
+        +statCard(matchedApps.length,'Matched','var(--gm)','View match &#8594;','ap')
+        +statCard(pendingCount,'Pending',pendingCount>0?'#E8A520':'var(--muted)',pendingCount>0?'Tap to review &#8594;':'No pending','ap')
+        +statCard(approvedCars,'My Cars','var(--g)','View cars &#8594;','lc')
+        +'<div onclick="ownerOpenRateDriver()" style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:14px;cursor:pointer"><div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px">Ratings</div><div style="font-size:11px;color:var(--g);margin-top:6px;font-weight:600">Rate your driver &#8594;</div></div>'
+      +'</div>';
 
       // Past rentals
       var pastApps=apps.filter(function(a){return a.status==='approved'&&a.unmatched_at;});
@@ -3116,12 +3118,60 @@ async function pOv() {
       // ════ UNMATCHED STATE: Recommended first, then Applications ════
 
       html+='<div style="font-family:Playfair Display,serif;font-size:20px;font-weight:800;color:var(--g);margin-bottom:4px">Welcome Back, '+firstName+' &#128075;</div>';
-      if(pendingCount>0){
-        html+='<div style="background:#fff8e1;border:1.5px solid var(--amber);border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#7a5200;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">'
-          +'<span>&#9889; You have <strong>'+pendingCount+' pending application'+(pendingCount>1?'s':'')+'</strong> waiting.</span>'
-          +'<button class="btn btn-g btn-sm" onclick="dpanel(this.dataset.p)" data-p="ap">Review</button></div>';
-      } else {
+      if(!pendingCount){
         html+='<div style="font-size:13px;color:var(--muted);margin-bottom:16px">You are not currently matched. Browse recommended drivers below.</div>';
+      }
+      if(pendingCount>0){
+        // Show driver profile cards for each pending application
+        var pendApps=apps.filter(function(a){return a.status==='pending'&&a.initiated_by!=='owner';});
+        var pDrvIds=[...new Set(pendApps.map(function(a){return a.driver_id;}).filter(Boolean))];
+        var [_pdpR,_ppfR]=await Promise.all([
+          pDrvIds.length?sb.from('driver_profiles').select('id,user_id,trust_score,photo_headshot_url,platforms,years_driving,uber_trips,uber_rating,bolt_trips,bolt_rating,indrive_trips,indrive_rating,rentals_completed').in('user_id',pDrvIds):{data:[]},
+          pDrvIds.length?sb.from('profiles').select('id,full_name,location').in('id',pDrvIds):{data:[]}
+        ]);
+        var _pdpm={},_ppfm={};
+        (_pdpR.data||[]).forEach(function(d){_pdpm[d.user_id]=d;});
+        (_ppfR.data||[]).forEach(function(p){_ppfm[p.id]=p;});
+        html+='<div class="shd">&#128276; Drivers Who Applied ('+pendingCount+')</div>';
+        html+='<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">'
+          +pendApps.map(function(a){
+            var _dp=_pdpm[a.driver_id]||{};
+            var _pf=_ppfm[a.driver_id]||{};
+            var _si=scoreInfo(_dp.trust_score||0);
+            var _scoreColour=_si[1]==='sc-h'?'var(--gm)':_si[1]==='sc-m'?'#7c5c00':_si[1]==='sc-o'?'#9a3412':'#8b2020';
+            var _av=_dp.photo_headshot_url
+              ?'<img src="'+imgUrl(_dp.photo_headshot_url,120,80)+'" loading="lazy" style="width:60px;height:60px;object-fit:cover;object-position:top;border-radius:50%;flex-shrink:0;border:2px solid var(--gm)">'
+              :'<div class="av" style="width:60px;height:60px;font-size:20px;flex-shrink:0">'+ini(_pf.full_name||'?')+'</div>';
+            var _platRows=[{n:'Uber',k:'uber',bg:'#111'},{n:'Bolt',k:'bolt',bg:'#1cc64e'},{n:'inDrive',k:'indrive',bg:'#ff6600'}]
+              .filter(function(pl){return _dp[pl.k+'_trips']||_dp[pl.k+'_rating'];})
+              .map(function(pl){
+                return '<div style="flex:1;background:'+pl.bg+';border-radius:5px;padding:4px 6px;text-align:center">'
+                  +'<div style="font-size:8px;font-weight:800;color:rgba(255,255,255,.8);margin-bottom:1px">'+pl.n+'</div>'
+                  +(_dp[pl.k+'_rating']?'<div style="font-size:12px;font-weight:800;color:#fff">'+_dp[pl.k+'_rating']+'&#9733;</div>':'')
+                  +(_dp[pl.k+'_trips']?'<div style="font-size:9px;color:rgba(255,255,255,.7)">'+_dp[pl.k+'_trips']+' trips</div>':'')
+                  +'</div>';
+              }).join('');
+            return '<div style="background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:14px">'
+              +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">'+_av
+              +'<div style="flex:1;min-width:0">'
+              +'<div style="font-size:15px;font-weight:800;color:var(--g);margin-bottom:2px">'+(_pf.full_name||'Driver')+'</div>'
+              +(_pf.location?'<div style="font-size:11px;color:var(--muted)">&#128205; '+esc(_pf.location)+'</div>':'')
+              +'<div style="font-size:11px;color:var(--muted)">'+(_dp.years_driving||0)+' yrs exp'+((_dp.rentals_completed||0)>0?' &middot; '+_dp.rentals_completed+' rentals':'')+'</div>'
+              +'</div>'
+              +'<div style="background:var(--cream);border-radius:8px;padding:5px 9px;text-align:center;flex-shrink:0">'
+              +'<div style="font-size:18px;font-weight:900;color:'+_scoreColour+'">'+(_dp.trust_score||0)+'</div>'
+              +'<div style="font-size:9px;color:var(--muted)">/100</div>'
+              +'</div></div>'
+              +(_platRows?'<div style="display:flex;gap:4px;margin-bottom:10px">'+_platRows+'</div>':'')
+              +(a.message?'<div style="font-size:12px;color:#555;padding:7px 9px;background:var(--cream);border-radius:6px;font-style:italic;margin-bottom:10px">"'+esc(a.message)+'"</div>':'')
+              +'<div style="display:flex;gap:8px">'
+              +'<button class="btn btn-gm" style="flex:1;padding:10px;font-weight:700" data-iby="driver" onclick="ownerResp(\''+a.id+'\',\'approved\',this)">&#10003; Accept</button>'
+              +'<button class="btn btn-red" style="flex:1;padding:10px;font-weight:700" data-iby="driver" onclick="ownerResp(\''+a.id+'\',\'rejected\',this)">&#10005; Decline</button>'
+              +'<button class="btn btn-out btn-sm" data-dpid="'+(_dp.id||'')+'" onclick="go(\'profile\',this.dataset.dpid)">Profile</button>'
+              +'</div>'
+              +'</div>';
+          }).join('')
+          +'</div>';
       }
 
       // ── RECOMMENDED DRIVERS (top, prominent) ──
@@ -3707,7 +3757,7 @@ async function upOwnerPhoto(boxId,col,inp){
   P[col]=url; toast('Photo updated!'); pPr();
 }
 // ── CHAT ───────────────────────────────────────────────
-var _chatAppId=null, _chatSub=null, _chatIsDriver=false, _chatOtherName='';
+var _chatAppId=null, _chatSub=null, _chatIsDriver=false, _chatOtherName='', _chatCar=null;
 
 async function refreshChatNav(){
   if(!U||!P)return;
@@ -3758,6 +3808,7 @@ async function pChat(){
   var other=otherR.data||{};
   var driverDocs=(!isD&&driverDocR&&driverDocR.data)||null;
   var car=carR&&carR.data||null;
+  _chatCar=car; // store for terms modal auto-fill
   _chatOtherName=other.full_name||(isD?'Owner':'Driver');
   var msgs=msgsR.data||[];
   var termsAgreed=app.driver_agreed_terms&&app.owner_agreed_terms;
@@ -3769,7 +3820,7 @@ async function pChat(){
   }
   // If no messages yet, auto-send a system welcome
   if(!msgs.length){
-    var welcome='Welcome to your TrustMate chat! 🎉 You are now matched'+(car?' with the '+car.make+' '+car.model+' '+car.year:'')+'.\n\nUse this space to negotiate your rental terms before contact details are shared. Tap "Propose Terms" to get started.';
+    var welcome='Welcome to your TrustMate chat with '+_chatOtherName+'! 🎉'+(car?' You are matched with the '+car.make+' '+car.model+' '+car.year+'.':'')+(isD?'\n\nThe owner will share rental terms shortly. You can also propose your own terms below.':'\n\nSend your rental terms to get started. The driver can accept or counter-propose.');
     var ins=await sb.from('messages').insert({application_id:app.id,sender_id:U.id,content:welcome,type:'system'}).select();
     if(ins.data)msgs=ins.data;
   }
@@ -3777,25 +3828,42 @@ async function pChat(){
   var tp=app.terms_proposed||{};
   var termsHtml='';
   if(termsAgreed){
-    termsHtml='<div style="background:#f0faf2;border:1.5px solid #a5d6a7;border-radius:10px;padding:12px 14px;margin-bottom:14px">'
-      +'<div style="font-size:12px;font-weight:800;color:var(--gm);margin-bottom:8px">&#10003; Rental Terms Agreed</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px">'
+    var waNum=(other.whatsapp||other.phone||'').replace(/[^0-9]/g,'');
+    termsHtml='<div style="background:#f0faf2;border:1.5px solid #a5d6a7;border-radius:10px;padding:14px;margin-bottom:14px">'
+      +'<div style="font-size:14px;font-weight:800;color:var(--gm);margin-bottom:6px;text-align:center">&#127881; Great! Terms agreed. Open WhatsApp</div>'
+      +'<div style="font-size:11px;color:#2e7d32;text-align:center;margin-bottom:12px">Rental terms agreed — Contact details are now revealed</div>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-bottom:12px">'
       +(tp.rate?'<div><span style="color:var(--muted)">Weekly Rate</span><br><strong>R'+tp.rate+'/wk</strong></div>':'')
       +(tp.deposit?'<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+tp.deposit+'</strong></div>':'')
       +(tp.start_date?'<div><span style="color:var(--muted)">Start Date</span><br><strong>'+tp.start_date+'</strong></div>':'')
-      +(tp.notes?'<div style="grid-column:1/-1"><span style="color:var(--muted)">Notes</span><br><strong>'+esc(tp.notes)+'</strong></div>':'')
+      +(tp.notes?'<div style="grid-column:1/-1"><span style="color:var(--muted)">Notes</span><br><em>'+esc(tp.notes)+'</em></div>':'')
       +'</div>'
-      +'<div style="margin-top:10px;padding:10px 12px;background:#fff;border-radius:8px;border:1px solid var(--border)">'
-      +'<div style="font-size:11px;font-weight:700;color:var(--gm);margin-bottom:6px">&#128274; Contact Now Revealed</div>'
-      +(other.phone?'<div style="font-size:13px;margin-bottom:4px">&#128222; <a href="tel:'+esc(other.phone)+'" style="color:var(--g);font-weight:600">'+esc(other.phone)+'</a></div>':'')
-      +(other.whatsapp?'<div style="font-size:13px"><a href="https://wa.me/'+esc((other.whatsapp||'').replace(/[^0-9]/g,''))+'" target="_blank" style="color:#25D366;font-weight:700">&#128241; WhatsApp '+_chatOtherName+'</a></div>':'')
-      +'</div></div>';
+      +'<div style="padding:12px 14px;background:#fff;border-radius:8px;border:1px solid #a5d6a7;margin-bottom:10px">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--gm);margin-bottom:8px">&#128222; Phone</div>'
+      +(other.phone?'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span style="font-size:14px;font-weight:700">'+esc(other.phone)+'</span><button class="btn btn-out btn-sm" onclick="navigator.clipboard.writeText(\''+esc(other.phone||'')+'\').then(function(){toast(\'Copied!\');})">Copy</button></div>':'<div style="font-size:12px;color:var(--muted)">No phone listed</div>')
+      +'</div>'
+      +(waNum?'<a id="chat-wa-btn" href="https://wa.me/'+waNum+'" target="_blank" class="btn btn-w" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:13px;background:#25D366;color:#fff;border-radius:10px;font-size:15px;font-weight:800;text-decoration:none">&#128241; Chat on WhatsApp</a>':'')
+      +'</div>';
   } else {
     var myAgreed=isD?app.driver_agreed_terms:app.owner_agreed_terms;
     var theirAgreed=isD?app.owner_agreed_terms:app.driver_agreed_terms;
-    termsHtml='<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">'
-      +'<div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:8px">&#128221; Rental Terms</div>';
-    if(tp.rate||tp.deposit||tp.start_date){
+    var termsBodyId='chat-terms-'+Date.now();
+    var hasTerms=!!(tp.rate||tp.deposit||tp.start_date);
+    // Show expanded if terms already proposed, collapsed if not
+    var termsBodyDisplay=hasTerms?'block':'none';
+    var termsToggleLabel=hasTerms?'Hide Terms &#8249;':'View Terms &#8250;';
+    // Summary line for collapsed state
+    var termsSummary=hasTerms?('R'+(tp.rate||0)+'/wk'+(tp.deposit?' · R'+tp.deposit+' deposit':'')):null;
+    termsHtml='<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="var b=eid(\''+termsBodyId+'\');b.style.display=b.style.display===\'none\'?\'block\':\'none\';this.querySelector(\'.terms-toggle\').innerHTML=b.style.display===\'none\'?\'View Terms &#8250;\':\'Hide Terms &#8249;\'">'
+      +'<div>'
+        +'<div style="font-size:12px;font-weight:700;color:var(--g)">&#128221; Rental Terms'+(hasTerms?'':' — Not proposed yet')+'</div>'
+        +(termsSummary&&termsBodyDisplay==='none'?'<div style="font-size:11px;color:var(--gm);font-weight:600">'+termsSummary+'</div>':'')
+      +'</div>'
+      +'<span class="terms-toggle" style="font-size:12px;color:var(--gm);font-weight:600">'+termsToggleLabel+'</span>'
+      +'</div>'
+      +'<div id="'+termsBodyId+'" style="display:'+termsBodyDisplay+';margin-top:10px">';
+    if(hasTerms){
       termsHtml+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;margin-bottom:10px">'
         +(tp.rate?'<div><span style="color:var(--muted)">Proposed Rate</span><br><strong style="color:var(--gm)">R'+tp.rate+'/wk</strong></div>':'')
         +(tp.deposit?'<div><span style="color:var(--muted)">Deposit</span><br><strong>R'+tp.deposit+'</strong></div>':'')
@@ -3806,15 +3874,16 @@ async function pChat(){
         var proposerLabel=tp.proposed_by===app.driver_id?'Driver':'Owner';
         termsHtml+='<div style="font-size:10px;color:var(--muted);margin-bottom:8px">Proposed by '+proposerLabel+'</div>';
       }
-      termsHtml+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">'
+      termsHtml+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'
         +(myAgreed?'<span style="font-size:11px;font-weight:700;color:var(--gm);background:var(--gs);padding:3px 10px;border-radius:999px">&#10003; You agreed</span>':'<button class="btn btn-gm btn-sm" onclick="chatAgreeTerms()">&#10003; Agree to These Terms</button>')
         +(theirAgreed?'<span style="font-size:11px;font-weight:700;color:var(--gm);background:var(--gs);padding:3px 10px;border-radius:999px">&#10003; They agreed</span>':'<span style="font-size:11px;color:var(--muted)">&#9711; Awaiting their agreement</span>')
         +'</div>';
     } else {
-      termsHtml+='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">No terms proposed yet. Start the negotiation below.</div>';
+      termsHtml+='<div style="font-size:12px;color:var(--muted);margin-bottom:8px">No terms proposed yet.'+(isD?' The owner will send their rental terms shortly, or you can propose below.':' Tap below to send your rental terms to the driver.')+'</div>';
     }
-    termsHtml+='<button class="btn btn-out btn-sm btn-w" onclick="openTermsModal()">'+(tp.rate?'&#128260; Counter-Propose Terms':'&#128221; Propose Terms')+'</button>'
+    termsHtml+='<button class="btn btn-gm btn-sm btn-w" onclick="openTermsModal()">'+(hasTerms?'&#128260; Counter-Propose':'&#128221; Propose Terms')+'</button>'
       +'<div style="margin-top:8px;font-size:11px;color:var(--muted)">&#128274; Contact details revealed once both parties agree.</div>'
+      +'</div>'
       +'</div>';
   }
   // Driver docs block (owner only)
@@ -3830,9 +3899,13 @@ async function pChat(){
       {url:dd.doc_license_back_url,label:'Licence Back'}
     ].filter(function(d){return !!d.url;});
     if(docItems.length){
-      docsHtml='<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">'
-        +'<div style="font-size:12px;font-weight:700;color:var(--g);margin-bottom:8px">&#128196; Driver Documents</div>'
-        +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
+      var docGridId='chat-docs-'+Date.now();
+      docsHtml='<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px">'
+        +'<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="var g=eid(\''+docGridId+'\');g.style.display=g.style.display===\'none\'?\'flex\':\'none\';this.querySelector(\'.doc-toggle\').textContent=g.style.display===\'none\'?\'View Documents &#8250;\':\'Hide Documents &#8249;\'">'
+        +'<div style="font-size:12px;font-weight:700;color:var(--g)">&#128196; Driver Documents ('+docItems.length+')</div>'
+        +'<span class="doc-toggle" style="font-size:12px;color:var(--gm);font-weight:600">View Documents &#8250;</span>'
+        +'</div>'
+        +'<div id="'+docGridId+'" style="display:none;gap:10px;flex-wrap:wrap;margin-top:10px">'
         +docItems.map(function(d){
           return '<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.url)+'\')">'
             +'<img src="'+imgUrl(d.url,140,75)+'" loading="lazy" style="width:60px;height:44px;object-fit:cover;border-radius:7px;border:1.5px solid var(--border)">'
@@ -3842,22 +3915,39 @@ async function pChat(){
         +'</div></div>';
     }
   }
+  // Progress stepper
+  var step=termsAgreed?3:(app.terms_proposed&&(app.terms_proposed.rate)?2:1);
+  var steps=['Match','Chat','Agree Terms','Contact Unlocked','Handover'];
+  var stepIcons=['&#128101;','&#128172;','&#128221;','&#128274;','&#128663;'];
+  var stepperHtml='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:10px 12px;background:var(--cream);border-radius:10px;overflow-x:auto">'
+    +steps.map(function(s,i){
+      var done=i<step;var active=i===step;
+      return '<div style="display:flex;flex-direction:column;align-items:center;flex:1;min-width:44px">'
+        +'<div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;'
+        +(done?'background:var(--gm);color:#fff':active?'background:#E8A520;color:#fff':'background:var(--border);color:var(--muted)')+'">'+stepIcons[i]+'</div>'
+        +(i<steps.length-1?'<div style="position:absolute"></div>':'')
+        +'<div style="font-size:8px;font-weight:'+(active||done?'700':'400')+';color:'+(done?'var(--gm)':active?'#7a5200':'var(--muted)')+';margin-top:3px;text-align:center">'+s+'</div>'
+        +'</div>'
+        +(i<steps.length-1?'<div style="height:2px;flex:0.5;background:'+(done?'var(--gm)':'var(--border)')+';margin-top:-12px"></div>':'');
+    }).join('')
+    +'</div>';
   // Build chat html
-  var chatHtml='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+  var chatHtml='<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'
     +(other.photo_headshot_url||other.photo_holding_id_url
       ?'<img src="'+imgUrl(other.photo_headshot_url||other.photo_holding_id_url,80,80)+'" loading="lazy" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0">'
       :'<div class="av" style="width:44px;height:44px;font-size:16px;flex-shrink:0">'+ini(_chatOtherName)+'</div>')
     +'<div><div style="font-size:16px;font-weight:800;color:var(--g)">'+esc(_chatOtherName)+'</div>'
     +(car?'<div style="font-size:11px;color:var(--muted)">'+esc(car.make)+' '+esc(car.model)+' '+car.year+' &middot; R'+car.price_per_week+'/wk</div>':'')
     +'</div></div>'
+    +stepperHtml
     +docsHtml
     +termsHtml
-    +'<div style="font-size:11px;color:#555;background:#f5f5f5;border-radius:7px;padding:7px 10px;margin-bottom:8px;line-height:1.4">&#128274; This chat is facilitated by TrustMate and may be reviewed for safety, compliance and dispute resolution. Do not share banking details, passwords or OTPs here. See <a href="#" onclick="openModal(\'terms-modal\');return false" style="color:var(--g)">Terms clause 18</a>.</div>'
+    +'<div style="font-size:11px;color:var(--gm);background:var(--gs);border-radius:7px;padding:7px 10px;margin-bottom:8px;line-height:1.4;font-weight:600">&#128274; Protected Chat — TrustMate monitors this chat to help resolve disputes.</div>'
     +'<div id="chat-msgs" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;max-height:45vh;overflow-y:auto;padding:4px 0">'
     +msgs.map(function(m){return renderChatMsg(m,app);}).join('')
     +'</div>'
     +'<div style="display:flex;gap:8px;align-items:flex-end;padding-top:8px;border-top:1px solid var(--border)">'
-    +'<textarea id="chat-input" placeholder="Type a message..." style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;resize:none;height:44px;line-height:1.4" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();chatSend();}" oninput="this.style.height=\'44px\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'"></textarea>'
+    +'<textarea id="chat-input" placeholder="Type a message..." style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;resize:none;height:44px;line-height:1.4" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();chatSend();}" oninput="this.style.height=\'44px\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" onfocus="var wb=eid(\'chat-wa-btn\');if(wb)wb.style.display=\'none\'" onblur="var wb=eid(\'chat-wa-btn\');if(wb)wb.style.display=\'flex\'"></textarea>'
     +'<button class="btn btn-gm" style="padding:10px 16px;height:44px;flex-shrink:0;border-radius:10px" onclick="chatSend()">&#10148;</button>'
     +'</div>';
   el.innerHTML='<div class="tbox">'+chatHtml+'</div>';
@@ -3885,10 +3975,18 @@ function renderChatMsg(m,app){
       +'<div style="font-size:10px;color:var(--muted);margin-top:6px">'+fmtD(m.created_at)+'</div>'
       +'</div>';
   }
+  // WhatsApp-style tick: 1 tick=sent, 2 grey=delivered, 2 green=read
+  var tickHtml='';
+  if(isMine){
+    if(m.read_by_recipient) tickHtml='<span style="color:#4fc3f7;font-size:10px;margin-left:3px">&#10003;&#10003;</span>';
+    else tickHtml='<span style="color:rgba(255,255,255,.5);font-size:10px;margin-left:3px">&#10003;&#10003;</span>';
+  }
+  var timeStr='';
+  if(m.created_at){var td=new Date(m.created_at);timeStr=td.getHours().toString().padStart(2,'0')+':'+td.getMinutes().toString().padStart(2,'0');}
   return '<div style="display:flex;justify-content:'+(isMine?'flex-end':'flex-start')+'">'
     +'<div style="max-width:78%;background:'+(isMine?'var(--gm)':'#fff')+';color:'+(isMine?'#fff':'var(--g)')+';border:1px solid '+(isMine?'var(--gm)':'var(--border)')+';border-radius:'+(isMine?'14px 14px 4px 14px':'14px 14px 14px 4px')+';padding:9px 13px;font-size:13px;line-height:1.45;word-break:break-word">'
     +esc(m.content).replace(/\n/g,'<br>')
-    +'<div style="font-size:9px;color:'+(isMine?'rgba(255,255,255,.6)':'var(--muted)')+';margin-top:4px;text-align:right">'+fmtD(m.created_at)+'</div>'
+    +'<div style="font-size:9px;color:'+(isMine?'rgba(255,255,255,.6)':'var(--muted)')+';margin-top:4px;text-align:right;display:flex;justify-content:flex-end;align-items:center;gap:2px">'+timeStr+tickHtml+'</div>'
     +'</div></div>';
 }
 
@@ -3900,7 +3998,6 @@ async function chatSend(){
   if(r.error){toast('Failed to send: '+r.error.message);inp.value=txt;return;}
   // Append immediately (realtime will also fire but we dedupe by id)
   if(r.data&&r.data[0]) appendChatMsg(r.data[0]);
-  sendNotifEmail('new_message',_chatAppId,{sender_id:U.id});
 }
 
 function appendChatMsg(m){
@@ -3951,15 +4048,34 @@ function chatSubscribe(appId,app){
         }
       }
     })
+    // Listen for read receipt updates — refresh tick on sender's messages
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'messages',filter:'application_id=eq.'+appId},function(payload){
+      var m=payload.new;
+      if(m.read_by_recipient&&m.sender_id===U.id){
+        var el=document.getElementById('cm-'+m.id);
+        if(el){
+          // Swap grey ticks to green ticks
+          el.innerHTML=el.innerHTML.replace(
+            /<span style="color:rgba\(255,255,255,.5\)[^"]*">&#10003;&#10003;<\/span>/,
+            '<span style="color:#4fc3f7;font-size:10px;margin-left:3px">&#10003;&#10003;</span>'
+          );
+        }
+      }
+    })
     .subscribe();
 }
 
 // Terms modal
 function openTermsModal(){
   var appId=_chatAppId; if(!appId)return;
-  var html='<div style="font-size:17px;font-weight:800;margin-bottom:14px">&#128221; Propose Rental Terms</div>'
-    +'<div class="fg"><label>Weekly Rate (R) *</label><input id="tp-rate" type="number" min="0" placeholder="e.g. 2500"/></div>'
-    +'<div class="fg"><label>Security Deposit (R)</label><input id="tp-dep" type="number" min="0" placeholder="e.g. 5000"/></div>'
+  // Auto-fill defaults from car (owner's listed price)
+  var defRate=_chatCar&&_chatCar.price_per_week?_chatCar.price_per_week:'';
+  var defDep=_chatCar&&_chatCar.deposit?_chatCar.deposit:'';
+  var isDriver=_chatIsDriver;
+  var html='<div style="font-size:17px;font-weight:800;margin-bottom:14px">&#128221; '+(isDriver?'Counter-Propose Rental Terms':'Propose Rental Terms')+'</div>'
+    +(defRate||defDep?'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Pre-filled with owner\'s listed terms. Adjust to counter-propose.</div>':'')
+    +'<div class="fg"><label>Weekly Rate (R) *</label><input id="tp-rate" type="number" min="0" placeholder="e.g. 2500" value="'+defRate+'"/></div>'
+    +'<div class="fg"><label>Security Deposit (R)</label><input id="tp-dep" type="number" min="0" placeholder="e.g. 5000" value="'+defDep+'"/></div>'
     +'<div class="fg"><label>Proposed Start Date</label><input id="tp-date" type="date"/></div>'
     +'<div class="fg"><label>Additional Notes</label><textarea id="tp-notes" placeholder="e.g. Weekly payment every Monday, bring full tank..." style="height:60px"></textarea></div>'
     +'<div class="ferr" id="tp-err"></div>'
@@ -4229,7 +4345,7 @@ async function pAp() {
   if(isO){
     // ── OWNER VIEW ──
     try{sb.from('application_views').insert({owner_id:U.id}).then(function(){});}catch(e){}
-    var r=await sb.from('applications').select('id,driver_id,owner_id,car_id,status,initiated_by,message,counter_price,owner_notes,unmatch_reason,unmatched_at,created_at').eq('owner_id',U.id).order('created_at',{ascending:false}).limit(200);
+    var r=await sb.from('applications').select('id,driver_id,owner_id,car_id,status,initiated_by,message,counter_price,owner_notes,unmatch_reason,unmatched_at,created_at,driver_agreed_terms,owner_agreed_terms').eq('owner_id',U.id).order('created_at',{ascending:false}).limit(200);
     var apps=r.data||[];
     if(!apps.length){el.innerHTML=empty('&#128203;','No applications yet. Browse drivers and connect with them.');return;}
 
@@ -4288,10 +4404,11 @@ async function pAp() {
         +'<span style="padding:2px 7px;border-radius:999px;font-size:11px;color:'+(accTotal>0?'#8b2020':'var(--gm)')+';background:'+(accTotal>0?'#fee2e2':'var(--gs)')+'">&#9888; '+accTotal+' incidents</span>'
         +'</div>';
 
-      // Docs
-      // Documents locked until matched
+      // Docs — released as soon as driver applies; contact locked until chatbox agreement
+      var docsVisible=a.initiated_by==='driver'||isMatched;
+      var contactVisible=a.driver_agreed_terms&&a.owner_agreed_terms;
       var docRow='';
-      if(isMatched){
+      if(docsVisible){
         docRow='<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px">DOCUMENTS</div><div style="display:flex;gap:5px;flex-wrap:wrap">';
         if(dp.doc_id_url) docRow+='<a href="'+dp.doc_id_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; ID</a>';
         if(dp.doc_license_url) docRow+='<a href="'+dp.doc_license_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; Licence</a>';
@@ -4302,7 +4419,7 @@ async function pAp() {
       } else {
         docRow='<div style="padding:6px 10px;background:var(--cream);border-radius:7px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:8px">'
           +'<span style="font-size:14px">&#128274;</span>'
-          +'<span>Documents &amp; screenshots unlocked after match</span></div>';
+          +'<span>Documents visible once driver applies</span></div>';
       }
 
       return '<div class="acard">'
@@ -4312,8 +4429,8 @@ async function pAp() {
         +'<div style="flex:1">'
         +'<div style="font-size:15px;font-weight:700;color:var(--g);margin-bottom:2px">'+(pf.full_name||'Driver')+'</div>'
         +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">&#128205; '+(pf.location||'-')
-        +(isMatched?(' &middot; &#128222; '+(pf.phone||'-')+' &#128241; '+(pf.whatsapp||'-'))
-          :' &middot; <span style="font-size:10px;color:#E8A520;font-weight:600">&#128274; Contact after match</span>')
+        +(contactVisible?(' &middot; &#128222; '+(pf.phone||'-')+' &#128241; '+(pf.whatsapp||'-'))
+          :' &middot; <span style="font-size:10px;color:#E8A520;font-weight:600">&#128274; Contact after chatbox agreement</span>')
         +'</div>'
         +'<div class="tp '+si[0]+'" style="display:inline-flex;padding:2px 8px;align-items:center;gap:4px;margin-bottom:4px">'
         +'<span style="font-family:\'Playfair Display\',serif;font-size:13px;font-weight:800;'+si[1].replace('sc-h','color:var(--gm)').replace('sc-m','color:#7c5c00').replace('sc-o','color:#9a3412').replace('sc-l','color:#8b2020')+'">'+( dp.trust_score||0)+'</span>'
@@ -4384,14 +4501,31 @@ async function pAp() {
       }
       if(isMatched) acts+=' <button class="btn btn-red btn-sm" data-aid="'+a.id+'" onclick="doUnmatch(this)">Unmatch</button>';
 
-      // Car section
+      // Car section — hidden when driver applied and pending (show platform stats instead)
+      var showCarForDriver=isOwnerReq||isMatched||(a.status!=='pending');
       var carHtml='';
-      if(car){
+      if(!isOwnerReq&&isPending){
+        // Driver applied and waiting — show their own platform trips/ratings
+        var myDp=window.DP||{};
+        var platRows=[{n:'Uber',k:'uber',bg:'#111'},{n:'Bolt',k:'bolt',bg:'#1cc64e'},{n:'inDrive',k:'indrive',bg:'#ff6600'}]
+          .filter(function(pl){return myDp[pl.k+'_trips']||myDp[pl.k+'_rating'];})
+          .map(function(pl){
+            return '<div style="flex:1;background:'+pl.bg+';border-radius:7px;padding:6px 8px;text-align:center">'
+              +'<div style="font-size:9px;font-weight:800;color:rgba(255,255,255,.8);margin-bottom:2px">'+pl.n+'</div>'
+              +(myDp[pl.k+'_rating']?'<div style="font-size:13px;font-weight:800;color:#fff">'+myDp[pl.k+'_rating']+'&#9733;</div>':'')
+              +(myDp[pl.k+'_trips']?'<div style="font-size:10px;color:rgba(255,255,255,.75)">'+myDp[pl.k+'_trips']+' trips</div>':'')
+              +'</div>';
+          }).join('');
+        if(platRows){
+          carHtml='<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px">Your Platform Stats</div>'
+            +'<div style="display:flex;gap:6px">'+platRows+'</div></div>';
+        }
+      } else if(car){
         carHtml='<div style="display:flex;gap:10px;align-items:center;padding:7px 10px;background:var(--cream);border-radius:8px;margin-bottom:8px">'
           +(car.photo_front_url?'<img src="'+imgUrl(car.photo_front_url,160,75)+'" loading="lazy" style="width:56px;height:40px;object-fit:cover;border-radius:5px">':'<span style="font-size:20px">&#128663;</span>')
           +'<div><div style="font-size:13px;font-weight:700">'+esc(car.make)+' '+esc(car.model)+' '+car.year+'</div>'
           +'<div style="font-size:11px;color:var(--muted)">&#128205; '+esc(car.location)+' &middot; R'+car.price_per_week+'/wk</div></div></div>';
-      } else if(oCars.length){
+      } else if(oCars.length&&(isOwnerReq||isMatched)){
         carHtml='<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px">AVAILABLE CARS</div>'
           +'<div style="display:flex;flex-direction:column;gap:5px">'
           +oCars.slice(0,3).map(function(c){
@@ -4453,11 +4587,25 @@ async function ownerResp(id,s,btn){
     sendNotifEmail('match_approved_driver_only',id);
     sendNotifEmail('owner_rate_driver',id);
     _carCache=null;_drvCache=null;
+    autoSendMatchedTerms(id);
     showMatchPopup();
   }
   if(s==='rejected') sendNotifEmail('application_rejected',id);
   if(s!=='approved') toast('Declined.');
   pAp();
+}
+async function autoSendMatchedTerms(appId){
+  // After match, auto-propose owner's car terms so driver sees them immediately
+  try{
+    var appR=await sb.from('applications').select('car_id,owner_id,terms_proposed').eq('id',appId).maybeSingle();
+    if(!appR.data||appR.data.terms_proposed)return; // already have terms
+    if(!appR.data.car_id)return;
+    var carR=await sb.from('cars').select('price_per_week,deposit').eq('id',appR.data.car_id).maybeSingle();
+    if(!carR.data)return;
+    var proposal={rate:carR.data.price_per_week,deposit:carR.data.deposit||null,proposed_by:appR.data.owner_id};
+    await sb.from('applications').update({terms_proposed:proposal,terms_proposed_by:appR.data.owner_id,driver_agreed_terms:false,owner_agreed_terms:false}).eq('id',appId);
+    await sb.from('messages').insert({application_id:appId,sender_id:appR.data.owner_id,content:'Welcome! I\'ve shared my rental terms. Please review and accept, or counter-propose below.',type:'terms_proposal',metadata:proposal});
+  }catch(e){}
 }
 async function drvResp(btn){
   var id=btn.getAttribute('data-aid');
@@ -4475,7 +4623,7 @@ async function drvResp(btn){
   if(s==='approved') update.matched_at=new Date().toISOString();
   var r=await sb.from('applications').update(update).eq('id',id);
   if(r.error){toast('Error: '+r.error.message);return;}
-  if(s==='approved'){sendNotifEmail('match_approved_owner_only', id);sendNotifEmail('owner_rate_driver', id);_carCache=null;_drvCache=null;showMatchPopup();}
+  if(s==='approved'){sendNotifEmail('match_approved_owner_only', id);sendNotifEmail('owner_rate_driver', id);_carCache=null;_drvCache=null;autoSendMatchedTerms(id);showMatchPopup();}
   else toast('Request declined.');
   pAp();
 }
@@ -4507,7 +4655,7 @@ async function drvRespOv(btn){
     sendNotifEmail('match_approved_owner_only', id);
     sendNotifEmail('owner_rate_driver', id);
     _carCache=null;_drvCache=null;
-    // Show match celebration popup
+    autoSendMatchedTerms(id);
     showMatchPopup();
   } else {
     toast('Request declined.');
@@ -4657,20 +4805,22 @@ function showMatchPopup(){
     +'<div style="font-size:56px;margin-bottom:12px">&#127881;</div>'
     +'<div style="font-size:22px;font-weight:800;color:var(--g);margin-bottom:8px">You\'re Matched!</div>'
     +'<div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px">Use the chat to negotiate your rental terms. Contact details are revealed once both parties agree.</div>'
-    +(!notifGranted&&!notifBlocked
-      ?'<div style="background:#fff8e1;border:1.5px solid #E8A520;border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:left">'
-        +'<div style="font-size:13px;font-weight:700;color:#7a5200;margin-bottom:4px">&#128276; Enable Chat Notifications</div>'
-        +'<div style="font-size:12px;color:#7a5200;margin-bottom:10px">Allow notifications so you\'re alerted when your match sends a message — even if you\'re on a different tab.</div>'
-        +'<button class="btn btn-gm btn-w" id="notif-allow-btn" onclick="askNotifThenChat()">&#10003; Allow Notifications &amp; Open Chat</button>'
-        +'</div>'
-      :(notifBlocked
-        ?'<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#7f1d1d;text-align:left">&#128683; Notifications blocked in your browser. Enable them in browser settings to get message alerts.</div>'
-        :'<div style="background:#f0faf2;border:1.5px solid #a5d6a7;border-radius:10px;padding:8px 14px;margin-bottom:16px;font-size:12px;color:var(--gm);text-align:left">&#10003; Notifications are enabled — you\'ll be alerted when a message arrives.</div>'))
+    +(notifBlocked
+      ?'<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#7f1d1d;text-align:left">&#128683; Notifications blocked in your browser. Please enable them in browser settings to get message alerts.</div>'
+      :(notifGranted
+        ?'<div style="background:#f0faf2;border:1.5px solid #a5d6a7;border-radius:10px;padding:8px 14px;margin-bottom:16px;font-size:12px;color:var(--gm);text-align:left">&#10003; Notifications are enabled — you\'ll be alerted when a message arrives.</div>'
+        :'<div style="background:#fff8e1;border:1.5px solid #E8A520;border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:left">'
+          +'<div style="font-size:13px;font-weight:700;color:#7a5200;margin-bottom:4px">&#128276; Enable Chat Notifications</div>'
+          +'<div style="font-size:12px;color:#7a5200;margin-bottom:6px">Notifications are required so you\'re alerted when your match messages you.</div>'
+          +'</div>'))
     +'<div style="display:flex;flex-direction:column;gap:10px">'
-    +(notifGranted||notifBlocked?'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:700" onclick="closeModal(\'match-popup-modal\');dpanel(\'ch\')">&#128172; Open Chat &amp; Negotiate Terms</button>':'')
-    +'<button class="btn btn-out btn-w" onclick="closeModal(\'match-popup-modal\')">I\'ll do it later</button>'
+    +'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:700" onclick="askNotifThenChat()">&#128172; '+(notifGranted||notifBlocked?'Open Chat':'Allow Notifications &amp; Open Chat')+'</button>'
     +'</div></div>';
   openModal('match-popup-modal');
+  // Auto-request notification permission immediately (no skip)
+  if(!notifGranted&&!notifBlocked&&typeof Notification!=='undefined'){
+    Notification.requestPermission().then(function(){showMatchPopup();});
+  }
 }
 
 function askNotifThenChat(){
