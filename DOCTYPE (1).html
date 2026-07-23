@@ -2215,6 +2215,11 @@ function filterDrivers(){
 }
 async function _runDriversQuery(replace){
   var res=await _execDriversQuery(_drvsOffset);
+  // Auto-retry once: first load sometimes returns empty body with valid count (timing issue)
+  if(replace&&_drvsOffset===0&&res.data.length===0&&res.total>0){
+    await new Promise(function(r){setTimeout(r,500);});
+    res=await _execDriversQuery(0);
+  }
   var grid=eid('drvs-grid');
   var moreWrap=eid('drvs-more-wrap');
   if(replace){
@@ -4920,7 +4925,15 @@ function openRatingModal2(dpId, appId, name, isAdmin) {
 }
 async function subTA(btn) {
   var type=btn.dataset.type, pts=parseInt(btn.dataset.pts);
-  if(!rmDpId){toast('Error: no driver selected');return;}
+  // If dpId missing but appId available, recover it from the application
+  if(!rmDpId && rmAppId) {
+    var _ar=await sb.from('applications').select('driver_id').eq('id',rmAppId).maybeSingle();
+    if(_ar.data&&_ar.data.driver_id){
+      var _dpr=await sb.from('driver_profiles').select('id').eq('user_id',_ar.data.driver_id).maybeSingle();
+      if(_dpr.data) rmDpId=_dpr.data.id;
+    }
+  }
+  if(!rmDpId){toast('Error: driver profile not found. Try reopening the rating screen.');return;}
   btn.disabled=true; btn.style.opacity='.5';
   // Use SECURITY DEFINER RPC — runs as postgres, bypasses RLS
   var r=await sb.rpc('apply_trust_action',{dp_id:rmDpId,pts:pts});
