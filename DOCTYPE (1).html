@@ -1962,51 +1962,34 @@ function drvHTML(d) {
         +'</div>';
     }).join('');
   var scoreColour=si[1]==='sc-h'?'var(--gm)':si[1]==='sc-m'?'#7c5c00':si[1]==='sc-o'?'#9a3412':'#8b2020';
-  var tsId='ts-tip-'+d.id;
-  var uberTrips=d.uber_trips||null, boltTrips=d.bolt_trips||null, indriveTrips=d.indrive_trips||null;
-  var tsPopup='<div id="'+tsId+'" style="display:none;position:absolute;right:0;top:28px;background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px;font-size:13px;color:#333;line-height:1.8;z-index:9999;width:260px;max-width:90vw;box-shadow:0 8px 28px rgba(0,0,0,.18)">'
-    +'<div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:6px">What is TrustScore?</div>'
-    +'<div style="font-size:13px;color:#333;margin-bottom:12px;line-height:1.6">A driver\'s reliability rating based on their track record, payments, vehicle care, and owner feedback. It updates continuously as owners rate and review their experience.</div>'
-    +'<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);margin-bottom:6px">This score is based on:</div>'
-    +'<div style="color:#1a5c28">&#10003; '+onTime+' On-Time Payment'+(onTime!==1?'s':'')+'</div>'
-    +'<div style="color:#1a5c28">&#10003; '+ren+' Rental'+(ren!==1?'s':'')+' Completed</div>'
-    +'<div style="color:#1a5c28">&#10003; '+acc+' Accident'+(acc!==1?'s':'')+'</div>'
-    +'<div style="color:#1a5c28">&#10003; 0 Damage Incidents</div>'
-    +(lateP>0?'<div style="color:#dc2626">&#9888; '+lateP+' Late Payment'+(lateP!==1?'s':'')+'</div>':'<div style="color:#1a5c28">&#10003; No Late Payments</div>')
-    +(isVerif?'<div style="color:#1a5c28">&#10003; Vehicle Care Verified</div><div style="color:#1a5c28">&#10003; ID &amp; Licence / PDP Verified</div>':'<div style="color:#E8A520">&#9888; Documents Pending Verification</div>')
-    +(uberTrips?'<div style="color:#1a5c28">&#10003; Uber: '+uberTrips+' trips</div>':'')
-    +(boltTrips?'<div style="color:#1a5c28">&#10003; Bolt: '+boltTrips+' trips</div>':'')
-    +(indriveTrips?'<div style="color:#1a5c28">&#10003; inDrive: '+indriveTrips+' trips</div>':'')
-    +'</div>';
-  var tsBtn='<span style="position:relative;display:inline-block">'
-    +'<button data-tip="'+tsId+'" onclick="event.stopPropagation();var el=document.getElementById(this.dataset.tip);if(el){var show=el.style.display!==\'block\';el.style.display=show?\'block\':\'none\';if(show){var closeF=function(){el.style.display=\'none\';document.removeEventListener(\'click\',closeF);};document.addEventListener(\'click\',closeF);}}" style="background:var(--g);color:#fff;border:none;border-radius:50%;width:22px;height:22px;font-size:12px;font-weight:700;cursor:pointer;padding:0;line-height:1;margin-left:8px;vertical-align:middle">i</button>'
-    +tsPopup+'</span>';
-  var statsRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">'
+  var statsRow='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 6px">'
     +'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#f0faf2;border:1px solid #a7f3c1;border-radius:999px;color:#1a5c28;font-weight:600">&#128663; '+ren+' Rental'+(ren!==1?'s':'')+'</span>'
     +'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#f0faf2;border:1px solid #a7f3c1;border-radius:999px;color:#1a5c28;font-weight:600">&#10004; '+onTime+' On-time</span>'
     +(lateP>0?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#fff1f2;border:1px solid #fecdd3;border-radius:999px;color:#dc2626;font-weight:600">&#9201; '+lateP+' Late</span>':'')
     +(acc>0?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#fff1f2;border:1px solid #fecdd3;border-radius:999px;color:#dc2626;font-weight:600">&#9888; '+acc+' Accident'+(acc!==1?'s':'')+'</span>':'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#f0faf2;border:1px solid #a7f3c1;border-radius:999px;color:#1a5c28;font-weight:600">&#10004; 0 Accidents</span>')
     +'</div>';
-  return '<div class="dcard" style="border-radius:12px;margin-bottom:12px">'
-    +(isVerif?'<div style="display:flex;align-items:center;gap:6px;padding:6px 14px;background:#d4edd8;font-size:11px;color:#1a5c28;font-weight:700">&#9989; Verified</div>':'')
+  return '<div class="dcard" style="border-radius:12px;margin-bottom:12px;overflow:hidden">'
+    +(isVerif?'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#d4edd8;font-size:11px;color:#1a5c28;font-weight:700">&#9989; Verified</div>':'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#fef3c7;font-size:11px;color:#7a5200;font-weight:700">&#9888; Pending Verification</div>')
     +'<div class="dcard-body">'
-    +'<div style="display:flex;gap:12px;margin-bottom:10px">'
-    +'<div class="av av-lg" style="flex-shrink:0;width:72px;height:72px;border-radius:50%;overflow:hidden">'+av+'</div>'
+    // Top row: avatar + info + TrustScore
+    +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">'
+    +'<div class="av av-lg" style="flex-shrink:0;width:64px;height:64px;border-radius:50%;overflow:hidden;border:2px solid var(--border)">'+av+'</div>'
     +'<div style="flex:1;min-width:0">'
-    +'<div style="font-size:16px;font-weight:800;color:var(--g)">'+name+'</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+d.years_driving+'+ years experience</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-top:2px">&#128205; '+(function(){var loc=p.location||'';var parts=loc.split(',');return parts.length>=2?parts[parts.length-2].trim()+', '+parts[parts.length-1].trim():loc||'Not set';})()+'</div>'
-    +(d.weekly_checkin_amount||d.deposit_amount!=null?'<div style="font-size:11px;font-weight:600;color:var(--g);margin-top:3px">&#128176; '+(d.weekly_checkin_amount?'R'+Number(d.weekly_checkin_amount).toLocaleString()+'/wk':'')+((d.weekly_checkin_amount&&d.deposit_amount!=null)?'  ·  ':'')+( d.deposit_amount?'Deposit: R'+Number(d.deposit_amount).toLocaleString():d.deposit_amount===0?'No deposit':'')+'</div>':'')
-    +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">'+plats+'</div>'
+    +'<div style="font-size:16px;font-weight:800;color:var(--g);line-height:1.2">'+name+'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+d.years_driving+'+ yrs experience &nbsp;·&nbsp; &#128205; '+(function(){var loc=p.location||'';var parts=loc.split(',');return parts.length>=2?parts[parts.length-2].trim()+', '+parts[parts.length-1].trim():loc||'Not set';})()+'</div>'
+    +(d.weekly_checkin_amount||d.deposit_amount!=null?'<div style="font-size:11px;font-weight:600;color:var(--g);margin-top:3px">&#128176; '+(d.weekly_checkin_amount?'R'+Number(d.weekly_checkin_amount).toLocaleString()+'/wk':'')+((d.weekly_checkin_amount&&d.deposit_amount!=null)?' · ':'')+( d.deposit_amount?'Deposit: R'+Number(d.deposit_amount).toLocaleString():d.deposit_amount===0?'No deposit':'')+'</div>':'')
+    +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'+plats+'</div>'
     +'</div>'
-    +'<div style="text-align:center;padding:10px 8px 8px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;flex-shrink:0;min-width:88px;position:relative">'
-    +'<div style="font-size:22px;font-weight:900;color:'+scoreColour+'">'+s+'<span style="font-size:12px">/100</span></div>'
+    // TrustScore pill — right aligned
+    +'<div style="flex-shrink:0;text-align:center;min-width:72px">'
+    +'<div style="font-size:24px;font-weight:900;color:'+scoreColour+';line-height:1">'+s+'</div>'
+    +'<div style="font-size:9px;color:var(--muted);font-weight:600;line-height:1;margin-bottom:2px">/100</div>'
     +starRow(s)
     +'<div style="font-size:10px;font-weight:700;color:'+scoreColour+'">'+si[3]+'</div>'
-    +tsBtn
     +'</div>'
     +'</div>'
-    +(platRow?'<div style="display:flex;gap:6px;margin-bottom:0">'+platRow+'</div>':'')
+    // Platform stats — inline row, compact
+    +(platRow?'<div style="display:flex;gap:6px;margin-bottom:0;overflow-x:auto;padding-bottom:2px">'+platRow+'</div>':'')
     +statsRow
     +'<div class="dacts" style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">'+acts+'</div>'
     +'</div></div>';
@@ -4938,29 +4921,26 @@ async function subTA(btn) {
   var type=btn.dataset.type, pts=parseInt(btn.dataset.pts);
   if(!rmDpId){toast('Error: no driver selected');return;}
   btn.disabled=true; btn.style.opacity='.5';
-  // 1. Fetch current score
-  var dpR=await sb.from('driver_profiles').select('trust_score').eq('id',rmDpId).maybeSingle();
-  if(dpR.error){toast('Could not fetch driver: '+dpR.error.message);btn.disabled=false;btn.style.opacity='1';return;}
-  var current=(dpR.data&&dpR.data.trust_score!=null)?dpR.data.trust_score:50;
-  var newScore=Math.max(0,Math.min(100,current+pts));
-  // 2. Update trust_score directly — this is the source of truth
-  var upd=await sb.from('driver_profiles').update({trust_score:newScore}).eq('id',rmDpId).select();
-  if(upd.error){toast('Score update failed: '+upd.error.message);btn.disabled=false;btn.style.opacity='1';return;}
-  // 3. Insert trust_action log (best-effort, don't block on failure)
-  sb.from('trust_actions').insert({driver_id:rmDpId,owner_id:rmIsAdmin?null:(U?U.id:null),application_id:rmAppId||null,action_type:type,points:pts,submitted_by:rmIsAdmin?'admin':'owner'}).then(function(r){
-    if(r.error)console.warn('trust_actions log failed (non-critical):',r.error.message);
-  });
-  // 4. Send email notification to driver
-  if(rmAppId&&!rmIsAdmin){
-    sendNotifEmail('trust_action',rmAppId,{action_type:type,pts:pts,new_score:newScore});
+  try {
+    // Route through edge function (service role) so RLS doesn't block score update
+    var resp=await fetch('https://qyyflivkmnwikagnvstv.supabase.co/functions/v1/send-match-email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'},
+      body:JSON.stringify({type:'trust_action',application_id:rmAppId||null,driver_profile_id:rmDpId,action_type:type,pts:pts,submitted_by:rmIsAdmin?'admin':'owner',owner_id:rmIsAdmin?null:(U?U.id:null),send_email:!rmIsAdmin&&!!rmAppId})
+    });
+    var data=await resp.json();
+    if(data.error)throw new Error(data.error);
+    var newScore=data.new_score!=null?data.new_score:0;
+    var scoreDisplay=document.getElementById('rm-current-score');
+    if(scoreDisplay)scoreDisplay.textContent='Current TrustScore: '+newScore+'/100';
+    toast((pts>0?'+':'')+pts+' pts → TrustScore now '+newScore+'/100');
+    btn.style.background=pts>0?'var(--gs)':'#fee2e2';
+    btn.style.borderColor=pts>0?'var(--gm)':'#dc2626';
+    btn.style.color=pts>0?'var(--gm)':'#dc2626';
+  } catch(e) {
+    toast('Rating error: '+e.message);
+    btn.disabled=false; btn.style.opacity='1';
   }
-  // 5. Update live display
-  var scoreDisplay=document.getElementById('rm-current-score');
-  if(scoreDisplay)scoreDisplay.textContent='Current TrustScore: '+newScore+'/100';
-  toast((pts>0?'+':'')+pts+' pts → TrustScore now '+newScore+'/100');
-  btn.style.background=pts>0?'var(--gs)':'#fee2e2';
-  btn.style.borderColor=pts>0?'var(--gm)':'#dc2626';
-  btn.style.color=pts>0?'var(--gm)':'#dc2626';
 }
 async function subOverride() {
   var scoreEl=eid('override-score'),noteEl=eid('override-note');
@@ -5552,25 +5532,19 @@ async function adPendingDocs(){
   var el=document.getElementById('ap-pdoc');
   el.innerHTML='<div class="ptitle">Pending Documents</div>'+adSpin();
   // Fetch pending drivers who are missing at least one required doc AND incomplete drivers
-  var [drPend,drInc]=await Promise.all([
-    sb.from('driver_profiles').select('*').eq('status','pending').order('created_at',{ascending:false}),
-    sb.from('driver_profiles').select('*').eq('status','incomplete').order('created_at',{ascending:false})
-  ]);
-  var pendingMissing=(drPend.data||[]).filter(function(d){
-    return !d.photo_headshot_url||!d.photo_fullbody_url||!d.photo_holding_id_url||!d.doc_id_url||!d.doc_license_url;
-  });
-  var incDrivers=drInc.data||[];
-  var allDocs=pendingMissing.concat(incDrivers);
+  // pending_docs = drivers explicitly moved here by admin from New Registrations
+  var drPdoc=await sb.from('driver_profiles').select('*').eq('status','pending_docs').order('created_at',{ascending:false});
+  var allDocs=drPdoc.data||[];
   var badge=document.getElementById('pdocbadge');
   if(badge){badge.textContent=allDocs.length;badge.style.display=allDocs.length>0?'inline':'none';}
   if(!allDocs.length){
-    el.innerHTML='<div class="ptitle">Pending Documents</div><div class="empty"><div class="empty-i">&#10003;</div><p>No drivers with missing or pending documents.</p></div>';
+    el.innerHTML='<div class="ptitle">Pending Documents</div><div class="empty"><div class="empty-i">&#10003;</div><p>No drivers awaiting document review.</p></div>';
     return;
   }
   var dUids=allDocs.map(function(d){return d.user_id;});
   var dPr=await sb.from('profiles').select('id,full_name,email,phone,location,created_at').in('id',dUids);
   var dpm={};(dPr.data||[]).forEach(function(p){dpm[p.id]=p;});
-  var html='<div class="ptitle">Pending Documents</div><div class="psub">'+pendingMissing.length+' pending with missing docs &nbsp;|&nbsp; '+incDrivers.length+' incomplete</div>';
+  var html='<div class="ptitle">Pending Documents</div><div class="psub">'+allDocs.length+' driver'+(allDocs.length!==1?'s':'')+' awaiting document upload &amp; approval</div>';
   html+=allDocs.map(function(d){
     var p=dpm[d.user_id]||{};
     var missing=[];
@@ -5608,7 +5582,7 @@ async function adPendingDocRemind(dpId){
 async function adMoveToPendingDocs(dpId){
   var c=document.getElementById('rc-'+dpId)||document.getElementById('pdoc-'+dpId);
   if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
-  var r=await sb.from('driver_profiles').update({status:'incomplete'}).eq('id',dpId).select();
+  var r=await sb.from('driver_profiles').update({status:'pending_docs'}).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   sendDriverEmail('incomplete_reminder',dpId);
   toast('Moved to Pending Documents — reminder sent.');
@@ -5963,7 +5937,7 @@ async function adSetDrv(dpId,status){
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   toast(status==='approved'?'Driver approved! Welcome email sent.':'Driver rejected. Rejection email sent.');
-  adReg();adOv();
+  adReg();adPendingDocs();adOv();
 }
 async function adSetOwner(pid,status){
   var c=document.getElementById('ro-'+pid);
