@@ -3808,8 +3808,16 @@ async function pChat(){
   var other=otherR.data||{};
   var driverDocs=(!isD&&driverDocR&&driverDocR.data)||null;
   var car=carR&&carR.data||null;
+  // If no car linked, fetch owner's primary car for terms auto-fill
+  if(!car){
+    var ownerCarR=await sb.from('cars').select('id,make,model,year,price_per_week,deposit,location').eq('owner_id',app.owner_id).eq('admin_status','approved').neq('status','removed').order('created_at',{ascending:false}).limit(1).maybeSingle();
+    if(ownerCarR&&ownerCarR.data) car=ownerCarR.data;
+  }
   _chatCar=car; // store for terms modal auto-fill
   _chatOtherName=other.full_name||(isD?'Owner':'Driver');
+  // Also fetch the OTHER person's name if full_name was missing
+  var _ownerName=isD?_chatOtherName:(P&&P.full_name?P.full_name.split(' ')[0]:'Owner');
+  var _driverName=isD?(P&&P.full_name?P.full_name:'Driver'):_chatOtherName;
   var msgs=msgsR.data||[];
   var termsAgreed=app.driver_agreed_terms&&app.owner_agreed_terms;
   // Mark messages as read
@@ -3828,10 +3836,10 @@ async function pChat(){
   var tp=app.terms_proposed||{};
   if(!tp.rate && car && car.price_per_week){
     tp={rate:car.price_per_week, deposit:car.deposit||null, proposed_by:app.owner_id};
-    // Owner auto-saves terms into DB so driver sees them
+    // Owner auto-saves terms into DB so driver sees them; also send from owner side (either owner or driver opening chat first triggers this once)
     if(!isD){
       sb.from('applications').update({terms_proposed:tp,terms_proposed_by:app.owner_id,driver_agreed_terms:false,owner_agreed_terms:false}).eq('id',app.id).then(function(){});
-      sb.from('messages').insert({application_id:app.id,sender_id:app.owner_id,content:'My rental terms have been shared automatically. Please review and accept, or counter-propose.',type:'terms_proposal',metadata:tp}).then(function(){});
+      sb.from('messages').insert({application_id:app.id,sender_id:app.owner_id,content:'Hi '+_driverName+'! Here are my rental terms for your review. Please accept or counter-propose below.',type:'terms_proposal',metadata:tp}).then(function(){});
     }
   }
   var termsHtml='';
@@ -3879,7 +3887,7 @@ async function pChat(){
         +(tp.notes?'<div style="grid-column:1/-1"><span style="color:var(--muted)">Notes</span><br><em style="font-size:11px">'+esc(tp.notes)+'</em></div>':'')
         +'</div>';
       if(tp.proposed_by){
-        var proposerLabel=tp.proposed_by===app.driver_id?'Driver':'Owner';
+        var proposerLabel=tp.proposed_by===app.driver_id?_driverName:_ownerName;
         termsHtml+='<div style="font-size:10px;color:var(--muted);margin-bottom:8px">Proposed by '+proposerLabel+'</div>';
       }
       termsHtml+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">'
