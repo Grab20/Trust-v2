@@ -1995,8 +1995,14 @@ function drvHTML(d) {
     +'<div class="dacts" style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">'+acts+'</div>'
     +'</div></div>';
 }
-function ownerMatchBtn(btn) {
+async function ownerMatchBtn(btn) {
   if (!U){go('login');return;}
+  // Check owner has at least one admin-approved car before opening modal
+  var owCarChk=await sb.from('cars').select('id',{count:'exact',head:true}).eq('owner_id',U.id).eq('admin_status','approved').neq('status','removed');
+  if((owCarChk.count||0)<1){
+    toast('Your vehicle must be approved by admin before you can contact drivers. Please list a car and wait for approval.');
+    return;
+  }
   matchMode='owner';
   matchDpId=btn.getAttribute('data-dpid');
   matchDpUid=btn.getAttribute('data-uid')||null;
@@ -4987,6 +4993,9 @@ async function subMatch() {
     }
     ins={driver_id:U.id,owner_id:matchOwnerId,car_id:matchCarId,status:'pending',message:msg||null,initiated_by:'driver',counter_price:counterPrice};
   } else {
+    // Owner must have at least one admin-approved car before contacting drivers
+    var owCarChk=await sb.from('cars').select('id',{count:'exact',head:true}).eq('owner_id',U.id).eq('admin_status','approved').neq('status','removed');
+    if((owCarChk.count||0)<1){toast('Your vehicle must be approved by admin before you can contact drivers. Please list a car and wait for approval.');btn.disabled=false;btn.textContent='Send Request';return;}
     var owEx=await sb.from('applications').select('id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null);
     if(owEx.data&&owEx.data.length){toast('You are already matched. Unmatch first.');btn.disabled=false;btn.textContent='Send Request';return;}
     // Use matchDpUid (profile.id) directly if available; else look up from driver_profiles
@@ -5567,7 +5576,7 @@ async function adOv(){
   var el=document.getElementById('ap-ov');
   el.innerHTML='<div class="ptitle">Dashboard</div>'+adSpin();
   var res=await Promise.all([
-    sb.from('profiles').select('id,full_name,email,role,admin_status,location,created_at'),
+    sb.from('profiles').select('id,full_name,email,role,admin_status,location,created_at,email_confirmed'),
     sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended'),
     sb.from('cars').select('id,status,admin_status,location,owner_id,make,model,year'),
     sb.from('applications').select('id,driver_id,owner_id,status,initiated_by,created_at'),
@@ -5602,9 +5611,11 @@ async function adOv(){
   var avgOwnApps=oKeys.length?(oKeys.reduce(function(s,k){return s+ownAppMap[k];},0)/oKeys.length).toFixed(1):'0';
   var driversWhoSentApps=Object.keys(driverInitiatedSet).length;
   var ownersWhoSentApps=Object.keys(ownerInitiatedSet).length;
-  var pdrvs=dps.filter(function(d){return d.status==='pending';}).length;
+  // Only count email-confirmed users for pending review badge
+  var confirmedIds=new Set(users.filter(function(u){return u.email_confirmed;}).map(function(u){return u.id;}));
+  var pdrvs=dps.filter(function(d){return d.status==='pending'&&confirmedIds.has(d.user_id);}).length;
   var adrvs=dps.filter(function(d){return d.status==='approved';}).length;
-  var powns=users.filter(function(u){return(u.role==='owner'||u.role==='both')&&u.admin_status==='pending';}).length;
+  var powns=users.filter(function(u){return(u.role==='owner'||u.role==='both')&&u.admin_status==='pending'&&u.email_confirmed;}).length;
   var pcars=cars.filter(function(c){return c.admin_status==='pending';}).length;
   var total=pdrvs+powns+pcars;
   var badge=document.getElementById('abadge');
@@ -5955,9 +5966,12 @@ async function adReg(){
   var dr=await sb.from('driver_profiles').select('*').eq('status','pending').order('created_at',{ascending:false});
   var pDrvs=dr.data||[];
   var dUids=pDrvs.map(function(d){return d.user_id;});
-  var dPr=dUids.length?await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,created_at').in('id',dUids):{data:[]};
+  // Only show drivers who have confirmed their email
+  var dPr=dUids.length?await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,created_at,email_confirmed').in('id',dUids):{data:[]};
   var dpm={};(dPr.data||[]).forEach(function(p){dpm[p.id]=p;});
-  var or=await sb.from('profiles').select('*').in('role',['owner','both']).eq('admin_status','pending').order('created_at',{ascending:false});
+  // Filter to email-confirmed only
+  pDrvs=pDrvs.filter(function(d){return dpm[d.user_id]&&dpm[d.user_id].email_confirmed;});
+  var or=await sb.from('profiles').select('*').in('role',['owner','both']).eq('admin_status','pending').eq('email_confirmed',true).order('created_at',{ascending:false});
   var pOwns=or.data||[];
   var total=pDrvs.length+pOwns.length;
   if(!total){el.innerHTML='<div class="ptitle">New Registrations</div><div class="empty"><div class="empty-i">&#10003;</div><p>All caught up! No pending registrations.</p></div>';var b=document.getElementById('abadge');if(b)b.style.display='none';return;}
