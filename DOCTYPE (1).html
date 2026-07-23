@@ -3824,11 +3824,19 @@ async function pChat(){
     var ins=await sb.from('messages').insert({application_id:app.id,sender_id:U.id,content:welcome,type:'system'}).select();
     if(ins.data)msgs=ins.data;
   }
-  // Terms summary
+  // Terms summary — auto-fill from car if not yet proposed
   var tp=app.terms_proposed||{};
+  if(!tp.rate && car && car.price_per_week){
+    tp={rate:car.price_per_week, deposit:car.deposit||null, proposed_by:app.owner_id};
+    // Owner auto-saves terms into DB so driver sees them
+    if(!isD){
+      sb.from('applications').update({terms_proposed:tp,terms_proposed_by:app.owner_id,driver_agreed_terms:false,owner_agreed_terms:false}).eq('id',app.id).then(function(){});
+      sb.from('messages').insert({application_id:app.id,sender_id:app.owner_id,content:'My rental terms have been shared automatically. Please review and accept, or counter-propose.',type:'terms_proposal',metadata:tp}).then(function(){});
+    }
+  }
   var termsHtml='';
+  var waNum=(other.whatsapp||other.phone||'').replace(/[^0-9]/g,'');
   if(termsAgreed){
-    var waNum=(other.whatsapp||other.phone||'').replace(/[^0-9]/g,'');
     termsHtml='<div style="background:#f0faf2;border:1.5px solid #a5d6a7;border-radius:10px;padding:14px;margin-bottom:14px">'
       +'<div style="font-size:14px;font-weight:800;color:var(--gm);margin-bottom:6px;text-align:center">&#127881; Great! Terms agreed. Open WhatsApp</div>'
       +'<div style="font-size:11px;color:#2e7d32;text-align:center;margin-bottom:12px">Rental terms agreed — Contact details are now revealed</div>'
@@ -3947,7 +3955,8 @@ async function pChat(){
     +msgs.map(function(m){return renderChatMsg(m,app);}).join('')
     +'</div>'
     +'<div style="display:flex;gap:8px;align-items:flex-end;padding-top:8px;border-top:1px solid var(--border)">'
-    +'<textarea id="chat-input" placeholder="Type a message..." style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;resize:none;height:44px;line-height:1.4" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();chatSend();}" oninput="this.style.height=\'44px\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" onfocus="var wb=eid(\'chat-wa-btn\');if(wb)wb.style.display=\'none\'" onblur="var wb=eid(\'chat-wa-btn\');if(wb)wb.style.display=\'flex\'"></textarea>'
+    +(termsAgreed&&waNum?'<a id="chat-wa-mini" href="https://wa.me/'+waNum+'" target="_blank" style="display:none;align-items:center;justify-content:center;width:44px;height:44px;background:#25D366;border-radius:10px;font-size:20px;text-decoration:none;flex-shrink:0">&#128241;</a>':'')
+    +'<textarea id="chat-input" placeholder="Type a message..." style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;resize:none;height:44px;line-height:1.4" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();chatSend();}" oninput="this.style.height=\'44px\';this.style.height=Math.min(this.scrollHeight,120)+\'px\'" onfocus="var wb=eid(\'chat-wa-btn\');if(wb)wb.style.display=\'none\';var wm=eid(\'chat-wa-mini\');if(wm)wm.style.display=\'flex\'" onblur="setTimeout(function(){var wb=eid(\'chat-wa-btn\');if(wb)wb.style.display=\'flex\';var wm=eid(\'chat-wa-mini\');if(wm)wm.style.display=\'none\';},200)"></textarea>'
     +'<button class="btn btn-gm" style="padding:10px 16px;height:44px;flex-shrink:0;border-radius:10px" onclick="chatSend()">&#10148;</button>'
     +'</div>';
   el.innerHTML='<div class="tbox">'+chatHtml+'</div>';
