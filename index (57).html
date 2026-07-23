@@ -1153,7 +1153,8 @@ nav div::-webkit-scrollbar{display:none}
   <div class="modal" style="max-width:500px">
     <button class="mx" onclick="closeModal('rating-modal')">x</button>
     <h3 id="rm-title">Rate Driver</h3>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px" id="rm-sub">Each action updates the Trust Score immediately.</p>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:8px" id="rm-sub">Each action updates the TrustScore immediately.</p>
+    <div id="rm-current-score" style="font-size:13px;font-weight:700;color:var(--gm);background:var(--gs);border-radius:7px;padding:6px 12px;margin-bottom:12px;display:inline-block"></div>
     <div style="font-size:10px;font-weight:700;color:var(--gm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px">Positive Actions</div>
     <div id="ra-pos"></div>
     <div style="font-size:10px;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 7px">Negative Actions</div>
@@ -1569,12 +1570,12 @@ function pb(p) { var m={Uber:'pb-u',Bolt:'pb-b',inDrive:'pb-i'}; return '<span c
 function fmtD(d) { return d?new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}):'-'; }
 function fmtDT(d) { return d?new Date(d).toLocaleString('en-ZA',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'-'; }
 function scoreInfo(s) {
-  if (s>=85) return ['tp-h','sc-h','lb-h','Excellent'];
-  if (s>=70) return ['tp-h','sc-h','lb-h','Super'];
-  if (s>=60) return ['tp-m','sc-m','lb-m','Good'];
-  if (s>=55) return ['tp-o','sc-o','lb-o','Average'];
-  if (s>=50) return ['tp-o','sc-o','lb-o','Below Average'];
-  return ['tp-l','sc-l','lb-l','High Risk'];
+  if (s>=85) return ['tp-h','sc-h','lb-h','Excellent','var(--gm)'];
+  if (s>=70) return ['tp-h','sc-h','lb-h','Super','var(--gm)'];
+  if (s>=60) return ['tp-m','sc-m','lb-m','Good','#7c5c00'];
+  if (s>=55) return ['tp-o','sc-o','lb-o','Average','#9a3412'];
+  if (s>=50) return ['tp-o','sc-o','lb-o','Below Average','#9a3412'];
+  return ['tp-l','sc-l','lb-l','High Risk','#8b2020'];
 }
 function starRow(score, sz) {
   sz = sz || 11;
@@ -2812,9 +2813,17 @@ async function pOv() {
     var s=DP.trust_score||0, si=scoreInfo(s);
     var docValid=DP.doc_expires_at&&new Date(DP.doc_expires_at)>new Date();
     var daysLeft=DP.doc_expires_at?Math.ceil((new Date(DP.doc_expires_at)-new Date())/864e5):0;
-    html+='<div class="tbox"><div class="shd">Trust Score</div>'
-      +'<div class="tp '+si[0]+'" style="padding:7px 13px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px;max-width:100%"><span class="tsc '+si[1]+'" style="font-size:24px">'+s+'/100</span>'+starRow(s,14)+'<span class="tlb '+si[2]+'" style="font-size:12px">'+si[3]+'</span></div>'
-      +(docValid&&daysLeft<30?'<p style="font-size:12px;color:var(--amber)">Docs expire in '+daysLeft+' days.</p>':'')
+    html+='<div class="tbox" style="border:2px solid var(--gm)">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+      +'<div class="shd" style="margin-bottom:0">&#11088; TrustScore</div>'
+      +'<span style="font-size:10px;font-weight:700;background:'+(DP.status==='approved'?'var(--gs)':DP.status==='incomplete'?'#fef3c7':'#fef2f2')+';color:'+(DP.status==='approved'?'var(--gm)':DP.status==='incomplete'?'#7a5200':'#dc2626')+';padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px">'+(DP.status||'pending')+'</span>'
+      +'</div>'
+      +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">'
+      +'<div style="font-size:40px;font-weight:900;font-family:\'Playfair Display\',serif;color:'+si[4]+';line-height:1">'+s+'</div>'
+      +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">out of 100</div>'+starRow(s,16)+'<div style="font-size:11px;font-weight:700;margin-top:3px;color:'+si[4]+'">'+si[3]+'</div></div>'
+      +'</div>'
+      +(s===0?'<p style="font-size:11px;color:var(--muted);background:var(--cream);border-radius:6px;padding:6px 10px;margin-bottom:8px">Your TrustScore starts at 0 and increases as owners rate your reliability, payments and communication.</p>':'')
+      +(docValid&&daysLeft<30?'<p style="font-size:12px;color:var(--amber)">&#9888; Docs expire in '+daysLeft+' days.</p>':'')
       +(docValid?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'<p style="font-size:11px;color:#dc2626">&#9888; Documents pending verification</p>')
       +'</div>';
     // ── DRIVER CURRENT MATCH (shown right after Trust Score) ──
@@ -3055,7 +3064,7 @@ async function pOv() {
           // Rate button
           +(alreadyRated
             ?'<div style="padding:10px 14px;background:var(--gs);border-radius:8px;font-size:13px;font-weight:700;color:var(--gm);text-align:center;margin-bottom:8px">&#10003; You have rated this driver</div>'
-            :'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:800;margin-bottom:8px" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openRatingModal(this)">&#11088; Rate This Driver</button>')
+            :'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:800;margin-bottom:8px" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openRatingModal2(this.dataset.dpid,this.dataset.aid,this.dataset.dn,false)">&#11088; Rate This Driver</button>')
           +'<div style="display:flex;gap:8px;margin-top:6px">'
           +'<button class="btn btn-gm btn-sm" style="flex:1" onclick="dpanel(\'ch\')">&#128172; Open Chat</button>'
           +'<button class="btn btn-out btn-sm" data-aid="'+a.id+'" onclick="ownerUnmatch(this.dataset.aid)">Unmatch</button>'
@@ -3091,7 +3100,7 @@ async function pOv() {
               +'</div>'
               +(rated
                 ?'<span style="font-size:11px;font-weight:600;color:var(--gm);background:var(--gs);padding:3px 9px;border-radius:999px">&#10003; Rated</span>'
-                :'<button class="btn btn-gm btn-sm" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openRatingModal(this)">&#11088; Rate</button>')
+                :'<button class="btn btn-gm btn-sm" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openRatingModal2(this.dataset.dpid,this.dataset.aid,this.dataset.dn,false)">&#11088; Rate</button>')
               +'</div>';
           }).join('')+'</div>';
       }
@@ -4829,8 +4838,12 @@ async function ownerOpenRateDriver(){
   if(!U){toast('Please log in.');return;}
   var r=await sb.from('applications').select('id,driver_id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
   if(!r.data){toast('No active match found.');return;}
-  var nameR=await sb.from('profiles').select('full_name').eq('id',r.data.driver_id).maybeSingle();
-  openRateDriverModal(r.data.id,nameR.data?nameR.data.full_name:'Driver');
+  var [nameR,dpR]=await Promise.all([
+    sb.from('profiles').select('full_name').eq('id',r.data.driver_id).maybeSingle(),
+    sb.from('driver_profiles').select('id').eq('user_id',r.data.driver_id).maybeSingle()
+  ]);
+  if(!dpR.data){toast('Driver profile not found.');return;}
+  openRatingModal2(dpR.data.id,r.data.id,nameR.data?nameR.data.full_name:'Driver',false);
 }
 function swTab(t){
   eid('tbb-rev').classList.toggle('on',t==='rev');eid('tbb-inc').classList.toggle('on',t==='inc');
@@ -4874,11 +4887,18 @@ var TA_LIST=[
 ];
 function openRatingModal2(dpId, appId, name, isAdmin) {
   rmDpId=dpId; rmAppId=appId; rmIsAdmin=!!isAdmin;
-  eid('rm-title').textContent=(isAdmin?'Admin Rate: ':'Rate: ')+name;
-  eid('rm-sub').textContent=isAdmin?'Admin override - attributed to TrustMate Admin':'Each action updates the Trust Score immediately.';
+  eid('rm-title').textContent=(isAdmin?'Admin Rate: ':'Rate Driver: ')+name;
+  eid('rm-sub').textContent=isAdmin?'Admin override - attributed to TrustMate Admin':'Tap an action to update the TrustScore immediately.';
   eid('score-override-section').style.display=isAdmin?'block':'none';
   if(eid('override-score'))eid('override-score').value='';
   if(eid('override-note'))eid('override-note').value='';
+  var scoreDisplay=eid('rm-current-score');
+  if(scoreDisplay){scoreDisplay.textContent='Loading...';scoreDisplay.style.display='inline-block';}
+  // Load current score to display
+  sb.from('driver_profiles').select('trust_score').eq('id',dpId).maybeSingle().then(function(r){
+    var sc=r.data&&r.data.trust_score!=null?r.data.trust_score:50;
+    if(scoreDisplay)scoreDisplay.textContent='Current TrustScore: '+sc+'/100';
+  });
   eid('ra-pos').innerHTML=TA_LIST.filter(function(a){return a.pos;}).map(function(a){
     return '<button class="ra-btn ra-pos" data-type="'+a.type+'" data-pts="'+a.pts+'" onclick="subTA(this)"><span class="ra-pts">+'+a.pts+'</span><span>'+a.label+'</span></button>';
   }).join('');
@@ -4891,11 +4911,21 @@ async function subTA(btn) {
   var type=btn.dataset.type, pts=parseInt(btn.dataset.pts);
   if(!rmDpId){toast('Error: no driver selected');return;}
   btn.disabled=true; btn.style.opacity='.5';
+  // Insert trust action record
   var r=await sb.from('trust_actions').insert({driver_id:rmDpId,owner_id:rmIsAdmin?null:(U?U.id:null),application_id:rmAppId||null,action_type:type,points:pts,submitted_by:rmIsAdmin?'admin':'owner'});
   if(r.error){toast('Error: '+r.error.message);btn.disabled=false;btn.style.opacity='1';return;}
-  toast((pts>0?'+':'')+pts+' pts - '+type.replace(/_/g,' '));
+  // Fetch current score and update directly on driver_profiles
+  var dpR=await sb.from('driver_profiles').select('trust_score').eq('id',rmDpId).maybeSingle();
+  var current=dpR.data?( dpR.data.trust_score!=null?dpR.data.trust_score:50):50;
+  var newScore=Math.max(0,Math.min(100,current+pts));
+  await sb.from('driver_profiles').update({trust_score:newScore}).eq('id',rmDpId);
+  // Update live score display in modal if it exists
+  var scoreDisplay=document.getElementById('rm-current-score');
+  if(scoreDisplay)scoreDisplay.textContent='TrustScore: '+newScore+'/100';
+  toast((pts>0?'+':'')+pts+' pts → TrustScore now '+newScore);
   btn.style.background=pts>0?'var(--gs)':'#fee2e2';
   btn.style.borderColor=pts>0?'var(--gm)':'#dc2626';
+  btn.style.color=pts>0?'var(--gm)':'#dc2626';
 }
 async function subOverride() {
   var scoreEl=eid('override-score'),noteEl=eid('override-note');
