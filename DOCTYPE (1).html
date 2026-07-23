@@ -4925,7 +4925,7 @@ function openRatingModal2(dpId, appId, name, isAdmin) {
 }
 async function subTA(btn) {
   var type=btn.dataset.type, pts=parseInt(btn.dataset.pts);
-  // If dpId missing but appId available, recover it from the application
+  // Recover dpId via edge function — it uses service role so it always works
   if(!rmDpId && rmAppId) {
     var _ar=await sb.from('applications').select('driver_id').eq('id',rmAppId).maybeSingle();
     if(_ar.data&&_ar.data.driver_id){
@@ -4933,24 +4933,28 @@ async function subTA(btn) {
       if(_dpr.data) rmDpId=_dpr.data.id;
     }
   }
-  if(!rmDpId){toast('Error: driver profile not found. Try reopening the rating screen.');return;}
+  if(!rmDpId){toast('Error: driver profile not found. Reopen the rating screen.');return;}
   btn.disabled=true; btn.style.opacity='.5';
-  // Use SECURITY DEFINER RPC — runs as postgres, bypasses RLS
-  var r=await sb.rpc('apply_trust_action',{dp_id:rmDpId,pts:pts});
-  if(r.error){toast('Score update failed: '+r.error.message);btn.disabled=false;btn.style.opacity='1';return;}
-  var newScore=r.data;
-  // Log trust action (best-effort)
-  sb.from('trust_actions').insert({driver_id:rmDpId,owner_id:rmIsAdmin?null:(U?U.id:null),application_id:rmAppId||null,action_type:type,points:pts,submitted_by:rmIsAdmin?'admin':'owner'}).then(function(){}).catch(function(){});
-  // Email driver (best-effort, non-blocking)
-  if(rmAppId&&!rmIsAdmin){
-    sendNotifEmail('trust_action',rmAppId,{driver_profile_id:rmDpId,action_type:type,pts:pts,send_email:true,owner_id:U?U.id:null});
+  // Route through edge function (service role) — bypasses RLS for all callers
+  try {
+    var _resp=await fetch('https://qyyflivkmnwikagnvstv.supabase.co/functions/v1/send-match-email',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'},
+      body:JSON.stringify({type:'trust_action',application_id:rmAppId||null,driver_profile_id:rmDpId,action_type:type,pts:pts,owner_id:rmIsAdmin?null:(U?U.id:null),submitted_by:rmIsAdmin?'admin':'owner',send_email:!rmIsAdmin})
+    });
+    var _res=await _resp.json();
+    if(!_resp.ok||_res.error){throw new Error(_res.error||'Update failed');}
+    var newScore=_res.new_score!=null?_res.new_score:50;
+    var scoreDisplay=document.getElementById('rm-current-score');
+    if(scoreDisplay)scoreDisplay.textContent='Current TrustScore: '+newScore+'/100';
+    toast((pts>0?'+':'')+pts+' pts → TrustScore now '+newScore+'/100');
+    btn.style.background=pts>0?'var(--gs)':'#fee2e2';
+    btn.style.borderColor=pts>0?'var(--gm)':'#dc2626';
+    btn.style.color=pts>0?'var(--gm)':'#dc2626';
+  } catch(e){
+    toast('Score update failed: '+e.message);
+    btn.disabled=false; btn.style.opacity='1';
   }
-  var scoreDisplay=document.getElementById('rm-current-score');
-  if(scoreDisplay)scoreDisplay.textContent='Current TrustScore: '+newScore+'/100';
-  toast((pts>0?'+':'')+pts+' pts → TrustScore now '+newScore+'/100');
-  btn.style.background=pts>0?'var(--gs)':'#fee2e2';
-  btn.style.borderColor=pts>0?'var(--gm)':'#dc2626';
-  btn.style.color=pts>0?'var(--gm)':'#dc2626';
 }
 async function subOverride() {
   var scoreEl=eid('override-score'),noteEl=eid('override-note');
@@ -7393,7 +7397,7 @@ async function execUnmatch(){
   var reason=(document.getElementById('unmatch-reason-input')||{}).value||'';
   var btn=document.getElementById('unmatch-confirm-btn');
   if(btn){btn.disabled=true;btn.textContent='Unmatching...';}
-  var r=await sb.from('applications').update({status:'unmatched',unmatched_at:new Date().toISOString(),unmatched_by:role,unmatch_reason:reason.trim()||null}).eq('id',aid).select();
+  var r=await sb.from('applications').update({unmatched_at:new Date().toISOString(),unmatched_by:role,unmatch_reason:reason.trim()||null}).eq('id',aid).select();
   if(btn){btn.disabled=false;btn.textContent='Unmatch';}
   if(r.error){toast('Error: '+r.error.message);return;}
   if(!r.data||!r.data.length){toast('Could not unmatch — check permissions.');return;}
