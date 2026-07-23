@@ -4921,26 +4921,22 @@ async function subTA(btn) {
   var type=btn.dataset.type, pts=parseInt(btn.dataset.pts);
   if(!rmDpId){toast('Error: no driver selected');return;}
   btn.disabled=true; btn.style.opacity='.5';
-  try {
-    // Route through edge function (service role) so RLS doesn't block score update
-    var resp=await fetch('https://qyyflivkmnwikagnvstv.supabase.co/functions/v1/send-match-email',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'},
-      body:JSON.stringify({type:'trust_action',application_id:rmAppId||null,driver_profile_id:rmDpId,action_type:type,pts:pts,submitted_by:rmIsAdmin?'admin':'owner',owner_id:rmIsAdmin?null:(U?U.id:null),send_email:!rmIsAdmin&&!!rmAppId})
-    });
-    var data=await resp.json();
-    if(data.error)throw new Error(data.error);
-    var newScore=data.new_score!=null?data.new_score:0;
-    var scoreDisplay=document.getElementById('rm-current-score');
-    if(scoreDisplay)scoreDisplay.textContent='Current TrustScore: '+newScore+'/100';
-    toast((pts>0?'+':'')+pts+' pts → TrustScore now '+newScore+'/100');
-    btn.style.background=pts>0?'var(--gs)':'#fee2e2';
-    btn.style.borderColor=pts>0?'var(--gm)':'#dc2626';
-    btn.style.color=pts>0?'var(--gm)':'#dc2626';
-  } catch(e) {
-    toast('Rating error: '+e.message);
-    btn.disabled=false; btn.style.opacity='1';
+  // Use SECURITY DEFINER RPC — runs as postgres, bypasses RLS
+  var r=await sb.rpc('apply_trust_action',{dp_id:rmDpId,pts:pts});
+  if(r.error){toast('Score update failed: '+r.error.message);btn.disabled=false;btn.style.opacity='1';return;}
+  var newScore=r.data;
+  // Log trust action (best-effort)
+  sb.from('trust_actions').insert({driver_id:rmDpId,owner_id:rmIsAdmin?null:(U?U.id:null),application_id:rmAppId||null,action_type:type,points:pts,submitted_by:rmIsAdmin?'admin':'owner'}).then(function(){}).catch(function(){});
+  // Email driver (best-effort, non-blocking)
+  if(rmAppId&&!rmIsAdmin){
+    sendNotifEmail('trust_action',rmAppId,{driver_profile_id:rmDpId,action_type:type,pts:pts,send_email:true,owner_id:U?U.id:null});
   }
+  var scoreDisplay=document.getElementById('rm-current-score');
+  if(scoreDisplay)scoreDisplay.textContent='Current TrustScore: '+newScore+'/100';
+  toast((pts>0?'+':'')+pts+' pts → TrustScore now '+newScore+'/100');
+  btn.style.background=pts>0?'var(--gs)':'#fee2e2';
+  btn.style.borderColor=pts>0?'var(--gm)':'#dc2626';
+  btn.style.color=pts>0?'var(--gm)':'#dc2626';
 }
 async function subOverride() {
   var scoreEl=eid('override-score'),noteEl=eid('override-note');
@@ -5770,21 +5766,16 @@ async function adReg(){
   var el=document.getElementById('ap-reg');
   el.innerHTML='<div class="ptitle">New Registrations</div>'+adSpin();
   var dr=await sb.from('driver_profiles').select('*').eq('status','pending').order('created_at',{ascending:false});
-  var allPDrvs=dr.data||[];
-  // Drivers with missing docs go to Pending Documents tab, not here
-  var pDrvs=allPDrvs.filter(function(d){return d.photo_headshot_url&&d.photo_fullbody_url&&d.photo_holding_id_url&&d.doc_id_url&&d.doc_license_url;});
-  var missingDocDrvs=allPDrvs.filter(function(d){return !d.photo_headshot_url||!d.photo_fullbody_url||!d.photo_holding_id_url||!d.doc_id_url||!d.doc_license_url;});
-  // Update pending docs badge
-  var pdocBadge=document.getElementById('pdocbadge');if(pdocBadge){pdocBadge.textContent=missingDocDrvs.length;pdocBadge.style.display=missingDocDrvs.length>0?'inline':'none';}
-  var dUids=allPDrvs.map(function(d){return d.user_id;});
+  var pDrvs=dr.data||[];
+  var dUids=pDrvs.map(function(d){return d.user_id;});
   var dPr=dUids.length?await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,created_at').in('id',dUids):{data:[]};
   var dpm={};(dPr.data||[]).forEach(function(p){dpm[p.id]=p;});
   var or=await sb.from('profiles').select('*').in('role',['owner','both']).eq('admin_status','pending').order('created_at',{ascending:false});
   var pOwns=or.data||[];
   var total=pDrvs.length+pOwns.length;
-  if(!total){el.innerHTML='<div class="ptitle">New Registrations</div><div class="empty"><div class="empty-i">&#10003;</div><p>All caught up! No pending registrations.</p></div>'+(missingDocDrvs.length?'<div style="padding:10px 14px;background:#faf5ff;border:1px solid #c4b5fd;border-radius:8px;font-size:13px;color:#6b21a8;margin-top:10px">&#128196; <strong>'+missingDocDrvs.length+' driver'+(missingDocDrvs.length!==1?'s':'')+' with missing documents</strong> — see <a href="#" onclick="adNav(\'pdoc\');return false;" style="color:#7c3aed;font-weight:700">Pending Documents</a> tab.</div>':'');var b=document.getElementById('abadge');if(b)b.style.display='none';return;}
+  if(!total){el.innerHTML='<div class="ptitle">New Registrations</div><div class="empty"><div class="empty-i">&#10003;</div><p>All caught up! No pending registrations.</p></div>';var b=document.getElementById('abadge');if(b)b.style.display='none';return;}
   var badge=document.getElementById('abadge');if(badge){badge.textContent=total;badge.style.display='inline';}
-  var html='<div class="ptitle">New Registrations</div><div class="psub">'+pDrvs.length+' driver'+(pDrvs.length!==1?'s':'')+' / '+pOwns.length+' owner'+(pOwns.length!==1?'s':'')+' pending'+(missingDocDrvs.length?' &nbsp;|&nbsp; <a href="#" onclick="adNav(\'pdoc\');return false;" style="color:#7c3aed;font-weight:700">'+missingDocDrvs.length+' with missing docs &#128196;</a>':'')+'</div>';
+  var html='<div class="ptitle">New Registrations</div><div class="psub">'+pDrvs.length+' driver'+(pDrvs.length!==1?'s':'')+' / '+pOwns.length+' owner'+(pOwns.length!==1?'s':'')+' pending</div>';
   if(pDrvs.length){
     html+='<div class="shd" style="margin-bottom:10px">Pending Drivers ('+pDrvs.length+')</div>';
     html+=pDrvs.map(function(d){
@@ -5830,29 +5821,7 @@ async function adReg(){
         +'<button class="btn btn-gm btn-sm" data-did="'+d.id+'" onclick="adSaveTrustScore(this.dataset.did)">Save Score</button>'
         +'</div>'
         +'</div>'
-        +'<div class="rcard-acts"><button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button><button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Decline</button><button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" onclick="adMoveIncomplete(\'drv\',\''+d.id+'\')">&#9203; Move to Incomplete</button><input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
-    }).join('');
-  }
-  if(missingDocDrvs.length){
-    html+='<div class="shd" style="margin-top:20px;margin-bottom:10px">&#128196; Drivers with Missing Docs ('+missingDocDrvs.length+') <span style="font-size:11px;font-weight:400;color:var(--muted)">— move to Pending Documents to upload &amp; approve</span></div>';
-    var missDpm={};(dPr.data||[]).forEach(function(p){missDpm[p.id]=p;});
-    html+=missingDocDrvs.map(function(d){
-      var p=missDpm[d.user_id]||{};
-      var missing=[];
-      if(!d.photo_headshot_url)missing.push('Headshot');
-      if(!d.photo_fullbody_url)missing.push('Full Body');
-      if(!d.photo_holding_id_url)missing.push('Holding ID');
-      if(!d.doc_id_url)missing.push('ID/Passport');
-      if(!d.doc_license_url)missing.push('Licence');
-      return '<div class="rcard" id="rc-'+d.id+'" style="border-color:#E8A520">'
-        +'<div class="rcard-head"><div style="display:flex;align-items:center;gap:10px">'
-        +(d.photo_headshot_url?'<div class="av"><img src="'+imgUrl(d.photo_headshot_url,120,80)+'" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(p.full_name)+'</div>')
-        +'<div><div style="font-size:15px;font-weight:700">'+(p.full_name||'Unknown')+'</div>'
-        +'<div style="font-size:11px;color:#7a5200">&#9888; Missing: '+missing.join(', ')+'</div></div></div>'+adPill('pending')+'</div>'
-        +'<div class="rcard-acts">'
-        +'<button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" onclick="adMoveToPendingDocs(\''+d.id+'\')">&#128196; Move to Pending Docs</button>'
-        +'<button class="btn btn-out btn-sm" onclick="adPendingDocRemind(\''+d.id+'\')">&#128276; Remind</button>'
-        +'</div></div>';
+        +'<div class="rcard-acts"><button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button><button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Decline</button><button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" onclick="adMoveToPendingDocs(\''+d.id+'\')">&#128196; Move to Pending Docs</button><input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
     }).join('');
   }
   if(pOwns.length){
