@@ -4951,6 +4951,8 @@ async function subTA(btn) {
     btn.style.background=pts>0?'var(--gs)':'#fee2e2';
     btn.style.borderColor=pts>0?'var(--gm)':'#dc2626';
     btn.style.color=pts>0?'var(--gm)':'#dc2626';
+    // Refresh dashboard so updated score is visible immediately
+    if(!rmIsAdmin&&typeof pOv==='function') setTimeout(function(){closeModal('rating-modal');pOv();},1200);
   } catch(e){
     toast('Score update failed: '+e.message);
     btn.disabled=false; btn.style.opacity='1';
