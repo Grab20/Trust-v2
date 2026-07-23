@@ -1739,7 +1739,8 @@ async function _execDriversQuery(offset){
       var srcData=(_drvCache&&_drvCache.length)?_drvCache:null;
       if(!srcData){
         var all=await sb.from('v_driver_listing').select('*').order('trust_score',{ascending:false}).limit(500);
-        if(all.error||!all.data) return {data:[],hasMore:false,total:0};
+        if(all.error){console.error('drivers nearest error',all.error);toast('Could not load drivers: '+all.error.message);return {data:[],hasMore:false,total:0};}
+        if(!all.data) return {data:[],hasMore:false,total:0};
         var seen=new Set();
         srcData=all.data.filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;})
           .map(function(d){d.profile={full_name:d.full_name||'Driver',location:d.location||''};d.isMatched=!!d.is_matched;return d;});
@@ -1785,7 +1786,7 @@ async function _execDriversQuery(offset){
 
   qb=qb.range(offset, offset+_DRVS_PAGE-1);
   var r=await qb;
-  if(r.error){console.error('drivers query',r.error);return {data:[],hasMore:false,total:0};}
+  if(r.error){console.error('drivers query error',r.error);toast('Could not load drivers: '+r.error.message);return {data:[],hasMore:false,total:0};}
   var seen=new Set();
   var rows=(r.data||[]).filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;})
     .map(function(d){d.profile={full_name:d.full_name||'Driver',location:d.location||''};d.isMatched=!!d.is_matched;return d;});
