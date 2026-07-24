@@ -275,7 +275,7 @@ nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;flex-dire
 .bntab.on{color:var(--gm)}
 .bntab.on .bnt-icon{filter:drop-shadow(0 0 4px rgba(26,92,40,.25))}
 /* ── Top nav slim ── */
-#top-nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--g);display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:52px}
+#top-nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:52px;flex-shrink:0}
 /* ── Hamburger drawer ── */
 .hmenu-drawer{display:none;position:fixed;inset:0;z-index:200}
 .hmenu-drawer.on{display:block}
@@ -382,7 +382,6 @@ nav div::-webkit-scrollbar{display:none}
     </span>
   </div>
 </div>
-<div id="nav-spacer" style="height:52px;flex-shrink:0"></div>
 
 <!-- HAMBURGER DRAWER -->
 <div class="hmenu-drawer" id="hmenu">
@@ -484,7 +483,7 @@ nav div::-webkit-scrollbar{display:none}
         <span style="font-size:16px;color:var(--muted)">&#128269;</span>
         <input id="h-search" type="text" placeholder="Search cars, drivers, location..." oninput="homeSearch()" style="flex:1;border:none;outline:none;font-size:14px;font-family:inherit;background:transparent;color:var(--text)"/>
       </div>
-      <button onclick="openFilterSheet()" style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:var(--gm);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;letter-spacing:0">Filter</button>
+      <button onclick="openFilterSheet()" style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:var(--gm);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#9776;</button>
     </div>
     <!-- Category chips -->
     <div style="display:flex;gap:8px;margin-top:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px">
@@ -1931,7 +1930,7 @@ async function fetchDrivers(lim) {
   var r = await sb.from('v_driver_listing')
     .select('*')
     .order('trust_score',{ascending:false})
-    .limit(lim||60);
+    .limit(lim||200);
   if(!r.data||!r.data.length) return [];
   var seen=new Set();
   var _rd=r.data.filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;}).map(function(d){
@@ -2315,7 +2314,7 @@ function _renderHomeGrid(){
     var signup2=(!U&&items2.length>limit)?_signupCard('&#128100;',items2.length-limit):'';
     var html2=show2.map(drvHTML).join('');
     var el2=eid('h-drvs');
-    if(el2)el2.innerHTML=html2?html2+signup2:(_drvsLoaded?empty('&#128100;','No drivers found. <button class="btn btn-gm btn-sm" style="margin-top:8px" onclick="_drvCache=null;_drvsLoaded=false;(eid('h-drvs')||{}).innerHTML=skelCards(4);loadHome()">Retry</button>'):skelCards(4));
+    if(el2)el2.innerHTML=html2?html2+signup2:(_drvsLoaded?empty('&#128100;','No drivers found.'):skelCards(4));
   }
 }
 function _signupCard(icon,extra){
@@ -2326,7 +2325,6 @@ function _signupCard(icon,extra){
 function loadHome() {
   _homeCat='cars';
   _homeFilters={city:'',trans:'',sort:'newest',q:''};
-  _drvsLoaded=false;
   setHomeCat('cars');
   if(!_carCache) eid('h-cars').innerHTML=skelCards(3);
   if(!_drvCache) eid('h-drvs').innerHTML=skelCards(4);
@@ -2334,17 +2332,8 @@ function loadHome() {
     _homeCarsCache=cars;
     _renderHomeGrid();
   }).catch(function(){eid('h-cars').innerHTML=empty('&#128663;','Could not load.');});
-  (function loadDrvsWithRetry(attempt){
-    fetchDrivers().then(function(drvs){
-      if(!drvs.length&&attempt<2){setTimeout(function(){_drvCache=null;loadDrvsWithRetry(attempt+1)},1500);return;}
-      if(!drvs.length){_drvsLoaded=true;_renderHomeGrid();return;}
-      _drvsLoaded=true;_homeDrvsCache=drvs;
-      _renderHomeGrid();
-    }).catch(function(){
-      if(attempt<2){setTimeout(function(){_drvCache=null;loadDrvsWithRetry(attempt+1)},1500);}
-      else{_drvsLoaded=true;eid('h-drvs').innerHTML=empty('&#128100;','Could not load.').replace('</div>','<br><button class="btn btn-gm btn-sm" style="margin-top:8px" onclick="_drvCache=null;loadHome()">Retry</button></div>');}
-    });
-  })(0);
+  _drvsLoaded=false;
+  (function _loadDrvs(n){fetchDrivers().then(function(drvs){if(!drvs.length&&n<2){_drvCache=null;setTimeout(function(){_loadDrvs(n+1);},1500);return;}_drvsLoaded=true;_homeDrvsCache=drvs;_renderHomeGrid();}).catch(function(){if(n<2){_drvCache=null;setTimeout(function(){_loadDrvs(n+1);},1500);}else{_drvsLoaded=true;var el=eid('h-drvs');if(el)el.innerHTML=empty('&#128100;','Could not load.')+'<button class="btn btn-gm btn-sm" style="margin:8px auto;display:block" onclick="_drvCache=null;loadHome()">Retry</button>';}});})(0);
   // Load testimonials
   sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(3).then(function(res){
     var revs=res.data||[];
@@ -3466,7 +3455,7 @@ async function pOv() {
         +statCard(matchedApps.length,'Matched','var(--gm)','View match &#8594;','ap')
         +statCard(pendingCount,'Pending',pendingCount>0?'#E8A520':'var(--muted)',pendingCount>0?'Tap to review &#8594;':'No pending','ap')
         +statCard(approvedCars,'My Cars','var(--g)','View cars &#8594;','lc')
-        +(isMatched&&matchedApps[0]?(function(){var _mn=(mpm[matchedApps[0].driver_id]||{}).full_name||'Driver';var _fn=_mn.split(' ')[0];return '<div onclick="dpanel('rv')" style="background:#fff;border:1.5px solid var(--gm);border-radius:10px;padding:14px;cursor:pointer"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Rate Driver</div><div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:2px">'+_fn+''s Performance</div><div style="font-size:10px;color:var(--gm);font-weight:600">Tap to rate &#8594;</div></div>'})():'<div onclick="dpanel('rv')" style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:14px;cursor:pointer"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Rate Driver</div><div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:2px">Driver Performance</div><div style="font-size:10px;color:var(--gm);font-weight:600">Tap to rate &#8594;</div></div>')
+        +(isMatched&&matchedApps[0]?(function(){var _mn=(mpm[matchedApps[0].driver_id]||{}).full_name||'Driver';var _fn=_mn.split(' ')[0];return '<div onclick="dpanel(\'rv\'" style="background:#fff;border:1.5px solid var(--gm);border-radius:10px;padding:14px;cursor:pointer"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Rate Driver</div><div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:2px">'+_fn+'\'s Performance</div><div style="font-size:10px;color:var(--gm);font-weight:600">Tap to rate &#8594;</div></div>';})():'<div onclick="dpanel(\'rv\'" style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:14px;cursor:pointer"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Rate Driver</div><div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:2px">Driver Performance</div><div style="font-size:10px;color:var(--gm);font-weight:600">Tap to rate &#8594;</div></div>')
       +'</div>';
 
       // Past rentals
