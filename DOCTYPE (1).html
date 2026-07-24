@@ -22,7 +22,7 @@ body{overflow-x:hidden;width:100%;max-width:100vw}
 *,*::before,*::after{box-sizing:border-box;max-width:100%}
 img,svg,video,canvas{max-width:100%;height:auto}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--g:#1a2e1a;--gm:#1a5c28;--gs:#d4edd8;--cream:#faf9f5;--sand:#f0ede5;--border:#e8e5df;--text:#1a1a18;--muted:#6b6b60;--r:10px;--amber:#E8A520}
-body{font-family:DM Sans,system-ui,sans-serif;background:var(--cream);color:var(--text);line-height:1.5;padding-top:52px}
+body{font-family:DM Sans,system-ui,sans-serif;background:var(--cream);color:var(--text);line-height:1.5}
 
 .page{display:none}.page.on{display:block}
 nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;flex-direction:column}
@@ -382,6 +382,7 @@ nav div::-webkit-scrollbar{display:none}
     </span>
   </div>
 </div>
+<div id="nav-spacer" style="height:52px;flex-shrink:0"></div>
 
 <!-- HAMBURGER DRAWER -->
 <div class="hmenu-drawer" id="hmenu">
@@ -2314,7 +2315,7 @@ function _renderHomeGrid(){
     var signup2=(!U&&items2.length>limit)?_signupCard('&#128100;',items2.length-limit):'';
     var html2=show2.map(drvHTML).join('');
     var el2=eid('h-drvs');
-    if(el2)el2.innerHTML=html2?html2+signup2:(_drvsLoaded?empty('&#128100;','No drivers found. <button class="btn btn-gm btn-sm" style="margin-top:8px" onclick="_drvCache=null;_drvsLoaded=false;el2.innerHTML=skelCards(4);loadHome()">Retry</button>'):skelCards(4));
+    if(el2)el2.innerHTML=html2?html2+signup2:(_drvsLoaded?empty('&#128100;','No drivers found. <button class="btn btn-gm btn-sm" style="margin-top:8px" onclick="_drvCache=null;_drvsLoaded=false;(eid('h-drvs')||{}).innerHTML=skelCards(4);loadHome()">Retry</button>'):skelCards(4));
   }
 }
 function _signupCard(icon,extra){
