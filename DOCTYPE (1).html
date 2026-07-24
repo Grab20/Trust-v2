@@ -396,35 +396,37 @@ nav div::-webkit-scrollbar{display:none}
 <div id="page-cars" class="page">
   <div class="sec"><div class="sec-inner">
     <div class="sec-head"><div><h2>Available Cars</h2><p id="cars-sub">Loading...</p></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
-      <input id="cars-search" type="text" placeholder="&#128269; Search name, place..." oninput="filterCars()" style="flex:1;min-width:180px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff"/>
-      <select id="cars-city" onchange="filterCars()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
-        <option value="">All locations</option>
-        <option value="johannesburg">Johannesburg</option>
-        <option value="pretoria">Pretoria</option>
-        <option value="cape town">Cape Town</option>
-        <option value="durban">Durban</option>
-        <option value="ekurhuleni">Ekurhuleni</option>
-        <option value="soweto">Soweto</option>
-        <option value="sandton">Sandton</option>
-        <option value="midrand">Midrand</option>
-        <option value="centurion">Centurion</option>
-        <option value="port elizabeth">Gqeberha / PE</option>
-      </select>
-      <select id="cars-sort" onchange="filterCars()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
-        <option value="newest">Newest first</option>
-        <option value="price_asc">Price: Low to High</option>
-        <option value="price_desc">Price: High to Low</option>
-      </select>
-      <select id="cars-trans" onchange="filterCars()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
-        <option value="">All transmissions</option>
-        <option value="Manual">Manual</option>
-        <option value="Automatic">Automatic</option>
-      </select>
-      <select id="cars-status" onchange="filterCars()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
-        <option value="">All cars</option>
-        <option value="available">Available only</option>
-      </select>
+    <div style="margin-bottom:14px">
+      <input id="cars-search" type="text" placeholder="&#128269; Search make, model, place..." oninput="filterCars()" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:8px"/>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+        <select id="cars-city" onchange="filterCars()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
+          <option value="">&#128205; All</option>
+          <option value="johannesburg">&#128205; JHB</option>
+          <option value="pretoria">&#128205; PTA</option>
+          <option value="cape town">&#128205; CPT</option>
+          <option value="durban">&#128205; DBN</option>
+          <option value="ekurhuleni">&#128205; Ekurhuleni</option>
+          <option value="soweto">&#128205; Soweto</option>
+          <option value="sandton">&#128205; Sandton</option>
+          <option value="midrand">&#128205; Midrand</option>
+          <option value="centurion">&#128205; Centurion</option>
+          <option value="port elizabeth">&#128205; Gqeberha</option>
+        </select>
+        <select id="cars-sort" onchange="filterCars()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
+          <option value="newest">&#128176; Newest</option>
+          <option value="price_asc">&#128176; Price &#8593;</option>
+          <option value="price_desc">&#128176; Price &#8595;</option>
+        </select>
+        <select id="cars-trans" onchange="filterCars()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
+          <option value="">&#9881;&#65039; All</option>
+          <option value="Manual">&#9881;&#65039; Manual</option>
+          <option value="Automatic">&#9881;&#65039; Auto</option>
+        </select>
+        <select id="cars-status" onchange="filterCars()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
+          <option value="">&#128663; All</option>
+          <option value="available">&#128663; Available</option>
+        </select>
+      </div>
     </div>
     <div id="cars-grid" class="grid2"><div class="loading"><div class="spin"></div>Loading...</div></div>
     <div id="cars-more-wrap" style="text-align:center;margin-top:18px;display:none">
@@ -438,37 +440,39 @@ nav div::-webkit-scrollbar{display:none}
 <div id="page-drivers" class="page">
   <div class="sec"><div class="sec-inner">
     <div class="sec-head"><div><h2>Verified Drivers</h2><p id="drvs-sub">Loading...</p></div></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
-      <input id="drvs-search" type="text" placeholder="&#128269; Search name, place..." oninput="filterDrivers()" style="flex:1;min-width:180px;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff"/>
-      <select id="drvs-city" onchange="filterDrivers()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
-        <option value="">All locations</option>
-        <option value="johannesburg">Johannesburg</option>
-        <option value="pretoria">Pretoria</option>
-        <option value="cape town">Cape Town</option>
-        <option value="durban">Durban</option>
-        <option value="ekurhuleni">Ekurhuleni</option>
-        <option value="soweto">Soweto</option>
-        <option value="sandton">Sandton</option>
-        <option value="midrand">Midrand</option>
-        <option value="centurion">Centurion</option>
-        <option value="port elizabeth">Gqeberha / PE</option>
-      </select>
-      <select id="drvs-sort" onchange="filterDrivers()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
-        <option value="score">Highest TrustScore</option>
-        <option value="nearest">Nearest to Me</option>
-        <option value="rentals">Most Rentals</option>
-        <option value="newest">Newest first</option>
-      </select>
-      <select id="drvs-plat" onchange="filterDrivers()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
-        <option value="">All platforms</option>
-        <option value="Uber">Uber</option>
-        <option value="Bolt">Bolt</option>
-        <option value="inDrive">inDrive</option>
-      </select>
-      <select id="drvs-status" onchange="filterDrivers()" style="padding:9px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;cursor:pointer">
-        <option value="">All drivers</option>
-        <option value="available">Available only</option>
-      </select>
+    <div style="margin-bottom:14px">
+      <input id="drvs-search" type="text" placeholder="&#128269; Search name, place..." oninput="filterDrivers()" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:8px"/>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+        <select id="drvs-city" onchange="filterDrivers()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
+          <option value="">&#128205; All</option>
+          <option value="johannesburg">&#128205; JHB</option>
+          <option value="pretoria">&#128205; PTA</option>
+          <option value="cape town">&#128205; CPT</option>
+          <option value="durban">&#128205; DBN</option>
+          <option value="ekurhuleni">&#128205; Ekurhuleni</option>
+          <option value="soweto">&#128205; Soweto</option>
+          <option value="sandton">&#128205; Sandton</option>
+          <option value="midrand">&#128205; Midrand</option>
+          <option value="centurion">&#128205; Centurion</option>
+          <option value="port elizabeth">&#128205; Gqeberha</option>
+        </select>
+        <select id="drvs-sort" onchange="filterDrivers()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
+          <option value="score">&#11088; Score</option>
+          <option value="nearest">&#128205; Nearest</option>
+          <option value="rentals">&#128176; Rentals</option>
+          <option value="newest">&#128197; Newest</option>
+        </select>
+        <select id="drvs-plat" onchange="filterDrivers()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
+          <option value="">&#128241; All</option>
+          <option value="Uber">&#128241; Uber</option>
+          <option value="Bolt">&#128241; Bolt</option>
+          <option value="inDrive">&#128241; inDrive</option>
+        </select>
+        <select id="drvs-status" onchange="filterDrivers()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
+          <option value="">&#128663; All</option>
+          <option value="available">&#128663; Available</option>
+        </select>
+      </div>
     </div>
     <div id="drvs-grid" class="grid2"><div class="loading"><div class="spin"></div>Loading...</div></div>
     <div id="drvs-more-wrap" style="text-align:center;margin-top:18px;display:none">
@@ -2020,11 +2024,15 @@ function loadHome() {
   if(!_drvCache) fetchDrivers();
   fetchCars().then(function(cars){
     eid('h-cs').textContent='';
-    eid('h-cars').innerHTML=cars.slice(0,6).map(carHTML).join('')||empty('&#128663;','No cars listed yet.');
+    var showCars=cars.slice(0,4);
+    var carSignup=(!U&&cars.length>4)?'<div onclick="go(\'register\')" style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px"><div style="font-size:28px">&#128663;</div><div style="font-size:14px;font-weight:800;color:#fff">+'+(cars.length-4)+' more cars</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px">Sign up to browse all available vehicles</div><span style="background:var(--gm);color:#fff;font-size:12px;font-weight:700;padding:7px 18px;border-radius:999px">Sign Up Free &#8594;</span></div>':'';
+    eid('h-cars').innerHTML=showCars.map(carHTML).join('')+carSignup||empty('&#128663;','No cars listed yet.');
   }).catch(function(){eid('h-cars').innerHTML=empty('&#128663;','Could not load.');});
   fetchDrivers().then(function(drvs){
     eid('h-ds').textContent='';
-    eid('h-drvs').innerHTML=drvs.slice(0,8).map(drvHTML).join('')||empty('&#128100;','No drivers yet.');
+    var showDrvs=drvs.slice(0,4);
+    var drvSignup=(!U&&drvs.length>4)?'<div onclick="go(\'register\')" style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px"><div style="font-size:28px">&#128100;</div><div style="font-size:14px;font-weight:800;color:#fff">+'+(drvs.length-4)+' more drivers</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px">Sign up to see all verified drivers</div><span style="background:var(--gm);color:#fff;font-size:12px;font-weight:700;padding:7px 18px;border-radius:999px">Sign Up Free &#8594;</span></div>':'';
+    eid('h-drvs').innerHTML=showDrvs.map(drvHTML).join('')+drvSignup||empty('&#128100;','No drivers yet.');
   }).catch(function(){eid('h-drvs').innerHTML=empty('&#128100;','Could not load.');});
   // Load testimonials
   sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(6).then(function(res){
