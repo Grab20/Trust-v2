@@ -3595,6 +3595,7 @@ async function pOv() {
           }).join('')
         +'</div>';
         html+='</div>';
+      }
       // ── RECOMMENDED DRIVERS (top, prominent) ──
       html+='<div style="margin-bottom:20px">'
         +'<div class="shd">&#11088; Recommended Drivers Near You</div>'
@@ -3621,7 +3622,6 @@ async function pOv() {
       html+='<div class="stat-strip">'
         +statCard(pendingCount,'Pending',pendingCount>0?'#E8A520':'var(--muted)',pendingCount>0?'Review':'No pending','ap')
         +statCard(approvedCars,'My Cars','var(--g)','Tap to view','lc')
-      +'</div>';
       +'</div>';
     }
   }
