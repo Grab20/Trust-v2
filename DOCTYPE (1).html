@@ -2191,20 +2191,13 @@ async function _runCarsQuery(replace){
   var grid=eid('cars-grid');
   var moreWrap=eid('cars-more-wrap');
   if(replace){
-    var carsData=(!U&&replace&&_carsOffset===0)?res.data.slice(0,4):res.data;
-    var signupCard='';
-    if(!U&&replace&&_carsOffset===0&&res.total>4){
-      signupCard='<div onclick="go(\'register\')" style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px"><div style="font-size:28px">&#128663;</div><div style="font-size:14px;font-weight:800;color:#fff">+'+(res.total-4)+' more cars</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px">Sign up to browse all available vehicles</div><span style="background:var(--gm);color:#fff;font-size:12px;font-weight:700;padding:7px 18px;border-radius:999px">Sign Up Free →</span></div>';
-    }
-    var carsHtmlPage=carsData.map(carHTML).join('');
-    grid.innerHTML=carsHtmlPage?carsHtmlPage+signupCard:empty('&#128663;','No cars match your search.');
+    grid.innerHTML=res.data.length?res.data.map(carHTML).join(''):empty('&#128663;','No cars match your search.');
   } else {
-    if(!U){return;}
     if(res.data.length) grid.insertAdjacentHTML('beforeend',res.data.map(carHTML).join(''));
   }
-  _carsOffset+=(!U&&replace)?Math.min(res.data.length,4):res.data.length;
-  _carsHasMore=U?res.hasMore:false;
-  if(moreWrap) moreWrap.style.display=(U&&_carsHasMore)?'block':'none';
+  _carsOffset+=res.data.length;
+  _carsHasMore=res.hasMore;
+  if(moreWrap) moreWrap.style.display=_carsHasMore?'block':'none';
   var sub=eid('cars-sub');
   if(sub){
     var isFiltered=!!(  _carsQuery.q||_carsQuery.trans||_carsQuery.status||_carsQuery.city);
@@ -2250,20 +2243,13 @@ async function _runDriversQuery(replace){
       var sub=eid('drvs-sub');
       if(sub)sub.innerHTML='<span style="color:#dc2626;font-size:12px">&#128205; Set your profile location to sort by nearest.</span>';
     }
-    var drvsData=(!U&&_drvsOffset===0)?res.data.slice(0,4):res.data;
-    var drvSignupCard='';
-    if(!U&&_drvsOffset===0&&res.total>4){
-      drvSignupCard='<div onclick="go(\'register\')" style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px"><div style="font-size:28px">&#128100;</div><div style="font-size:14px;font-weight:800;color:#fff">+'+(res.total-4)+' more drivers</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px">Sign up to see all verified drivers</div><span style="background:var(--gm);color:#fff;font-size:12px;font-weight:700;padding:7px 18px;border-radius:999px">Sign Up Free →</span></div>';
-    }
-    var drvsHtmlPage=drvsData.map(drvHTML).join('');
-    grid.innerHTML=drvsHtmlPage?drvsHtmlPage+drvSignupCard:empty('&#128100;','No drivers match your search.');
+    grid.innerHTML=res.data.length?res.data.map(drvHTML).join(''):empty('&#128100;','No drivers match your search.');
   } else {
-    if(!U){return;}
     if(res.data.length) grid.insertAdjacentHTML('beforeend',res.data.map(drvHTML).join(''));
   }
-  _drvsOffset+=(!U&&replace)?Math.min(res.data.length,4):res.data.length;
-  _drvsHasMore=U?res.hasMore:false;
-  if(moreWrap) moreWrap.style.display=(U&&_drvsHasMore)?'block':'none';
+  _drvsOffset+=res.data.length;
+  _drvsHasMore=res.hasMore;
+  if(moreWrap) moreWrap.style.display=_drvsHasMore?'block':'none';
   var sub=eid('drvs-sub');
   if(sub&&(_drvsQuery.q||_drvsQuery.plat||_drvsQuery.status||_drvsQuery.city)){
     sub.innerHTML=res.total+' result'+(res.total!==1?'s':'');
@@ -4340,20 +4326,27 @@ async function ownerRemoveCarConfirm(btn){
   if(!sel){toast('Please select a reason.');return;}
   if(sel==='Other'&&!other){toast('Please describe the reason.');return;}
   var reason=sel==='Other'?other:sel+(other?' — '+other:'');
+  btn.disabled=true; btn.textContent='Checking...';
   // Block removal if car is part of an active match
-  var chk=await sb.from('applications').select('id').eq('car_id',cid).eq('status','approved').is('unmatched_at',null);
-  if(chk.error){toast('Could not verify car status. Please try again.');return;}
-  if(chk.data&&chk.data.length){
+  var chk=await sb.from('applications').select('id',{count:'exact',head:true}).eq('car_id',cid).eq('status','approved').is('unmatched_at',null);
+  if(chk.error){
+    btn.disabled=false; btn.textContent='Remove Vehicle';
+    toast('Could not verify car status: '+(chk.error.message||'unknown error'));
+    return;
+  }
+  if((chk.count||0)>0){
+    btn.disabled=false; btn.textContent='Remove Vehicle';
     toast('Cannot remove — this car is currently matched with a driver. Unmatch first.');
     eid('remove-car-modal').remove();
     return;
   }
-  btn.disabled=true; btn.textContent='Removing...';
+  btn.textContent='Removing...';
   var r=await sb.from('cars').update({status:'removed',removed_at:new Date().toISOString(),removed_by:U.id,removal_reason:reason}).eq('id',cid).eq('owner_id',U.id);
-  if(r.error){toast('Error: '+r.error.message);btn.disabled=false;btn.textContent='Remove Vehicle';return;}
-  eid('remove-car-modal').remove();
+  if(r.error){toast('Error removing car: '+r.error.message);btn.disabled=false;btn.textContent='Remove Vehicle';return;}
+  var modal=eid('remove-car-modal');
+  if(modal)modal.remove();
   _carCache=null;
-  toast(cmake+' removed.');
+  toast(cmake+' removed successfully.');
   pLc();
 }
 function toggleCarEdit(cid){
