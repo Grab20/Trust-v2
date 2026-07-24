@@ -5718,40 +5718,45 @@ function adovDrawSparkline(id,vals,color){
 
 function adovDraw7Day(id,labels,logins,apps){
   var c=document.getElementById(id);if(!c)return;
-  var W=c.offsetWidth||300,H=130;
+  var W=c.offsetWidth||300,H=148;
   c.width=W*2;c.height=H*2;
   var ctx=c.getContext('2d');ctx.scale(2,2);
-  var pL=32,pR=12,pT=10,pB=26;
+  var pL=32,pR=12,pT=22,pB=8;
   var w=W-pL-pR,h=H-pT-pB;
   var maxV=Math.max.apply(null,logins.concat(apps))||1;
   function xi(i){return pL+(i/(labels.length-1||1))*w;}
   function yv(v){return pT+h-(v/maxV)*h;}
-  // Grid lines
-  [0,0.25,0.5,0.75,1].forEach(function(f){
+  [0,0.5,1].forEach(function(f){
     var y=pT+h*(1-f);
     ctx.beginPath();ctx.moveTo(pL,y);ctx.lineTo(pL+w,y);
     ctx.strokeStyle='rgba(0,0,0,.06)';ctx.lineWidth=0.5;ctx.stroke();
-    if(f>0){
-      ctx.fillStyle='#9ca3af';ctx.font='8px system-ui,sans-serif';
-      ctx.textAlign='right';ctx.fillText(Math.round(maxV*f),pL-4,y+3);
-    }
+    if(f>0){ctx.fillStyle='#9ca3af';ctx.font='8px system-ui,sans-serif';ctx.textAlign='right';ctx.fillText(Math.round(maxV*f),pL-4,y+3);}
   });
-  // Series: logins
   [[logins,'#1a5c28'],[apps,'#d97706']].forEach(function(s){
     var data=s[0],col=s[1];
     ctx.beginPath();ctx.moveTo(xi(0),yv(data[0]));
     data.forEach(function(v,i){if(i>0)ctx.lineTo(xi(i),yv(v));});
     ctx.lineTo(xi(data.length-1),pT+h);ctx.lineTo(xi(0),pT+h);ctx.closePath();
-    ctx.fillStyle=col+'1a';ctx.fill();
+    ctx.fillStyle=col+'18';ctx.fill();
     ctx.beginPath();ctx.moveTo(xi(0),yv(data[0]));
     data.forEach(function(v,i){if(i>0)ctx.lineTo(xi(i),yv(v));});
     ctx.strokeStyle=col;ctx.lineWidth=2;ctx.lineJoin='round';ctx.stroke();
-    ctx.beginPath();ctx.arc(xi(data.length-1),yv(data[data.length-1]),3,0,Math.PI*2);
-    ctx.fillStyle=col;ctx.fill();
+    data.forEach(function(v,i){ctx.beginPath();ctx.arc(xi(i),yv(v),2.5,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();});
   });
-  // Day labels
-  ctx.fillStyle='#9ca3af';ctx.font='8px system-ui,sans-serif';ctx.textAlign='center';
-  labels.forEach(function(l,i){ctx.fillText(l,xi(i),H-5);});
+  // Value labels — logins above point, apps below (avoid overlap)
+  ctx.font='bold 8px system-ui,sans-serif';ctx.textAlign='center';
+  logins.forEach(function(v,i){
+    if(v===0)return;ctx.fillStyle='#1a5c28';
+    var y=yv(v)-6;if(y<pT+6)y=yv(v)+13;
+    ctx.fillText(v,xi(i),y);
+  });
+  apps.forEach(function(v,i){
+    if(v===0)return;ctx.fillStyle='#b45309';
+    var ly=yv(logins[i]||0),ay=yv(v);
+    var y=ay+12;if(y>pT+h+4)y=ay-5;
+    if(Math.abs(ay-ly)<16)y=ay+13;
+    ctx.fillText(v,xi(i),y);
+  });
 }
 
 function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
@@ -5765,8 +5770,9 @@ function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
   logins.forEach(function(l){if(!lastLogin[l.user_id]||l.created_at>lastLogin[l.user_id])lastLogin[l.user_id]=l.created_at;});
 
   var days7=[];
-  for(var i=6;i>=0;i--){var dd=new Date(Date.now()-i*864e5);days7.push({date:dd.toISOString().slice(0,10),label:DAYS[dd.getDay()]});}
+  for(var i=6;i>=0;i--){var dd=new Date(Date.now()-i*864e5);days7.push({date:dd.toISOString().slice(0,10),label:DAYS[dd.getDay()],full:dd.toLocaleDateString('en-ZA',{weekday:'long',day:'numeric',month:'short'})});}
   var today=days7[days7.length-1].date;
+  var week7ago=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
   var day30ago=new Date(Date.now()-30*864e5).toISOString().slice(0,10);
 
   var dailyLogins=days7.map(function(day){
@@ -5774,6 +5780,21 @@ function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
   });
   var dailyApps=days7.map(function(day){
     return apps.filter(function(a){return a.created_at&&a.created_at.slice(0,10)===day.date;}).length;
+  });
+
+  // ── DETAILED DAY DATA for click-through ──
+  var dailyLoginDetails=days7.map(function(day){
+    var dayLogins=logins.filter(function(l){return l.created_at&&l.created_at.slice(0,10)===day.date;});
+    var umap={};
+    dayLogins.forEach(function(l){
+      if(!umap[l.user_id])umap[l.user_id]={u:pm[l.user_id]||{},role:l.role,times:[]};
+      umap[l.user_id].times.push(l.created_at);
+    });
+    return Object.values(umap).sort(function(a,b){return a.times[0]<b.times[0]?-1:1;});
+  });
+  var dailyAppDetails=days7.map(function(day){
+    return apps.filter(function(a){return a.created_at&&a.created_at.slice(0,10)===day.date;})
+      .map(function(a){return{driver:pm[a.driver_id]||{},owner:pm[a.owner_id]||{},status:a.status,initiated_by:a.initiated_by};});
   });
 
   var todayLoginsVal=dailyLogins[dailyLogins.length-1];
@@ -5784,35 +5805,98 @@ function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
   var confirmedUsers=users.filter(function(u){return u.email_confirmed;}).length;
   var submitted=(driverProfiles||[]).filter(function(d){return d.status!=='incomplete';}).length;
   var approvedDrvCount=(driverProfiles||[]).filter(function(d){return d.status==='approved';}).length;
-  var week7ago=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
   var activeIds=new Set(logins.filter(function(l){return l.created_at&&l.created_at.slice(0,10)>=week7ago;}).map(function(l){return l.user_id;}));
   var activeApprovedCount=(driverProfiles||[]).filter(function(d){return d.status==='approved'&&activeIds.has(d.user_id);}).length;
 
+  // ── LOCATION DATA with detail lists ──
   var locMap={};
   users.forEach(function(u){
     var loc=(u.location||'').trim();if(!loc)return;
-    var key=loc.toLowerCase();
-    if(!locMap[key])locMap[key]={label:loc,drivers:0,cars:0};
-    if(u.role==='driver'||u.role==='both')locMap[key].drivers++;
+    var key=loc.toLowerCase().replace(/\s+/g,'_');
+    if(!locMap[key])locMap[key]={label:loc,drivers:[],cars:[]};
+    if(u.role==='driver'||u.role==='both')locMap[key].drivers.push(u);
   });
   (cars||[]).forEach(function(c){
     var loc=(c.location||'').trim();if(!loc)return;
-    var key=loc.toLowerCase();
-    if(!locMap[key])locMap[key]={label:loc,drivers:0,cars:0};
-    locMap[key].cars++;
+    var key=loc.toLowerCase().replace(/\s+/g,'_');
+    if(!locMap[key])locMap[key]={label:loc,drivers:[],cars:[]};
+    locMap[key].cars.push(c);
   });
-  var topCities=Object.values(locMap).sort(function(a,b){return(b.drivers+b.cars)-(a.drivers+a.cars);}).slice(0,8);
-  var cityMax=topCities.length?(topCities[0].drivers+topCities[0].cars):1;
+  var topCities=Object.entries(locMap).map(function(e){return Object.assign({key:e[0]},e[1]);})
+    .sort(function(a,b){return(b.drivers.length+b.cars.length)-(a.drivers.length+a.cars.length);}).slice(0,8);
+  var cityMax=topCities.length?(topCities[0].drivers.length+topCities[0].cars.length):1;
 
   var approvedDrvIds=new Set((driverProfiles||[]).filter(function(d){return d.status==='approved';}).map(function(d){return d.user_id;}));
   var inactDrvs=users.filter(function(u){return(u.role==='driver'||u.role==='both')&&approvedDrvIds.has(u.id)&&!activeIds.has(u.id);});
   var inactOwns=users.filter(function(u){return(u.role==='owner'||u.role==='both')&&u.admin_status==='approved'&&!activeIds.has(u.id);});
 
-  window._adovChartData={days7:days7.map(function(d){return d.label;}),dailyLogins:dailyLogins,dailyApps:dailyApps};
+  // Store data for click handlers
+  window._adovChartData={
+    days7:days7.map(function(d){return d.label;}),
+    days7full:days7,
+    dailyLogins:dailyLogins,
+    dailyApps:dailyApps,
+    dailyLoginDetails:dailyLoginDetails,
+    dailyAppDetails:dailyAppDetails
+  };
+
+  // ── CLICK HANDLERS ──
+  window.adovShowDayDetail=function(idx){
+    var panel=document.getElementById('adov-day-panel');if(!panel)return;
+    var cd=window._adovChartData;
+    var day=cd.days7full[idx];
+    var ld=cd.dailyLoginDetails[idx]||[];
+    var ad=cd.dailyAppDetails[idx]||[];
+    var h2='<div style="padding:14px 16px;border-top:1.5px solid var(--border)">'
+      +'<div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:12px">'+day.full+'</div>';
+    if(ld.length){
+      h2+='<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Logins ('+ld.length+')</div>';
+      ld.forEach(function(e){
+        var roleCl=e.role==='driver'?'background:#d4edd8;color:#1a5c28':'background:#dbeafe;color:#0369a1';
+        var times=e.times.map(function(t){return new Date(t).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'});}).join(', ');
+        h2+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--cream)">'
+          +'<span style="font-size:12px;font-weight:600;flex:1">'+(e.u.full_name||'Unknown')+'</span>'
+          +'<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;'+roleCl+'">'+e.role+'</span>'
+          +(e.times.length>1?'<span style="font-size:10px;font-weight:700;color:var(--muted)">&times;'+e.times.length+'</span>':'')
+          +'<span style="font-size:10px;color:var(--muted)">'+times+'</span>'
+          +'</div>';
+      });
+    } else {
+      h2+='<div style="font-size:12px;color:var(--muted);margin-bottom:10px">No logins this day.</div>';
+    }
+    if(ad.length){
+      h2+='<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:12px;margin-bottom:8px">Applications ('+ad.length+')</div>';
+      ad.forEach(function(a){
+        var sc=a.status==='approved'?'#16a34a':a.status==='rejected'?'#dc2626':'#d97706';
+        h2+='<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--cream);font-size:12px">'
+          +'<span style="font-weight:600">'+(a.driver.full_name||'?')+'</span>'
+          +'<span style="color:var(--muted)">&#8594;</span>'
+          +'<span style="font-weight:600">'+(a.owner.full_name||'?')+'</span>'
+          +'<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:'+sc+'22;color:'+sc+';font-weight:700;margin-left:auto">'+a.status+'</span>'
+          +'</div>';
+      });
+    }
+    h2+='</div>';
+    // Highlight selected chip
+    document.querySelectorAll('.adov-day-chip').forEach(function(el,i){
+      el.style.background=i===idx?'#1a5c28':'var(--cream)';
+      el.style.color=i===idx?'#fff':'var(--text)';
+      el.style.borderColor=i===idx?'#1a5c28':'var(--border)';
+    });
+    panel.innerHTML=h2;panel.style.display='block';
+  };
+
+  window.adovToggleCity=function(key){
+    var d=document.getElementById('adov-city-'+key);if(!d)return;
+    d.style.display=d.style.display==='none'?'block':'none';
+    var btn=document.getElementById('adov-citybtn-'+key);
+    if(btn)btn.textContent=d.style.display==='none'?'&#9660;':'&#9650;';
+  };
 
   var delta=todayLoginsVal-yesterdayLoginsVal;
   var deltaStr=delta>0?'+'+delta+' vs yesterday':delta<0?delta+' vs yesterday':'same as yesterday';
   var deltaColor=delta>0?'#16a34a':delta<0?'#dc2626':'#6b7280';
+  var ownerApprovedCount=users.filter(function(u){return(u.role==='owner'||u.role==='both')&&u.admin_status==='approved';}).length;
 
   var html='';
 
@@ -5821,7 +5905,6 @@ function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
     +'<div style="font-family:\'Playfair Display\',serif;font-size:18px;font-weight:800;color:var(--g)">Today\'s Pulse</div>'
     +'<div style="font-size:11px;color:var(--muted)">'+new Date().toLocaleDateString('en-ZA',{weekday:'long',day:'numeric',month:'long'})+'</div>'
     +'</div>';
-
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px">';
   function kpi(val,label,subStr,subCol,sparkId){
     return '<div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:14px 16px">'
@@ -5833,12 +5916,11 @@ function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
   }
   html+=kpi(todayLoginsVal,'Logins Today',deltaStr,deltaColor,'spark-logins');
   html+=kpi(todayAppsVal,'Applications Today','this calendar day',null,'spark-apps');
-  var ownerApprovedCount=users.filter(function(u){return(u.role==='owner'||u.role==='both')&&u.admin_status==='approved';}).length;
   html+=kpi(approvedDrvCount,'Active Drivers',approvedDrvCount>0?'platform-approved':'none yet',approvedDrvCount>0?'#16a34a':null,null);
   html+=kpi(ownerApprovedCount,'Active Owners',ownerApprovedCount>0?'platform-approved':'none yet',ownerApprovedCount>0?'#16a34a':null,null);
   html+='</div>';
 
-  // ── 7-DAY TREND CHART ──
+  // ── 7-DAY TREND CHART + clickable day chips ──
   html+='<div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
     +'<div style="font-size:13px;font-weight:700;color:var(--g)">7-Day Activity</div>'
@@ -5846,7 +5928,19 @@ function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
     +'<span><span style="display:inline-block;width:10px;height:3px;background:#1a5c28;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Logins</span>'
     +'<span><span style="display:inline-block;width:10px;height:3px;background:#d97706;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Applications</span>'
     +'</div></div>'
-    +'<canvas id="chart-7day" style="width:100%;height:130px;display:block"></canvas>'
+    +'<canvas id="chart-7day" style="width:100%;height:148px;display:block"></canvas>'
+    // Day chips
+    +'<div style="display:flex;gap:4px;margin-top:10px">';
+  days7.forEach(function(day,i){
+    html+='<button class="adov-day-chip" onclick="adovShowDayDetail('+i+')" '
+      +'style="flex:1;min-width:0;background:var(--cream);border:1.5px solid var(--border);border-radius:8px;padding:5px 2px;cursor:pointer;text-align:center;font-family:inherit;transition:background .15s">'
+      +'<div style="font-size:9px;font-weight:700;color:inherit;opacity:.7">'+day.label+'</div>'
+      +'<div style="font-size:12px;font-weight:900;color:#1a5c28;font-variant-numeric:tabular-nums">'+dailyLogins[i]+'</div>'
+      +'<div style="font-size:10px;font-weight:700;color:#d97706;font-variant-numeric:tabular-nums">'+dailyApps[i]+'</div>'
+      +'</button>';
+  });
+  html+='</div>'
+    +'<div id="adov-day-panel" style="display:none;border-radius:10px;margin-top:8px;background:var(--cream)"></div>'
     +'</div>';
 
   // ── DRIVER FUNNEL ──
@@ -5860,7 +5954,7 @@ function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
   html+='<div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px">'
     +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:14px">&#128204; Driver Funnel — Where Are Users Dropping Off?</div>';
   funnelSteps.forEach(function(step,i){
-    var pct=i===0?100:Math.round((step.val/funnelSteps[0].val||0)*100);
+    var pct=i===0?100:Math.round((funnelSteps[0].val?step.val/funnelSteps[0].val:0)*100);
     var barW=Math.max(4,pct);
     var conv=i>0&&funnelSteps[i-1].val>0?Math.round((step.val/funnelSteps[i-1].val)*100):100;
     html+='<div style="margin-bottom:10px">'
@@ -5876,60 +5970,83 @@ function buildAnalyticsTables(logins,views,apps,users,driverProfiles,cars){
   });
   html+='</div>';
 
-  // ── CITY BREAKDOWN ──
+  // ── GEOGRAPHIC ACTIVITY — clickable ──
   if(topCities.length){
     html+='<div style="background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:16px;margin-bottom:20px">'
-      +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:14px">&#128205; Geographic Activity</div>';
+      +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#128205; Geographic Activity</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:14px">Tap a city to see who\'s there</div>';
     topCities.forEach(function(city){
-      var drvPct=Math.round((city.drivers/cityMax)*100);
-      var carPct=Math.round((city.cars/cityMax)*100);
-      html+='<div style="margin-bottom:11px">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
+      var drvPct=Math.round((city.drivers.length/cityMax)*100);
+      var carPct=Math.round((city.cars.length/cityMax)*100);
+      var cityKey=city.key;
+      // Pre-render city detail
+      var drvDetail=city.drivers.map(function(u){
+        return '<div style="font-size:12px;font-weight:600;color:var(--g);padding:4px 0;border-bottom:1px solid var(--cream)">'
+          +esc(u.full_name||'Unknown')
+          +'<span style="font-size:9px;background:#d4edd8;color:#1a5c28;padding:1px 6px;border-radius:999px;margin-left:6px;font-weight:700">Driver</span>'
+          +'</div>';
+      }).join('')||'<div style="font-size:12px;color:var(--muted)">None</div>';
+      var carDetail=city.cars.map(function(c){
+        var owner=pm[c.owner_id]||{};
+        return '<div style="font-size:12px;color:var(--g);padding:4px 0;border-bottom:1px solid var(--cream)">'
+          +esc([c.year,c.make,c.model].filter(Boolean).join(' '))
+          +'<span style="font-size:10px;color:var(--muted);margin-left:6px">('+esc(owner.full_name||'?')+')</span>'
+          +'</div>';
+      }).join('')||'<div style="font-size:12px;color:var(--muted)">None</div>';
+
+      html+='<div style="margin-bottom:10px">'
+        +'<div onclick="adovToggleCity(\''+cityKey+'\')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;padding:4px 2px;border-radius:6px;-webkit-tap-highlight-color:transparent">'
         +'<div style="font-size:12px;font-weight:600;color:var(--text)">'+esc(city.label)+'</div>'
-        +'<div style="font-size:11px;color:var(--muted)">'
-        +'<span style="color:var(--gm);font-weight:700">'+city.drivers+' drv</span>'
-        +' &middot; <span style="color:#0369a1;font-weight:700">'+city.cars+' cars</span>'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<span style="color:var(--gm);font-weight:700;font-size:11px">'+city.drivers.length+' drv</span>'
+        +' <span style="color:var(--muted);font-size:10px">&middot;</span>'
+        +' <span style="color:#0369a1;font-weight:700;font-size:11px">'+city.cars.length+' cars</span>'
+        +'<span id="adov-citybtn-'+cityKey+'" style="font-size:10px;color:var(--muted)">&#9660;</span>'
         +'</div></div>'
         +'<div style="height:5px;background:var(--cream);border-radius:3px;overflow:hidden;margin-bottom:2px">'
         +'<div style="height:100%;width:'+drvPct+'%;background:#1a5c28;border-radius:3px"></div>'
         +'</div>'
         +'<div style="height:5px;background:var(--cream);border-radius:3px;overflow:hidden">'
         +'<div style="height:100%;width:'+carPct+'%;background:#0369a1;border-radius:3px"></div>'
-        +'</div></div>';
+        +'</div>'
+        +'<div id="adov-city-'+cityKey+'" style="display:none;margin-top:8px;padding:10px 12px;background:var(--cream);border-radius:10px">'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
+        +'<div><div style="font-size:10px;font-weight:700;color:#1a5c28;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Drivers</div>'+drvDetail+'</div>'
+        +'<div><div style="font-size:10px;font-weight:700;color:#0369a1;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Cars</div>'+carDetail+'</div>'
+        +'</div></div>'
+        +'</div>';
     });
-    html+='<div style="display:flex;gap:16px;margin-top:8px;font-size:10px;color:var(--muted)">'
+    html+='<div style="display:flex;gap:16px;margin-top:4px;font-size:10px;color:var(--muted)">'
       +'<span><span style="display:inline-block;width:10px;height:4px;background:#1a5c28;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Drivers</span>'
       +'<span><span style="display:inline-block;width:10px;height:4px;background:#0369a1;border-radius:2px;margin-right:4px;vertical-align:middle"></span>Cars</span>'
       +'</div></div>';
   }
 
-  // ── INACTIVE USERS ──
+  // ── INACTIVE USERS — role badge + date colors ──
   if(inactDrvs.length||inactOwns.length){
+    var allInact=inactDrvs.map(function(u){return{u:u,role:'Driver',roleStyle:'background:#d4edd8;color:#1a5c28'};})
+      .concat(inactOwns.map(function(u){return{u:u,role:'Owner',roleStyle:'background:#dbeafe;color:#0369a1'};}));
+    allInact.sort(function(a,b){
+      var la=lastLogin[a.u.id]||'',lb=lastLogin[b.u.id]||'';
+      if(!la&&!lb)return 0;if(!la)return 1;if(!lb)return-1;return la<lb?1:-1;
+    });
     html+='<details style="border:1.5px solid #E8A520;border-radius:14px;overflow:hidden;margin-bottom:20px">'
       +'<summary style="padding:14px 16px;background:#fff8e1;cursor:pointer;font-size:13px;font-weight:700;color:#7a5200;list-style:none;display:flex;justify-content:space-between;align-items:center;user-select:none">'
-      +'<span>&#9889; Inactive Users — Not Logged In (30+ Days)</span>'
-      +'<span style="background:#E8A520;color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px">'+(inactDrvs.length+inactOwns.length)+'</span></summary>'
-      +'<div style="padding:14px 16px">';
-    if(inactDrvs.length){
-      html+='<div style="font-size:10px;font-weight:700;color:var(--gm);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Drivers ('+inactDrvs.length+')</div>';
-      inactDrvs.forEach(function(u){
-        var ll=lastLogin[u.id];
-        html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">'
-          +'<span style="font-weight:600">'+esc(u.full_name||'Unknown')+'</span>'
-          +'<span style="color:#dc2626;font-size:11px">'+(ll?new Date(ll).toLocaleDateString('en-ZA',{day:'2-digit',month:'short'}):'Never')+'</span>'
-          +'</div>';
-      });
-    }
-    if(inactOwns.length){
-      html+='<div style="font-size:10px;font-weight:700;color:#0369a1;margin-top:12px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Owners ('+inactOwns.length+')</div>';
-      inactOwns.forEach(function(u){
-        var ll=lastLogin[u.id];
-        html+='<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px">'
-          +'<span style="font-weight:600">'+esc(u.full_name||'Unknown')+'</span>'
-          +'<span style="color:#dc2626;font-size:11px">'+(ll?new Date(ll).toLocaleDateString('en-ZA',{day:'2-digit',month:'short'}):'Never')+'</span>'
-          +'</div>';
-      });
-    }
+      +'<span>&#9889; Inactive — No Login in 30+ Days</span>'
+      +'<span style="background:#E8A520;color:#fff;font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px">'+allInact.length+'</span></summary>'
+      +'<div style="padding:10px 16px">';
+    allInact.forEach(function(item){
+      var ll=lastLogin[item.u.id];
+      var neverLogged=!ll;
+      var dateHtml=neverLogged
+        ?'<span style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;letter-spacing:.2px">NEVER</span>'
+        :'<span style="background:#fff8e1;border:1px solid #fcd34d;color:#b45309;font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px">'+new Date(ll).toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'2-digit'})+'</span>';
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<span style="font-size:12px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(item.u.full_name||'Unknown')+'</span>'
+        +'<span style="font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;flex-shrink:0;'+item.roleStyle+'">'+item.role+'</span>'
+        +dateHtml
+        +'</div>';
+    });
     html+='</div></details>';
   }
 
