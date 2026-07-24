@@ -268,14 +268,50 @@ nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;flex-dire
   .auth-box{padding:20px 16px}
 }
 
-/* ── Nav tabs ── */
-.ntab{flex-shrink:0;padding:8px 14px;font-size:12px;font-weight:600;color:rgba(255,255,255,.6);cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;-webkit-tap-highlight-color:transparent}
-.ntab:hover,.ntab:active{color:#fff}
-.ntab.on{color:#fff;border-bottom-color:var(--gm)}
+/* ── Bottom tab bar ── */
+#bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:110;background:#fff;border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:0 -2px 12px rgba(0,0,0,.07)}
+.bntab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 6px;font-size:10px;font-weight:600;color:var(--muted);cursor:pointer;gap:3px;-webkit-tap-highlight-color:transparent;transition:color .15s;border:none;background:none;font-family:inherit;min-height:54px}
+.bntab .bnt-icon{font-size:20px;line-height:1}
+.bntab.on{color:var(--gm)}
+.bntab.on .bnt-icon{filter:drop-shadow(0 0 4px rgba(26,92,40,.25))}
+/* ── Top nav slim ── */
+#top-nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:52px;flex-shrink:0}
+/* ── Hamburger drawer ── */
+.hmenu-drawer{display:none;position:fixed;inset:0;z-index:200}
+.hmenu-drawer.on{display:block}
+.hmenu-bg{position:absolute;inset:0;background:rgba(0,0,0,.5)}
+.hmenu-panel{position:absolute;right:0;top:0;bottom:0;width:260px;background:var(--g);display:flex;flex-direction:column;overflow-y:auto;transform:translateX(100%);transition:transform .25s ease}
+.hmenu-drawer.on .hmenu-panel{transform:translateX(0)}
+.hmenu-item{display:flex;align-items:center;gap:10px;padding:13px 20px;font-size:14px;font-weight:500;color:rgba(255,255,255,.7);cursor:pointer;border:none;background:none;font-family:inherit;width:100%;text-align:left}
+.hmenu-item:hover,.hmenu-item.on{background:rgba(255,255,255,.09);color:#fff}
+.hmenu-item span:first-child{font-size:17px;width:24px;text-align:center}
+.hmenu-sep{height:1px;background:rgba(255,255,255,.1);margin:6px 14px}
+/* ── Home hero (compact) ── */
+.hero-compact{background:linear-gradient(155deg,#1a2e1a 0%,#2d5a27 60%,#1a3d1a 100%);padding:28px 16px 24px;text-align:center}
+.hero-compact h1{font-family:'Playfair Display',serif;font-size:clamp(22px,5.5vw,36px);line-height:1.2;color:#fff;margin-bottom:8px;font-weight:800}
+.hero-compact p{font-size:13px;color:rgba(255,255,255,.75);margin-bottom:18px}
+/* ── Home search bar ── */
+.home-search-bar{display:flex;gap:8px;align-items:center;background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 4px 18px rgba(0,0,0,.15);margin:0 4px 0}
+.home-search-bar input{flex:1;border:none;outline:none;font-size:14px;font-family:inherit;background:transparent;color:var(--text)}
+.home-search-bar input::placeholder{color:var(--muted)}
+/* ── Trust strip ── */
+.trust-strip{display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:12px 16px;background:#fff;border-bottom:1px solid var(--border)}
+.trust-strip::-webkit-scrollbar{display:none}
+.tstrip-item{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:6px 12px;border-right:1px solid var(--border);font-size:12px;font-weight:600;color:var(--g)}
+.tstrip-item:last-child{border-right:none}
+.tstrip-item .ti-val{font-size:16px;font-weight:800;color:var(--gm)}
+/* ── Bottom filter sheet ── */
+#filter-sheet{display:none;position:fixed;inset:0;z-index:300}
+#filter-sheet.on{display:block}
+#filter-sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.5)}
+#filter-sheet-panel{position:absolute;bottom:0;left:0;right:0;background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;max-height:75vh;overflow-y:auto}
+#filter-sheet-panel h4{font-size:15px;font-weight:700;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+/* ── Body padding for bottom nav ── */
+body{padding-bottom:60px}
+/* Remove old top nav tab row */
+.nav-desktop-links,.nav-desktop-only,.mob-menu-btn{display:none!important}
 /* scrollbar hide */
 nav div::-webkit-scrollbar{display:none}
-/* Remove old helpers */
-.nav-desktop-links,.nav-desktop-only,.mob-menu-btn{display:none!important}
 /* Mobile layout fixes */
 @media(max-width:640px){
   .grid2{grid-template-columns:1fr!important}
@@ -308,85 +344,186 @@ nav div::-webkit-scrollbar{display:none}
   </div>
 </div>
 
-<nav style="flex-direction:column;height:auto;padding:0;position:sticky;top:0;z-index:100">
-  <!-- TOP ROW: logo + auth buttons -->
-  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:50px;flex-shrink:0">
+<!-- TOP NAV -->
+<div id="top-nav">
+  <div style="display:flex;align-items:center;gap:10px">
+    <button onclick="openHMenu()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:4px;line-height:1;display:flex;align-items:center">&#9776;</button>
     <span class="logo" onclick="go('home')" style="font-size:clamp(15px,4vw,20px)">TrustMate</span>
-    <span id="nav-auth" style="display:none;align-items:center;gap:6px">
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="nav-auth" style="display:none;align-items:center;gap:8px">
       <span class="nl" onclick="go('login')" style="font-size:13px;white-space:nowrap">Sign In</span>
-      <button class="btn btn-gm btn-sm" onclick="go('register')" style="font-size:12px;padding:6px 12px;white-space:nowrap">Register</button>
+      <button class="btn btn-gm btn-sm" onclick="go('register')" style="font-size:12px;padding:6px 14px">Join Now</button>
     </span>
     <span id="nav-user" style="display:none;align-items:center;gap:6px">
-      <span class="nl" onclick="go('dashboard')" style="font-size:13px">Dashboard</span>
       <span class="nl" id="nav-adm" style="display:none;font-size:13px" onclick="go('admin')">Admin</span>
-      <button class="btn btn-out btn-sm" onclick="doSignOut()" style="font-size:12px;padding:6px 10px">Sign out</button>
+      <button class="btn btn-gm btn-sm" onclick="go('dashboard')" style="font-size:12px;padding:6px 14px">Dashboard</button>
     </span>
   </div>
-  <!-- BOTTOM ROW: scrollable tabs — always visible -->
-  <div style="display:flex;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;border-top:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.15);scrollbar-width:none;flex-shrink:0">
-    <span class="ntab" id="nt-home"       onclick="go('home')">Home</span>
-    <span class="ntab" id="nt-drivers"    onclick="go('drivers')">Drivers</span>
-    <span class="ntab" id="nt-cars"       onclick="go('cars')">Cars</span>
-    <span class="ntab" id="nt-reviews"    onclick="go('reviews')">&#11088; Reviews</span>
-    <span class="ntab" id="nt-how"        onclick="go('how-it-works')">How It Works</span>
-    <span class="ntab" id="nt-fordrivers" onclick="go('for-drivers')">For Drivers</span>
-    <span class="ntab" id="nt-contact"    onclick="go('contact')">Contact</span>
+</div>
+
+<!-- HAMBURGER DRAWER -->
+<div class="hmenu-drawer" id="hmenu">
+  <div class="hmenu-bg" onclick="closeHMenu()"></div>
+  <div class="hmenu-panel">
+    <div style="padding:18px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.1)">
+      <span class="logo" style="font-size:17px">TrustMate</span>
+      <button onclick="closeHMenu()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:22px;cursor:pointer;padding:4px;line-height:1">&#x2715;</button>
+    </div>
+    <button class="hmenu-item" id="hm-home"       onclick="closeHMenu();go('home')"><span>&#127968;</span> Home</button>
+    <button class="hmenu-item" id="hm-cars"        onclick="closeHMenu();go('cars')"><span>&#128663;</span> Browse Cars</button>
+    <button class="hmenu-item" id="hm-drivers"     onclick="closeHMenu();go('drivers')"><span>&#128100;</span> Browse Drivers</button>
+    <button class="hmenu-item" id="hm-reviews"     onclick="closeHMenu();go('reviews')"><span>&#11088;</span> Reviews</button>
+    <button class="hmenu-item" id="hm-how"         onclick="closeHMenu();go('how-it-works')"><span>&#10067;</span> How It Works</button>
+    <button class="hmenu-item" id="hm-fordrivers"  onclick="closeHMenu();go('for-drivers')"><span>&#128666;</span> For Drivers</button>
+    <button class="hmenu-item" id="hm-contact"     onclick="closeHMenu();go('contact')"><span>&#128236;</span> Contact</button>
+    <div class="hmenu-sep"></div>
+    <div id="hm-auth-section">
+      <button class="hmenu-item" id="hm-login"     onclick="closeHMenu();go('login')"><span>&#128274;</span> Sign In</button>
+      <button class="hmenu-item" id="hm-register"  onclick="closeHMenu();go('register')"><span>&#127881;</span> Join Now</button>
+    </div>
+    <div id="hm-user-section" style="display:none">
+      <button class="hmenu-item" id="hm-dash"      onclick="closeHMenu();go('dashboard')"><span>&#128202;</span> Dashboard</button>
+      <button class="hmenu-item" id="hm-admin"     onclick="closeHMenu();go('admin')" style="display:none"><span>&#9881;&#65039;</span> Admin</button>
+      <button class="hmenu-item"                   onclick="closeHMenu();doSignOut()"><span>&#128682;</span> Sign Out</button>
+    </div>
   </div>
-</nav>
+</div>
+
+<!-- BOTTOM TAB BAR -->
+<div id="bottom-nav">
+  <button class="bntab on" id="bn-home" onclick="go('home')">
+    <span class="bnt-icon">&#127968;</span>Home
+  </button>
+  <button class="bntab" id="bn-browse" onclick="go('cars')">
+    <span class="bnt-icon">&#128269;</span>Browse
+  </button>
+  <button class="bntab" id="bn-msgs" onclick="U?go('dashboard'):go('login')">
+    <span class="bnt-icon">&#128172;</span>Messages
+  </button>
+  <button class="bntab" id="bn-profile" onclick="U?go('dashboard'):go('login')">
+    <span class="bnt-icon">&#128100;</span>Profile
+  </button>
+</div>
+
+<!-- FILTER BOTTOM SHEET -->
+<div id="filter-sheet">
+  <div id="filter-sheet-bg" onclick="closeFilterSheet()"></div>
+  <div id="filter-sheet-panel">
+    <h4>Filters <button onclick="closeFilterSheet()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1">&#x2715;</button></h4>
+    <div class="fg"><label>Location</label>
+      <select id="hs-city" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">
+        <option value="">All locations</option>
+        <option value="johannesburg">Johannesburg</option>
+        <option value="pretoria">Pretoria</option>
+        <option value="cape town">Cape Town</option>
+        <option value="durban">Durban</option>
+        <option value="ekurhuleni">Ekurhuleni</option>
+        <option value="soweto">Soweto</option>
+        <option value="sandton">Sandton</option>
+        <option value="midrand">Midrand</option>
+        <option value="centurion">Centurion</option>
+        <option value="port elizabeth">Gqeberha / PE</option>
+      </select>
+    </div>
+    <div class="fg"><label>Transmission</label>
+      <select id="hs-trans" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">
+        <option value="">Any transmission</option>
+        <option value="Manual">Manual</option>
+        <option value="Automatic">Automatic</option>
+      </select>
+    </div>
+    <div class="fg"><label>Sort by</label>
+      <select id="hs-sort" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">
+        <option value="newest">Newest first</option>
+        <option value="price_asc">Price: Low to High</option>
+        <option value="price_desc">Price: High to Low</option>
+      </select>
+    </div>
+    <button class="btn btn-gm btn-w" style="margin-top:8px;padding:13px" onclick="applyHomeFilters()">Show Results</button>
+  </div>
+</div>
 
 <!-- HOME -->
 <div id="page-home" class="page on">
 
-  <!-- HERO -->
-  <div class="hero" style="padding:60px 20px 70px;text-align:center;background:linear-gradient(155deg,#1a2e1a 0%,#2d5a27 50%,#1a2e1a 100%)">
-    <div style="display:inline-block;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:700;color:rgba(255,255,255,.85);letter-spacing:.5px;margin-bottom:20px;text-transform:uppercase">&#127480;&#127462; South Africa&apos;s E-Hailing Reputation Platform</div>
-    <h1 style="font-family:'Playfair Display',serif;font-size:clamp(26px,5vw,52px);line-height:1.2;color:#fff;margin-bottom:16px;font-weight:800">Protecting Your Investment<br>Starts with Choosing the<br><span style="color:#7cba5e">Right Driver.</span></h1>
-    <p style="font-size:clamp(14px,2vw,17px);color:rgba(255,255,255,.78);max-width:560px;margin:0 auto 28px;line-height:1.8">Buying a vehicle is one of the biggest financial investments you will ever make. Yet when it&apos;s time to rent it out to the e-hailing market, you are often left completely in the dark.</p>
-    <div style="background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:20px 24px;max-width:480px;margin:0 auto 28px;text-align:left">
-      <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px">Most owners are forced to ask:</div>
-      <div style="font-size:14px;color:rgba(255,255,255,.85);line-height:2">
-        &#10067; Has this driver rented a vehicle before?<br>
-        &#10067; Do they pay on time and take care of the car?<br>
-        &#10067; Can they actually be trusted with my asset?
+  <!-- COMPACT HERO -->
+  <div class="hero-compact">
+    <div style="display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:4px 14px;font-size:11px;font-weight:700;color:rgba(255,255,255,.8);letter-spacing:.5px;margin-bottom:12px;text-transform:uppercase">&#127480;&#127462; SA&apos;s E-Hailing Marketplace</div>
+    <h1>Find Your <span style="color:#7cba5e">Perfect Match.</span></h1>
+    <p>Verified drivers. Trusted owners. Transparent rental history.</p>
+    <button class="btn btn-gm" style="padding:12px 28px;font-size:14px;font-weight:700" onclick="go('register')">Join Now &#8594;</button>
+  </div>
+
+  <!-- SEARCH + FILTER BAR -->
+  <div style="padding:14px 14px 10px;background:#fff;border-bottom:1px solid var(--border)">
+    <div style="display:flex;gap:8px;align-items:center">
+      <div style="flex:1;display:flex;align-items:center;gap:8px;background:var(--cream);border:1.5px solid var(--border);border-radius:10px;padding:9px 12px">
+        <span style="font-size:16px;color:var(--muted)">&#128269;</span>
+        <input id="h-search" type="text" placeholder="Search cars, drivers, location..." oninput="homeSearch()" style="flex:1;border:none;outline:none;font-size:14px;font-family:inherit;background:transparent;color:var(--text)"/>
+      </div>
+      <button onclick="openFilterSheet()" style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:var(--gm);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#9776;</button>
+    </div>
+    <!-- Category chips -->
+    <div style="display:flex;gap:8px;margin-top:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px">
+      <button id="hcat-cars" onclick="setHomeCat('cars')" style="flex:0 0 auto;padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;border:none;cursor:pointer;background:var(--gm);color:#fff;font-family:inherit">&#128663; Cars</button>
+      <button id="hcat-drivers" onclick="setHomeCat('drivers')" style="flex:0 0 auto;padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--border);cursor:pointer;background:#fff;color:var(--g);font-family:inherit">&#128100; Drivers</button>
+    </div>
+  </div>
+
+
+  <!-- MARKETPLACE GRID -->
+  <div style="background:var(--cream);padding:14px 14px 20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div>
+        <div id="h-grid-title" style="font-size:16px;font-weight:700;color:var(--g)">Available Cars</div>
+        <div id="h-cs" style="font-size:12px;color:var(--muted)">Browse vehicles ready to rent</div>
+      </div>
+      <button id="h-viewall-btn" class="btn btn-out btn-sm" onclick="go('cars')">View all</button>
+    </div>
+    <div id="h-cars" class="grid2" style="display:grid"><div class="loading"><div class="spin"></div>Loading...</div></div>
+    <div id="h-drvs" class="grid2" style="display:none"><div class="loading"><div class="spin"></div>Loading...</div></div>
+  </div>
+
+  <!-- WHY TRUSTMATE (compact) -->
+  <div style="background:var(--g);padding:28px 16px">
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">Why TrustMate?</div>
+      <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:800;color:#fff;line-height:1.3">Replace guesswork<br>with <span style="color:#7cba5e">data.</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:22px;margin-bottom:4px">&#128203;</div>
+        <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:3px">Driver Resume</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5)">Verified rental history</div>
+      </div>
+      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:22px;margin-bottom:4px">&#11088;</div>
+        <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:3px">TrustScore</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5)">Owner-rated reliability</div>
+      </div>
+      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:22px;margin-bottom:4px">&#128274;</div>
+        <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:3px">Protected Chat</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5)">In-app messaging</div>
+      </div>
+      <div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;text-align:center">
+        <div style="font-size:22px;margin-bottom:4px">&#128222;</div>
+        <div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:3px">WhatsApp Handover</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5)">Once terms agreed</div>
       </div>
     </div>
-    <div style="font-size:13px;color:rgba(255,255,255,.6);max-width:500px;margin:0 auto 28px;line-height:1.7">Relying on Facebook posts, WhatsApp groups, or random referrals might help you find a warm body &mdash; but it doesn&apos;t give you a proven track record.</div>
-    <div style="font-family:'Playfair Display',serif;font-size:clamp(18px,3vw,26px);font-weight:700;color:#fff;margin-bottom:8px">That&apos;s Why We Built TrustMate.</div>
-    <div style="font-size:14px;color:rgba(255,255,255,.7);max-width:520px;margin:0 auto 32px;line-height:1.7">South Africa&apos;s premier driver reputation and rental history platform. We replace guesswork with data &mdash; creating a transparent digital resume for every driver so vehicle owners can partner with confidence.</div>
-    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
-      <button class="btn btn-gm" style="padding:13px 28px;font-size:15px;font-weight:700" onclick="go('drivers')">&#128269; Browse Verified Drivers</button>
-      <button class="btn btn-out" style="color:#fff;border-color:rgba(255,255,255,.35);padding:13px 28px;font-size:15px" onclick="go('register')">Get Started Free</button>
-    </div>
-  </div>
-
-
-  <!-- CARS -->
-  <div class="sec" style="background:var(--cream);border-top:1px solid var(--border)">
-    <div class="sec-inner">
-      <div class="sec-head"><div><h2>Available Cars</h2><p id="h-cs" style="color:var(--muted);font-size:13px">Browse vehicles ready to rent</p></div><button class="btn btn-out btn-sm" onclick="go('cars')">View all</button></div>
-      <div id="h-cars" class="grid2"><div class="loading"><div class="spin"></div>Loading...</div></div>
-    </div>
-  </div>
-
-  <!-- DRIVERS -->
-  <div class="sec" style="background:#fff">
-    <div class="sec-inner">
-      <div class="sec-head"><div><h2>Verified Drivers</h2><p id="h-ds" style="color:var(--muted);font-size:13px">Sorted by TrustScore</p></div><button class="btn btn-out btn-sm" onclick="go('drivers')">View all</button></div>
-      <div id="h-drvs" class="grid2"><div class="loading"><div class="spin"></div>Loading...</div></div>
-    </div>
+    <button class="btn btn-gm btn-w" style="padding:13px;font-size:14px" onclick="go('how-it-works')">How It Works &#8594;</button>
   </div>
 
   <!-- TESTIMONIALS -->
-  <div class="sec" style="background:var(--g);padding:48px 0">
-    <div class="sec-inner">
-      <div style="text-align:center;margin-bottom:28px">
-        <div style="font-size:22px;margin-bottom:6px">&#11088;</div>
-        <h2 style="font-family:'Playfair Display',serif;color:#fff;font-size:clamp(20px,3.5vw,30px);margin-bottom:8px">TrustMate Reviews</h2>
-        <p style="font-size:14px;color:rgba(255,255,255,.55);max-width:420px;margin:0 auto">Hear what owners and drivers are saying about TrustMate.</p>
-      </div>
-      <div id="home-testimonials" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
-        <div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px">Loading reviews...</div>
-      </div>
+  <div style="background:#fff;padding:24px 16px 28px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:16px;font-weight:700;color:var(--g)">&#11088; What People Say</div>
+      <button class="btn btn-out btn-sm" onclick="go('reviews')">All reviews</button>
+    </div>
+    <div id="home-testimonials" style="display:flex;flex-direction:column;gap:10px">
+      <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Loading reviews...</div>
     </div>
   </div>
 
@@ -1618,12 +1755,30 @@ function setNav() {
   eid('nav-auth').style.display = in_ ? 'none' : 'flex';
   eid('nav-user').style.display = in_ ? 'flex' : 'none';
   eid('nav-adm').style.display = (P && P.is_admin) ? 'inline' : 'none';
+  // Hamburger menu auth sections
+  var hmAuth=eid('hm-auth-section'), hmUser=eid('hm-user-section');
+  if(hmAuth) hmAuth.style.display=in_?'none':'block';
+  if(hmUser) hmUser.style.display=in_?'block':'none';
+  var hmAdmin=eid('hm-admin');
+  if(hmAdmin) hmAdmin.style.display=(P&&P.is_admin)?'flex':'none';
+  // Bottom nav profile icon label
+  var bnProf=eid('bn-profile');
+  if(bnProf) bnProf.innerHTML='<span class="bnt-icon">'+(in_?'&#128100;':'&#128274;')+'</span>'+(in_?'Profile':'Sign In');
 }
 
 // ── ROUTING ───────────────────────────────────────────
 function go(page, arg, noPush) {
   document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('on'); });
-  document.querySelectorAll('.ntab').forEach(function(t){t.classList.remove('on');});
+  // Bottom nav active state
+  var _bnMap={'home':'bn-home','cars':'bn-browse','drivers':'bn-browse','dashboard':'bn-msgs'};
+  document.querySelectorAll('.bntab').forEach(function(t){t.classList.remove('on');});
+  var _bnEl=document.getElementById(_bnMap[page]||'');
+  if(_bnEl)_bnEl.classList.add('on');
+  // Hamburger menu active state
+  var _hmMap={'home':'hm-home','cars':'hm-cars','drivers':'hm-drivers','reviews':'hm-reviews','how-it-works':'hm-how','for-drivers':'hm-fordrivers','contact':'hm-contact'};
+  document.querySelectorAll('.hmenu-item').forEach(function(t){t.classList.remove('on');});
+  var _hmEl=document.getElementById(_hmMap[page]||'');
+  if(_hmEl)_hmEl.classList.add('on');
   var _tabIds={'home':'nt-home','drivers':'nt-drivers','cars':'nt-cars','reviews':'nt-reviews','how-it-works':'nt-how','for-drivers':'nt-fordrivers','contact':'nt-contact'};
   var _at=document.getElementById(_tabIds[page]||'');if(_at)_at.classList.add('on');
   var pg = eid('page-'+page);
@@ -1790,7 +1945,7 @@ async function _execDriversQuery(offset){
 
   qb=qb.range(offset, offset+_DRVS_PAGE-1);
   var r=await qb;
-  if(r.error){console.error('drivers query error',r.error);toast('Could not load drivers: '+r.error.message);return {data:[],hasMore:false,total:0};}
+  if(r.error){console.error('drivers query',r.error);toast('Search error: '+r.error.message);return {data:[],hasMore:false,total:0};}
   var seen=new Set();
   var rows=(r.data||[]).filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;})
     .map(function(d){d.profile={full_name:d.full_name||'Driver',location:d.location||''};d.isMatched=!!d.is_matched;return d;});
@@ -1845,7 +2000,7 @@ async function _getMatchCache(){
     .eq('status','approved').is('unmatched_at',null);
   var matchedCarIds=new Set(), matchedOwnerIds=new Set(), driverIds={};
   (r.data||[]).forEach(function(a){
-    if(a.car_id){matchedCarIds.add(a.car_id);driverIds[a.car_id]=a.driver_id;}
+    if(a.car_id&&a.car_id!=='null'){matchedCarIds.add(a.car_id);driverIds[a.car_id]=a.driver_id;}
     if(a.owner_id) matchedOwnerIds.add(a.owner_id);
   });
   _matchCache={matchedCarIds:matchedCarIds,matchedOwnerIds:matchedOwnerIds,driverIds:driverIds};
@@ -1872,10 +2027,16 @@ async function _execCarsQuery(offset){
   if(status==='matched'){
     var mids=Array.from(matchedCarIds);
     if(!mids.length) return {data:[],hasMore:false,total:0};
+    if(mids.length>100) mids=mids.slice(0,100); // cap to avoid URL overflow
     qb=qb.in('id',mids);
   } else if(status==='available'){
     var mids=Array.from(matchedCarIds);
-    if(mids.length) qb=qb.not('id','in',mids);
+    // Only apply NOT IN if there are matched cars; cap to avoid URL overflow
+    if(mids.length>0&&mids.length<=100) qb=qb.not('id','in',mids);
+    else if(mids.length>100){
+      // Too many matched IDs for URL — use applications_paused as proxy filter
+      // and annotate isMatched client-side (already done below)
+    }
   }
 
   if(sort==='price_asc') qb=qb.order('price_per_week',{ascending:true});
@@ -1884,7 +2045,7 @@ async function _execCarsQuery(offset){
 
   qb=qb.range(offset, offset+_CARS_PAGE-1);
   var r=await qb;
-  if(r.error){console.error('cars query',r.error);return {data:[],hasMore:false,total:0};}
+  if(r.error){console.error('cars query',r.error);toast('Search error: '+r.error.message);return {data:[],hasMore:false,total:0};}
   // Annotate with match info
   // Resolve driver names for matched cars
   var didList=Object.values(driverIds).filter(Boolean);
@@ -2017,42 +2178,113 @@ async function ownerMatchBtn(btn) {
   openModal('match-modal');
 }
 
+// ── Hamburger menu ──
+function openHMenu(){var d=eid('hmenu');if(d)d.classList.add('on');}
+function closeHMenu(){var d=eid('hmenu');if(d)d.classList.remove('on');}
+
+// ── Filter bottom sheet ──
+var _homeFilters={city:'',trans:'',sort:'newest',q:''};
+function openFilterSheet(){var s=eid('filter-sheet');if(s)s.classList.add('on');}
+function closeFilterSheet(){var s=eid('filter-sheet');if(s)s.classList.remove('on');}
+function applyHomeFilters(){
+  _homeFilters.city=(eid('hs-city')||{}).value||'';
+  _homeFilters.trans=(eid('hs-trans')||{}).value||'';
+  _homeFilters.sort=(eid('hs-sort')||{}).value||'newest';
+  closeFilterSheet();
+  _renderHomeGrid();
+}
+
+// ── Home category toggle ──
+var _homeCat='cars';
+function setHomeCat(cat){
+  _homeCat=cat;
+  var cc=eid('hcat-cars'), dc=eid('hcat-drivers');
+  if(cc){cc.style.background=cat==='cars'?'var(--gm)':'#fff';cc.style.color=cat==='cars'?'#fff':'var(--g)';cc.style.border=cat==='cars'?'none':'1.5px solid var(--border)';}
+  if(dc){dc.style.background=cat==='drivers'?'var(--gm)':'#fff';dc.style.color=cat==='drivers'?'#fff':'var(--g)';dc.style.border=cat==='drivers'?'none':'1.5px solid var(--border)';}
+  var hc=eid('h-cars'), hd=eid('h-drvs'), title=eid('h-grid-title'), vab=eid('h-viewall-btn'), sub=eid('h-cs');
+  if(hc)hc.style.display=cat==='cars'?'grid':'none';
+  if(hd)hd.style.display=cat==='drivers'?'grid':'none';
+  if(title)title.textContent=cat==='cars'?'Available Cars':'Verified Drivers';
+  if(vab){vab.textContent='View all';vab.onclick=function(){go(cat);};}
+  if(sub)sub.textContent=cat==='cars'?'Browse vehicles ready to rent':(U?'Nearest to you':'Sorted by TrustScore');
+}
+
+// ── Home search ──
+function homeSearch(){
+  var q=(eid('h-search')||{}).value||'';
+  _homeFilters.q=q.trim().toLowerCase();
+  _renderHomeGrid();
+}
+
+// ── Render home grid with filters ──
+var _homeCarsCache=[], _homeDrvsCache=[];
+var _GUEST_LIMIT=4;
+function _renderHomeGrid(){
+  var q=(_homeFilters.q||'').toLowerCase();
+  var limit=U?999:_GUEST_LIMIT;
+  if(_homeCat==='cars'){
+    var items=_homeCarsCache.filter(function(c){
+      var ms=((c.make||'')+' '+(c.model||'')+' '+(c.location||'')).toLowerCase();
+      if(q&&ms.indexOf(q)<0)return false;
+      if(_homeFilters.city&&(c.location||'').toLowerCase().indexOf(_homeFilters.city)<0)return false;
+      if(_homeFilters.trans&&c.transmission!==_homeFilters.trans)return false;
+      return true;
+    });
+    if(_homeFilters.sort==='price_asc')items.sort(function(a,b){return (a.price_per_week||0)-(b.price_per_week||0);});
+    else if(_homeFilters.sort==='price_desc')items.sort(function(a,b){return (b.price_per_week||0)-(a.price_per_week||0);});
+    var show=items.slice(0,limit);
+    var signup=(!U&&items.length>limit)?_signupCard('&#128663;',items.length-limit):'';
+    var html=show.map(carHTML).join('');
+    var el=eid('h-cars');
+    if(el)el.innerHTML=html?html+signup:empty('&#128663;','No cars match your search.');
+  } else {
+    var items2=_homeDrvsCache.filter(function(d){
+      var loc=(d.profile&&d.profile.location)||d.location||'';
+      var ms=((d.full_name||'')+' '+loc).toLowerCase();
+      if(q&&ms.indexOf(q)<0)return false;
+      if(_homeFilters.city&&loc.toLowerCase().indexOf(_homeFilters.city)<0)return false;
+      return true;
+    });
+    var show2=items2.slice(0,limit);
+    var signup2=(!U&&items2.length>limit)?_signupCard('&#128100;',items2.length-limit):'';
+    var html2=show2.map(drvHTML).join('');
+    var el2=eid('h-drvs');
+    if(el2)el2.innerHTML=html2?html2+signup2:empty('&#128100;','No drivers match your search.');
+  }
+}
+function _signupCard(icon,extra){
+  return '<div onclick="go(\'register\')" style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px"><div style="font-size:28px">'+icon+'</div><div style="font-size:14px;font-weight:800;color:#fff">+'+extra+' more</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px">Sign up to see everything</div><span style="background:var(--gm);color:#fff;font-size:12px;font-weight:700;padding:7px 18px;border-radius:999px">Join Now &#8594;</span></div>';
+}
+
 // ── PAGES ──────────────────────────────────────────────
 function loadHome() {
+  _homeCat='cars';
+  _homeFilters={city:'',trans:'',sort:'newest',q:''};
+  setHomeCat('cars');
   if(!_carCache) eid('h-cars').innerHTML=skelCards(3);
   if(!_drvCache) eid('h-drvs').innerHTML=skelCards(4);
-  if(!_drvCache) fetchDrivers();
   fetchCars().then(function(cars){
-    eid('h-cs').textContent='';
-    var showCars=cars.slice(0,4);
-    var carSignup=(!U&&cars.length>4)?'<div onclick="go(\'register\')" style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px"><div style="font-size:28px">&#128663;</div><div style="font-size:14px;font-weight:800;color:#fff">+'+(cars.length-4)+' more cars</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px">Sign up to browse all available vehicles</div><span style="background:var(--gm);color:#fff;font-size:12px;font-weight:700;padding:7px 18px;border-radius:999px">Sign Up Free &#8594;</span></div>':'';
-    var carsHtml=showCars.map(carHTML).join('');
-    eid('h-cars').innerHTML=(carsHtml?carsHtml+carSignup:empty('&#128663;','No cars listed yet.'));
+    _homeCarsCache=cars;
+    _renderHomeGrid();
   }).catch(function(){eid('h-cars').innerHTML=empty('&#128663;','Could not load.');});
   fetchDrivers().then(function(drvs){
-    eid('h-ds').textContent='';
-    var showDrvs=drvs.slice(0,4);
-    var drvSignup=(!U&&drvs.length>4)?'<div onclick="go(\'register\')" style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px"><div style="font-size:28px">&#128100;</div><div style="font-size:14px;font-weight:800;color:#fff">+'+(drvs.length-4)+' more drivers</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px">Sign up to see all verified drivers</div><span style="background:var(--gm);color:#fff;font-size:12px;font-weight:700;padding:7px 18px;border-radius:999px">Sign Up Free &#8594;</span></div>':'';
-    var drvsHtml=showDrvs.map(drvHTML).join('');
-    eid('h-drvs').innerHTML=(drvsHtml?drvsHtml+drvSignup:empty('&#128100;','No drivers yet.'));
+    _homeDrvsCache=drvs;
+    _renderHomeGrid();
   }).catch(function(){eid('h-drvs').innerHTML=empty('&#128100;','Could not load.');});
   // Load testimonials
-  sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(6).then(function(res){
+  sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(3).then(function(res){
     var revs=res.data||[];
     var el=eid('home-testimonials'); if(!el)return;
-    if(!revs.length){el.innerHTML='<div style="color:rgba(255,255,255,.4);font-size:13px;text-align:center;padding:20px;grid-column:1/-1">Be the first to leave a review!</div>';return;}
+    if(!revs.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Be the first to leave a review!</div>';return;}
     el.innerHTML=revs.map(function(rv){
-      var stars='<span style="color:#E8A520;font-size:16px;letter-spacing:1px">'+('&#9733;').repeat(rv.rating)+('<span style="opacity:.3">&#9733;</span>').repeat(5-rv.rating)+'</span>';
-      var badge=rv.is_matched?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#4ade80;background:rgba(74,222,128,.15);border-radius:999px;padding:2px 8px;border:1px solid rgba(74,222,128,.3)">&#9989; Verified Match</span>':'';
-      var roleLbl=rv.role==='driver'?'Driver':'Vehicle Owner';
+      var stars='<span style="color:#E8A520;font-size:13px;letter-spacing:1px">'+('&#9733;').repeat(rv.rating)+('<span style="opacity:.3">&#9733;</span>').repeat(5-rv.rating)+'</span>';
+      var badge=rv.is_matched?'<span style="font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border-radius:999px;padding:2px 8px">&#9989; Verified Match</span>':'';
+      var roleLbl=rv.role==='driver'?'Driver':'Owner';
       var name=rv.reviewer_name||'TrustMate User';
-      var attribution=name+(rv.car_label?', '+rv.car_label:'');
-      return '<div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:20px 22px;display:flex;flex-direction:column;gap:12px">'
-        +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+stars+badge+'</div>'
-        +'<div style="font-size:14px;color:rgba(255,255,255,.88);line-height:1.65;font-style:italic">&ldquo;'+rv.comment+'&rdquo;</div>'
-        +'<div style="font-size:12px;color:rgba(255,255,255,.45);border-top:1px solid rgba(255,255,255,.08);padding-top:10px">'
-        +'&ndash; <strong style="color:rgba(255,255,255,.7)">'+attribution+'</strong> <span style="margin-left:4px">('+roleLbl+')</span>'
-        +'</div>'
+      return '<div style="background:var(--cream);border:1px solid var(--border);border-radius:12px;padding:14px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+stars+badge+'</div>'
+        +'<div style="font-size:13px;color:var(--text);line-height:1.6;font-style:italic;margin-bottom:8px">&ldquo;'+rv.comment+'&rdquo;</div>'
+        +'<div style="font-size:11px;color:var(--muted)">— <strong>'+name+'</strong> ('+roleLbl+')'+(rv.car_label?', '+rv.car_label:'')+'</div>'
         +'</div>';
     }).join('');
   });
@@ -2175,11 +2407,13 @@ function loadCars() {
 }
 function filterCars(){
   var q=(eid('cars-search')?eid('cars-search').value.trim().toLowerCase():'');
+  var newStatus=eid('cars-status')?eid('cars-status').value:'';
+  if(newStatus!==_carsQuery.status) _matchCache=null; // refresh when status filter changes
   _carsQuery={
     q:q,
     sort:eid('cars-sort')?eid('cars-sort').value:'newest',
     trans:eid('cars-trans')?eid('cars-trans').value:'',
-    status:eid('cars-status')?eid('cars-status').value:'',
+    status:newStatus,
     city:eid('cars-city')?eid('cars-city').value.toLowerCase():''
   };
   _carsOffset=0;
@@ -2191,8 +2425,16 @@ async function _runCarsQuery(replace){
   var grid=eid('cars-grid');
   var moreWrap=eid('cars-more-wrap');
   if(replace){
+    if(!U&&replace&&_carsOffset===0){
+      var guestData=res.data.slice(0,4);
+      var guestCard=res.total>4?_signupCard('&#128663;',res.total-4):'';
+      grid.innerHTML=guestData.length?guestData.map(carHTML).join('')+guestCard:empty('&#128663;','No cars match your search.');
+      if(moreWrap)moreWrap.style.display='none';
+      return;
+    }
     grid.innerHTML=res.data.length?res.data.map(carHTML).join(''):empty('&#128663;','No cars match your search.');
   } else {
+    if(!U)return;
     if(res.data.length) grid.insertAdjacentHTML('beforeend',res.data.map(carHTML).join(''));
   }
   _carsOffset+=res.data.length;
@@ -2210,7 +2452,10 @@ function carsLoadMore(){
 }
 function loadDrivers() {
   eid('drvs-grid').innerHTML=skelCards(6);
-  _drvsQuery={q:'',sort:'score',plat:'',status:'',city:''};
+  var defSort=U?'nearest':'score';
+  _drvsQuery={q:'',sort:defSort,plat:'',status:'',city:''};
+  var sortEl=eid('drvs-sort');
+  if(sortEl)sortEl.value=defSort;
   _drvsOffset=0;
   _drvsNearestCache=null;
   _runDriversQuery(true);
@@ -2225,7 +2470,7 @@ function filterDrivers(){
     city:eid('drvs-city')?eid('drvs-city').value.toLowerCase():''
   };
   _drvsOffset=0;
-  if(sort!=='nearest') _drvsNearestCache=null;
+  _drvsNearestCache=null;
   eid('drvs-grid').innerHTML=skelCards(6);
   _runDriversQuery(true);
 }
@@ -2243,8 +2488,16 @@ async function _runDriversQuery(replace){
       var sub=eid('drvs-sub');
       if(sub)sub.innerHTML='<span style="color:#dc2626;font-size:12px">&#128205; Set your profile location to sort by nearest.</span>';
     }
+    if(!U&&_drvsOffset===0){
+      var guestDrvs=res.data.slice(0,4);
+      var guestDrvCard=res.total>4?_signupCard('&#128100;',res.total-4):'';
+      grid.innerHTML=guestDrvs.length?guestDrvs.map(drvHTML).join('')+guestDrvCard:empty('&#128100;','No drivers match your search.');
+      if(moreWrap)moreWrap.style.display='none';
+      return;
+    }
     grid.innerHTML=res.data.length?res.data.map(drvHTML).join(''):empty('&#128100;','No drivers match your search.');
   } else {
+    if(!U)return;
     if(res.data.length) grid.insertAdjacentHTML('beforeend',res.data.map(drvHTML).join(''));
   }
   _drvsOffset+=res.data.length;
@@ -5755,7 +6008,9 @@ async function adPendingDocs(){
   var dUids=allDocs.map(function(d){return d.user_id;});
   var dPr=await sb.from('profiles').select('id,full_name,email,phone,location,created_at').in('id',dUids);
   var dpm={};(dPr.data||[]).forEach(function(p){dpm[p.id]=p;});
-  var html='<div class="ptitle">Pending Documents</div><div class="psub">'+allDocs.length+' driver'+(allDocs.length!==1?'s':'')+' awaiting document upload &amp; approval</div>';
+  var html='<div class="ptitle">Pending Documents</div>'
+    +'<div style="margin-bottom:10px"><input id="adm-pdoc-q" type="text" placeholder="&#128269; Search name, email, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adPdocSearch()"/></div>'
+    +'<div class="psub">'+allDocs.length+' driver'+(allDocs.length!==1?'s':'')+' awaiting document upload &amp; approval</div>';
   html+=allDocs.map(function(d){
     var p=dpm[d.user_id]||{};
     var missing=[];
@@ -5813,6 +6068,7 @@ async function adInc(){
   var pr=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,role,doc_id_url,created_at').in('id',uids);
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
   el.innerHTML='<div class="ptitle">Incomplete Registrations</div>'
+    +'<div style="margin-bottom:10px"><input id="adm-inc-q" type="text" placeholder="&#128269; Search name, email, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adIncSearch()"/></div>'
     +'<div class="psub">'+dps.length+' incomplete &mdash; edit, upload docs, then promote to pending or approve directly</div>'
     +dps.map(function(d){
       var p=pm[d.user_id]||{};
@@ -5993,7 +6249,9 @@ async function adReg(){
   var total=pDrvs.length+pOwns.length;
   if(!total){el.innerHTML='<div class="ptitle">New Registrations</div><div class="empty"><div class="empty-i">&#10003;</div><p>All caught up! No pending registrations.</p></div>';var b=document.getElementById('abadge');if(b)b.style.display='none';return;}
   var badge=document.getElementById('abadge');if(badge){badge.textContent=total;badge.style.display='inline';}
-  var html='<div class="ptitle">New Registrations</div><div class="psub">'+pDrvs.length+' driver'+(pDrvs.length!==1?'s':'')+' / '+pOwns.length+' owner'+(pOwns.length!==1?'s':'')+' pending</div>';
+  var html='<div class="ptitle">New Registrations</div>'
+    +'<div style="margin-bottom:10px"><input id="adm-reg-q" type="text" placeholder="&#128269; Search name, email, phone, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adRegSearch()"/></div>'
+    +'<div class="psub">'+pDrvs.length+' driver'+(pDrvs.length!==1?'s':'')+' / '+pOwns.length+' owner'+(pOwns.length!==1?'s':'')+' pending</div>';
   if(pDrvs.length){
     html+='<div class="shd" style="margin-bottom:10px">Pending Drivers ('+pDrvs.length+')</div>';
     html+=pDrvs.map(function(d){
@@ -6637,6 +6895,53 @@ function adOwnSearch(){
   window._adOwnQ=q;
   adOwn();
 }
+function adCarSearch(){
+  var q=(document.getElementById('adm-car-q')||{}).value||'';
+  var items=Array.from(document.querySelectorAll('#ap-car .rcard')).concat(Array.from(document.querySelectorAll('#ap-car tbody tr')));
+  items.forEach(function(el){
+    var text=el.textContent.toLowerCase();
+    el.style.display=(!q||text.indexOf(q.toLowerCase())>-1)?'':'none';
+  });
+  var vis=items.filter(function(e){return e.style.display!=='none';}).length;
+  var sub=document.querySelector('#ap-car .psub');
+  if(sub) sub.textContent=vis+' shown'+(q?' for "'+q+'"':'');
+}
+function adRegSearch(){
+  var q=((document.getElementById('adm-reg-q')||{}).value||'').toLowerCase();
+  document.querySelectorAll('#ap-reg .rcard').forEach(function(card){
+    card.style.display=(!q||card.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
+  });
+}
+function adIncSearch(){
+  var q=((document.getElementById('adm-inc-q')||{}).value||'').toLowerCase();
+  document.querySelectorAll('#ap-inc .rcard').forEach(function(card){
+    card.style.display=(!q||card.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
+  });
+}
+function adPdocSearch(){
+  var q=((document.getElementById('adm-pdoc-q')||{}).value||'').toLowerCase();
+  document.querySelectorAll('#ap-pdoc .rcard').forEach(function(card){
+    card.style.display=(!q||card.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
+  });
+}
+function adAppSearch(){
+  var q=((document.getElementById('adm-app-q')||{}).value||'').toLowerCase();
+  document.querySelectorAll('#ap-app tbody tr').forEach(function(row){
+    row.style.display=(!q||row.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
+  });
+}
+function adMatchSearch(){
+  var q=((document.getElementById('adm-match-q')||{}).value||'').toLowerCase();
+  document.querySelectorAll('#ad-match-list > div').forEach(function(card){
+    card.style.display=(!q||card.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
+  });
+}
+function adHistSearch(){
+  var q=((document.getElementById('adm-hist-q')||{}).value||'').toLowerCase();
+  document.querySelectorAll('#hist-table tbody tr').forEach(function(row){
+    row.style.display=(!q||row.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
+  });
+}
 async function adApproveOwnerAndCars(oid){
   var c=document.getElementById('ro-'+oid);
   if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
@@ -6849,6 +7154,7 @@ async function adHist(){
 
   var unmatchedCount=apps.filter(function(a){return a.status==='approved'&&!!a.unmatched_at;}).length;
   var html='<div class="ptitle">Match History</div>'
+    +'<div style="margin-bottom:10px"><input id="adm-hist-q" type="text" placeholder="&#128269; Search driver, owner, car..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adHistSearch()"/></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
     +'<button class="btn btn-gm btn-sm" onclick="adHistFilter(\'all\')">All ('+apps.length+')</button>'
     +'<button class="btn btn-out btn-sm" onclick="adHistFilter(\'active\')">&#128994; Active ('+activeCount+')</button>'
@@ -7066,6 +7372,7 @@ async function adMatch(){
   var pendingTermsCount=apps.length-termsAgreedCount;
 
   el.innerHTML='<div class="ptitle">Active Rentals</div>'
+    +'<div style="margin-bottom:10px"><input id="adm-match-q" type="text" placeholder="&#128269; Search driver, owner, car..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adMatchSearch()"/></div>'
     +'<div class="psub">'+apps.length+' active match'+(apps.length!==1?'es':'')+' &middot; <span style="color:var(--gm);font-weight:700">&#10003; '+termsAgreedCount+' contact revealed</span>'+(pendingTermsCount?' &middot; <span style="color:#E8A520;font-weight:700">&#9201; '+pendingTermsCount+' terms pending</span>':'')+'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
     +'<button class="btn btn-sm '+(window._adMatchFilter==='all'||!window._adMatchFilter?'btn-gm':'btn-out')+'" onclick="adMatchFilter(\'all\')">All</button>'
@@ -7243,7 +7550,9 @@ async function adApp(){
   var tam={};(tar.data||[]).forEach(function(t){if(t.application_id){if(!tam[t.application_id])tam[t.application_id]=[];tam[t.application_id].push(t);}});
   var pend=apps.filter(function(a){return a.status==='pending';}).length;
   var appr=apps.filter(function(a){return a.status==='approved';}).length;
-  el.innerHTML='<div class="ptitle">All Applications</div><div class="psub">'+apps.length+' total / '+pend+' pending / <strong style="color:var(--gm)">'+appr+' matched</strong></div>'
+  el.innerHTML='<div class="ptitle">All Applications</div>'
+    +'<div style="margin-bottom:10px"><input id="adm-app-q" type="text" placeholder="&#128269; Search driver, owner, car..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adAppSearch()"/></div>'
+    +'<div class="psub">'+apps.length+' total / '+pend+' pending / <strong style="color:var(--gm)">'+appr+' matched</strong></div>'
     +'<div class="kgrid" style="margin-bottom:16px">'
     +'<div class="kcard"><div class="kcard-n">'+apps.length+'</div><div class="kcard-l">Total</div></div>'
     +'<div class="kcard"><div class="kcard-n a">'+pend+'</div><div class="kcard-l">Pending</div></div>'
@@ -7597,18 +7906,19 @@ async function execUnmatch(){
   var reason=(document.getElementById('unmatch-reason-input')||{}).value||'';
   var btn=document.getElementById('unmatch-confirm-btn');
   if(btn){btn.disabled=true;btn.textContent='Unmatching...';}
-  var r=await sb.from('applications').update({unmatched_at:new Date().toISOString(),unmatched_by:role,unmatch_reason:reason.trim()||null}).eq('id',aid).select();
-  if(btn){btn.disabled=false;btn.textContent='Unmatch';}
-  if(r.error){toast('Error: '+r.error.message);return;}
-  if(!r.data||!r.data.length){toast('Could not unmatch — check permissions.');return;}
+  // Fetch driver_id before update for rentals counter
+  var appR=await sb.from('applications').select('driver_id').eq('id',aid).maybeSingle();
+  var r=await sb.from('applications').update({unmatched_at:new Date().toISOString(),unmatched_by:role,unmatch_reason:reason.trim()||null}).eq('id',aid);
+  if(btn){btn.disabled=false;btn.textContent='&#128683; Unmatch';}
+  if(r.error){toast('Error unmatching: '+r.error.message);return;}
   // Increment rentals_completed for driver
-  var appR=await sb.from('applications').select('driver_id,owner_id').eq('id',aid).maybeSingle();
   if(appR.data&&appR.data.driver_id){
     var dpR=await sb.from('driver_profiles').select('id,rentals_completed').eq('user_id',appR.data.driver_id).maybeSingle();
     if(dpR.data) await sb.from('driver_profiles').update({rentals_completed:(dpR.data.rentals_completed||0)+1}).eq('id',dpR.data.id);
   }
   closeModal('unmatch-modal');
-  _drvCache=null; toast('Unmatched successfully.');
+  _drvCache=null;_carCache=null;_matchCache=null;
+  toast('Unmatched successfully.');
   pOv();
 }
 function openPubMenu(){document.getElementById('pub-mob-menu').style.display='block';document.body.style.overflow='hidden';}
