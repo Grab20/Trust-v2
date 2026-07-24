@@ -2272,6 +2272,7 @@ function setHomeCat(cat){
   if(title)title.textContent=cat==='cars'?'Available Cars':'Verified Drivers';
   if(vab){vab.textContent='View all';vab.onclick=function(){go(cat);};}
   if(sub)sub.textContent=cat==='cars'?'Browse vehicles ready to rent':(U?'Nearest to you':'Sorted by TrustScore');
+  _renderHomeGrid();
 }
 
 // ── Home search ──
@@ -2314,7 +2315,7 @@ function _renderHomeGrid(){
     var signup2=(!U&&items2.length>limit)?_signupCard('&#128100;',items2.length-limit):'';
     var html2=show2.map(drvHTML).join('');
     var el2=eid('h-drvs');
-    if(el2)el2.innerHTML=html2?html2+signup2:(_drvsLoaded?empty('&#128100;','No drivers found.'):skelCards(4));
+    if(el2)el2.innerHTML=html2?html2+signup2:(_drvsLoaded?empty('&#128100;','No drivers found. <button class="btn btn-out btn-sm" style="margin-left:8px" onclick="_drvCache=null;_drvsLoaded=false;eid(\'h-drvs\').innerHTML=skelCards(4);_loadDrvsHome()">Retry</button>'):skelCards(4));
   }
 }
 function _signupCard(icon,extra){
@@ -2322,6 +2323,16 @@ function _signupCard(icon,extra){
 }
 
 // ── PAGES ──────────────────────────────────────────────
+function _loadDrvsHome(n){
+  n=n||0;
+  fetchDrivers().then(function(drvs){
+    if(!drvs.length&&n<2){_drvCache=null;setTimeout(function(){_loadDrvsHome(n+1);},1500);return;}
+    _drvsLoaded=true;_homeDrvsCache=drvs;_renderHomeGrid();
+  }).catch(function(){
+    if(n<2){_drvCache=null;setTimeout(function(){_loadDrvsHome(n+1);},1500);}
+    else{_drvsLoaded=true;_renderHomeGrid();}
+  });
+}
 function loadHome() {
   _homeCat='cars';
   _homeFilters={city:'',trans:'',sort:'newest',q:''};
@@ -2333,7 +2344,7 @@ function loadHome() {
     _renderHomeGrid();
   }).catch(function(){eid('h-cars').innerHTML=empty('&#128663;','Could not load.');});
   _drvsLoaded=false;
-  (function _loadDrvs(n){fetchDrivers().then(function(drvs){if(!drvs.length&&n<2){_drvCache=null;setTimeout(function(){_loadDrvs(n+1);},1500);return;}_drvsLoaded=true;_homeDrvsCache=drvs;_renderHomeGrid();}).catch(function(){if(n<2){_drvCache=null;setTimeout(function(){_loadDrvs(n+1);},1500);}else{_drvsLoaded=true;var el=eid('h-drvs');if(el)el.innerHTML=empty('&#128100;','Could not load.')+'<button class="btn btn-gm btn-sm" style="margin:8px auto;display:block" onclick="_drvCache=null;loadHome()">Retry</button>';}});})(0);
+  _loadDrvsHome();
   // Load testimonials
   sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(3).then(function(res){
     var revs=res.data||[];
