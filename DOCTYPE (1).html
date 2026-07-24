@@ -447,7 +447,7 @@ nav div::-webkit-scrollbar{display:none}
         <option value="port elizabeth">Gqeberha / PE</option>
       </select>
     </div>
-    <div class="fg"><label>Transmission</label>
+    <div class="fg" id="fs-trans-row"><label>Transmission</label>
       <select id="hs-trans" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">
         <option value="">Any transmission</option>
         <option value="Manual">Manual</option>
@@ -2249,11 +2249,38 @@ function closeHMenu(){var d=eid('hmenu');if(d)d.classList.remove('on');}
 
 // ── Filter bottom sheet ──
 var _homeFilters={city:'',trans:'',sort:'newest',q:''};
-function openFilterSheet(){var s=eid('filter-sheet');if(s)s.classList.add('on');}
+function openFilterSheet(){
+  var s=eid('filter-sheet');if(!s)return;
+  s.classList.add('on');
+  // Update filter options based on active home category
+  var isDrivers=_homeCat==='drivers';
+  var transRow=eid('fs-trans-row');
+  if(transRow)transRow.style.display=isDrivers?'none':'';
+  var sortSel=eid('hs-sort');
+  if(sortSel){
+    if(isDrivers){
+      sortSel.innerHTML='<option value="newest">Newest first</option>'
+        +'<option value="trust_desc">Highest TrustScore</option>'
+        +'<option value="rentals_desc">Most Rentals</option>';
+    } else {
+      sortSel.innerHTML='<option value="newest">Newest first</option>'
+        +'<option value="price_asc">Price: Low to High</option>'
+        +'<option value="price_desc">Price: High to Low</option>';
+    }
+    // Restore current sort value if it matches an option
+    var cur=_homeFilters.sort||'newest';
+    Array.from(sortSel.options).forEach(function(o){if(o.value===cur)o.selected=true;});
+  }
+  // Restore city
+  var citySel=eid('hs-city');
+  if(citySel)citySel.value=_homeFilters.city||'';
+  var transSel=eid('hs-trans');
+  if(transSel&&!isDrivers)transSel.value=_homeFilters.trans||'';
+}
 function closeFilterSheet(){var s=eid('filter-sheet');if(s)s.classList.remove('on');}
 function applyHomeFilters(){
   _homeFilters.city=(eid('hs-city')||{}).value||'';
-  _homeFilters.trans=(eid('hs-trans')||{}).value||'';
+  _homeFilters.trans=(_homeCat==='drivers')?'':(eid('hs-trans')||{}).value||'';
   _homeFilters.sort=(eid('hs-sort')||{}).value||'newest';
   closeFilterSheet();
   _renderHomeGrid();
@@ -2272,7 +2299,6 @@ function setHomeCat(cat){
   if(title)title.textContent=cat==='cars'?'Available Cars':'Verified Drivers';
   if(vab){vab.textContent='View all';vab.onclick=function(){go(cat);};}
   if(sub)sub.textContent=cat==='cars'?'Browse vehicles ready to rent':(U?'Nearest to you':'Sorted by TrustScore');
-  _renderHomeGrid();
 }
 
 // ── Home search ──
@@ -2288,7 +2314,8 @@ var _GUEST_LIMIT=4;
 function _renderHomeGrid(){
   var q=(_homeFilters.q||'').toLowerCase();
   var limit=U?999:_GUEST_LIMIT;
-  if(_homeCat==='cars'){
+  // Always render both grids so switching tabs shows data immediately
+  if(_homeCarsCache.length){
     var items=_homeCarsCache.filter(function(c){
       var ms=((c.make||'')+' '+(c.model||'')+' '+(c.location||'')).toLowerCase();
       if(q&&ms.indexOf(q)<0)return false;
@@ -2303,7 +2330,8 @@ function _renderHomeGrid(){
     var html=show.map(carHTML).join('');
     var el=eid('h-cars');
     if(el)el.innerHTML=html?html+signup:empty('&#128663;','No cars match your search.');
-  } else {
+  }
+  if(_homeDrvsCache.length||_drvsLoaded){
     var items2=_homeDrvsCache.filter(function(d){
       var loc=(d.profile&&d.profile.location)||d.location||'';
       var ms=((d.full_name||'')+' '+loc).toLowerCase();
@@ -2311,11 +2339,13 @@ function _renderHomeGrid(){
       if(_homeFilters.city&&loc.toLowerCase().indexOf(_homeFilters.city)<0)return false;
       return true;
     });
+    if(_homeFilters.sort==='trust_desc')items2.sort(function(a,b){return ((b.trust_score||b.trustscore||0)-(a.trust_score||a.trustscore||0));});
+    else if(_homeFilters.sort==='rentals_desc')items2.sort(function(a,b){return ((b.completed_rentals||b.rentals_completed||0)-(a.completed_rentals||a.rentals_completed||0));});
     var show2=items2.slice(0,limit);
     var signup2=(!U&&items2.length>limit)?_signupCard('&#128100;',items2.length-limit):'';
     var html2=show2.map(drvHTML).join('');
     var el2=eid('h-drvs');
-    if(el2)el2.innerHTML=html2?html2+signup2:(_drvsLoaded?empty('&#128100;','No drivers found. <button class="btn btn-out btn-sm" style="margin-left:8px" onclick="_drvCache=null;_drvsLoaded=false;eid(\'h-drvs\').innerHTML=skelCards(4);_loadDrvsHome()">Retry</button>'):skelCards(4));
+    if(el2)el2.innerHTML=html2?html2+signup2:(_drvsLoaded?empty('&#128100;','No drivers found.')+'<div style="text-align:center;margin-top:8px"><button class="btn btn-gm btn-sm" onclick="_drvCache=null;_drvsLoaded=false;eid(\'h-drvs\').innerHTML=skelCards(4);_loadDrvsHome()">Retry</button></div>':skelCards(4));
   }
 }
 function _signupCard(icon,extra){
@@ -4523,9 +4553,10 @@ async function submitTermsProposal(){
 async function chatAgreeTerms(){
   if(!_chatAppId)return;
   var field=_chatIsDriver?{driver_agreed_terms:true}:{owner_agreed_terms:true};
-  var r=await sb.from('applications').update(field).eq('id',_chatAppId).select('driver_agreed_terms,owner_agreed_terms').maybeSingle();
-  if(r.error){toast('Error: '+r.error.message);return;}
-  var both=r.data&&r.data.driver_agreed_terms&&r.data.owner_agreed_terms;
+  var upd=await sb.from('applications').update(field).eq('id',_chatAppId);
+  if(upd.error){toast('Error: '+upd.error.message);return;}
+  var chk=await sb.from('applications').select('driver_agreed_terms,owner_agreed_terms').eq('id',_chatAppId).maybeSingle();
+  var both=chk.data&&chk.data.driver_agreed_terms&&chk.data.owner_agreed_terms;
   if(both){
     await sb.from('applications').update({terms_agreed_at:new Date().toISOString()}).eq('id',_chatAppId);
     await sb.from('messages').insert({application_id:_chatAppId,sender_id:U.id,content:'🎉 Both parties have agreed to the rental terms! Contact details are now visible in the chat.',type:'system'});
@@ -4533,6 +4564,7 @@ async function chatAgreeTerms(){
     await sb.from('messages').insert({application_id:_chatAppId,sender_id:U.id,content:(_chatIsDriver?'Driver':'Owner')+' has agreed to the proposed terms. Waiting for the other party.',type:'system'});
   }
   toast('You have agreed to the terms!');
+  await new Promise(function(res){setTimeout(res,400);});
   pChat();
 }
 
