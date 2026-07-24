@@ -275,7 +275,7 @@ nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;flex-dire
 .bntab.on{color:var(--gm)}
 .bntab.on .bnt-icon{filter:drop-shadow(0 0 4px rgba(26,92,40,.25))}
 /* ── Top nav slim ── */
-#top-nav{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--g);display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:52px}
+#top-nav{position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--g);display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:52px}
 /* ── Hamburger drawer ── */
 .hmenu-drawer{display:none;position:fixed;inset:0;z-index:200}
 .hmenu-drawer.on{display:block}
@@ -483,7 +483,7 @@ nav div::-webkit-scrollbar{display:none}
         <span style="font-size:16px;color:var(--muted)">&#128269;</span>
         <input id="h-search" type="text" placeholder="Search cars, drivers, location..." oninput="homeSearch()" style="flex:1;border:none;outline:none;font-size:14px;font-family:inherit;background:transparent;color:var(--text)"/>
       </div>
-      <button onclick="openFilterSheet()" style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:var(--gm);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center">&#9776;</button>
+      <button onclick="openFilterSheet()" style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:var(--gm);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;letter-spacing:0">Filter</button>
     </div>
     <!-- Category chips -->
     <div style="display:flex;gap:8px;margin-top:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px">
@@ -2282,7 +2282,7 @@ function homeSearch(){
 }
 
 // ── Render home grid with filters ──
-var _homeCarsCache=[], _homeDrvsCache=[];
+var _homeCarsCache=[], _homeDrvsCache=[], _drvsLoaded=false;
 var _GUEST_LIMIT=4;
 function _renderHomeGrid(){
   var q=(_homeFilters.q||'').toLowerCase();
@@ -2314,7 +2314,7 @@ function _renderHomeGrid(){
     var signup2=(!U&&items2.length>limit)?_signupCard('&#128100;',items2.length-limit):'';
     var html2=show2.map(drvHTML).join('');
     var el2=eid('h-drvs');
-    if(el2)el2.innerHTML=html2?html2+signup2:empty('&#128100;','No drivers match your search.');
+    if(el2)el2.innerHTML=html2?html2+signup2:(_drvsLoaded?empty('&#128100;','No drivers found. <button class="btn btn-gm btn-sm" style="margin-top:8px" onclick="_drvCache=null;_drvsLoaded=false;el2.innerHTML=skelCards(4);loadHome()">Retry</button>'):skelCards(4));
   }
 }
 function _signupCard(icon,extra){
@@ -2325,6 +2325,7 @@ function _signupCard(icon,extra){
 function loadHome() {
   _homeCat='cars';
   _homeFilters={city:'',trans:'',sort:'newest',q:''};
+  _drvsLoaded=false;
   setHomeCat('cars');
   if(!_carCache) eid('h-cars').innerHTML=skelCards(3);
   if(!_drvCache) eid('h-drvs').innerHTML=skelCards(4);
@@ -2335,11 +2336,12 @@ function loadHome() {
   (function loadDrvsWithRetry(attempt){
     fetchDrivers().then(function(drvs){
       if(!drvs.length&&attempt<2){setTimeout(function(){_drvCache=null;loadDrvsWithRetry(attempt+1)},1500);return;}
-      _homeDrvsCache=drvs;
+      if(!drvs.length){_drvsLoaded=true;_renderHomeGrid();return;}
+      _drvsLoaded=true;_homeDrvsCache=drvs;
       _renderHomeGrid();
     }).catch(function(){
       if(attempt<2){setTimeout(function(){_drvCache=null;loadDrvsWithRetry(attempt+1)},1500);}
-      else{eid('h-drvs').innerHTML=empty('&#128100;','Could not load. Tap to retry.').replace('</div>','<br><button class="btn btn-gm btn-sm" style="margin-top:8px" onclick="_drvCache=null;loadHome()">Retry</button></div>');}
+      else{_drvsLoaded=true;eid('h-drvs').innerHTML=empty('&#128100;','Could not load.').replace('</div>','<br><button class="btn btn-gm btn-sm" style="margin-top:8px" onclick="_drvCache=null;loadHome()">Retry</button></div>');}
     });
   })(0);
   // Load testimonials
