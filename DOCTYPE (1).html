@@ -1928,7 +1928,7 @@ function trackView(page) {
 async function fetchDrivers(lim) {
   if(!lim&&_drvCache&&(Date.now()-_drvCacheTs)<300000)return _drvCache;
   var r = await sb.from('v_driver_listing')
-    .select('id,full_name,location,trust_score,is_matched,platforms,rentals_completed,photo_headshot_url,photo_holding_id_url,age,vehicle_types,bio,created_at')
+    .select('*')
     .order('trust_score',{ascending:false})
     .limit(lim||60);
   if(!r.data||!r.data.length) return [];
@@ -3463,7 +3463,7 @@ async function pOv() {
         +statCard(matchedApps.length,'Matched','var(--gm)','View match &#8594;','ap')
         +statCard(pendingCount,'Pending',pendingCount>0?'#E8A520':'var(--muted)',pendingCount>0?'Tap to review &#8594;':'No pending','ap')
         +statCard(approvedCars,'My Cars','var(--g)','View cars &#8594;','lc')
-        +'<div onclick="ownerOpenRateDriver()" style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:14px;cursor:pointer"><div style="font-size:12px;font-weight:600;color:var(--muted);margin-top:2px">Ratings</div><div style="font-size:11px;color:var(--g);margin-top:6px;font-weight:600">Rate your driver &#8594;</div></div>'
+        +(isMatched&&matchedApps[0]?(function(){var _mn=(mpm[matchedApps[0].driver_id]||{}).full_name||'Driver';var _fn=_mn.split(' ')[0];return '<div onclick="dpanel('rv')" style="background:#fff;border:1.5px solid var(--gm);border-radius:10px;padding:14px;cursor:pointer"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Rate Driver</div><div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:2px">'+_fn+''s Performance</div><div style="font-size:10px;color:var(--gm);font-weight:600">Tap to rate &#8594;</div></div>'})():'<div onclick="dpanel('rv')" style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:14px;cursor:pointer"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Rate Driver</div><div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:2px">Driver Performance</div><div style="font-size:10px;color:var(--gm);font-weight:600">Tap to rate &#8594;</div></div>')
       +'</div>';
 
       // Past rentals
@@ -5274,6 +5274,7 @@ async function pRv() {
   var isOwner=P.role==='owner'||P.role==='both';
   var isDriver=P.role==='driver'||P.role==='both';
   var ownerHtml='';
+  var _rvDriverName='';
   if(isOwner){
     // Show driver rating section for owners
     var matchR=await sb.from('applications').select('id,driver_id,matched_at,driver_agreed_terms,owner_agreed_terms').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
@@ -5283,10 +5284,11 @@ async function pRv() {
       var dProfR=await sb.from('profiles').select('id,full_name,location,photo_holding_id_url').eq('id',ma.driver_id).maybeSingle();
       var dpR=await sb.from('driver_profiles').select('id,photo_headshot_url,trust_score').eq('user_id',ma.driver_id).maybeSingle();
       var dp=dpR.data||{}; var dprof=dProfR.data||{};
+      _rvDriverName=(dprof.full_name||'').split(' ')[0]||'';
       var av=dp.photo_headshot_url?'<img src="'+imgUrl(dp.photo_headshot_url,80,80)+'" loading="lazy" style="width:52px;height:52px;object-fit:cover;object-position:top;border-radius:50%">':
            '<div class="av" style="width:52px;height:52px;font-size:18px">'+ini(dprof.full_name||'?')+'</div>';
       ownerHtml+='<div class="tbox" style="border:2px solid var(--gm);margin-bottom:16px">'
-        +'<div class="shd">&#11088; Rate Your Current Driver</div>'
+        +'<div class="shd">&#11088; Rate '+((dprof.full_name||'Driver').split(' ')[0])+'&#39;s Performance</div>'
         +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'+av
         +'<div><div style="font-size:15px;font-weight:800;color:var(--g)">'+(dprof.full_name||'Driver')+'</div>'
         +(dprof.location?'<div style="font-size:12px;color:var(--muted)">&#128205; '+esc(dprof.location)+'</div>':'')
@@ -5349,7 +5351,8 @@ async function pRv() {
         return '<div class="rev-item"><div class="rev-top" style="flex-wrap:wrap;gap:4px"><span class="rev-name">'+displayName+(rv.car_label?', <span style="font-weight:500;color:var(--muted)">'+rv.car_label+'</span>':'')+'</span>'+roleLbl+badge+starRow(rv.rating/5*100,12)+'</div><div class="rev-txt">\''+rv.comment+'\'</div>'+(rv.matched_name?'<div style="font-size:11px;color:var(--gm);margin-top:3px">Matched with '+rv.matched_name+'</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
       }).join('')
     : '<p style="font-size:13px;color:var(--muted);padding:8px 0">No reviews yet \u2014 be the first!</p>';
-  el.innerHTML='<div class="ptitle">'+(isOwner?'Driver Reviews':'Platform Reviews')+'</div>'
+  el.innerHTML='<div class="ptitle">'+(isOwner?(_rvDriverName?'Rate '+_rvDriverName+'&#39;s Performance':'Driver Reviews'):'Platform Reviews')+'</div>'
+    +(isOwner&&_rvDriverName?'<div style="background:var(--gs);border:1px solid var(--gm);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--g);line-height:1.6">Your rating updates <strong>'+_rvDriverName+'&#39;s TrustScore</strong> &#8212; their driving CV on TrustMate. It rewards drivers who pay on time, care for vehicles and build trust with future owners.</div>':'')
     +ownerHtml
     +(isOwner?'':'<div class="shd" style="margin-top:16px">TrustMate Platform Review</div>'+submitForm+'<div class="shd">What Our Users Say ('+allRevs.length+')</div>'+reviewsHtml);
   window._prvStar=0; window._prvIsMatched=isMatchedForBadge; window._prvMatchedName=matchedName; window._prvRole=(P&&P.role)||'driver';
