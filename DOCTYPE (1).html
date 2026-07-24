@@ -333,12 +333,12 @@ nav div::-webkit-scrollbar{display:none}
 
 /* ── Dashboard redesign ── */
 .dash-hero{background:linear-gradient(155deg,var(--g) 0%,#2d5a27 60%,#1a3d1a 100%);padding:20px 16px 16px;flex-shrink:0;display:none}
-.dash-tabs-bar{display:none;background:#fff;border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:sticky;top:0;z-index:90;flex-shrink:0}
+.dash-tabs-bar{display:none;background:#fff;border-bottom:2px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:sticky;top:52px;z-index:90;flex-shrink:0}
 .dash-tabs-bar::-webkit-scrollbar{display:none}
 .dtab{flex:0 0 auto;padding:11px 14px;font-size:13px;font-weight:600;color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;font-family:inherit;transition:color .15s}
 .dtab.on{color:var(--gm);border-bottom-color:var(--gm)}
 /* ── Admin redesign ── */
-.adm-tabs-bar{display:none;background:#08110a;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:sticky;top:0;z-index:90;flex-shrink:0;padding:6px 8px;gap:4px}
+.adm-tabs-bar{display:none;background:#08110a;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:sticky;top:52px;z-index:90;flex-shrink:0;padding:6px 8px;gap:4px}
 .adm-tabs-bar::-webkit-scrollbar{display:none}
 .atab{flex:0 0 auto;padding:7px 12px;font-size:12px;font-weight:600;color:rgba(255,255,255,.5);border:none;background:none;cursor:pointer;border-radius:7px;white-space:nowrap;font-family:inherit;transition:all .15s}
 .atab.on{background:var(--gm);color:#fff}
@@ -3111,13 +3111,39 @@ function acceptTC() {
 function acceptPP() { eid('reg-pp').checked=true; closeModal('popia-modal'); toast('POPIA consent given'); }
 
 // ── DASHBOARD ──────────────────────────────────────────
+function _tabBadge(n,color){return n>0?'<span style="background:'+color+';color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:999px;margin-left:4px">'+n+'</span>':''}
+function rebuildDashTabs(isOwner,isDriver,isMatched,unread,pending){
+  var bar=eid('dash-tabs-bar'); if(!bar)return;
+  var t='<button class="dtab" id="dtab-ov" onclick="dpanel(\'ov\')">&#128202; Overview</button>';
+  if(isOwner&&!isDriver){
+    if(isMatched)t+='<button class="dtab" id="dtab-ch" onclick="dpanel(\'ch\')">&#128172; Chat'+_tabBadge(unread,'#dc2626')+'</button>';
+    else t+='<button class="dtab" id="dtab-ap" onclick="dpanel(\'ap\')">&#129309; Requests'+_tabBadge(pending,'#E8A520')+'</button>';
+    t+='<button class="dtab" id="dtab-rv" onclick="dpanel(\'rv\')">&#11088; Reviews</button>';
+    t+='<button class="dtab" id="dtab-lc" onclick="dpanel(\'lc\')">&#128663; My Cars</button>';
+    t+='<button class="dtab" id="dtab-pr" onclick="dpanel(\'pr\')">&#128100; Profile</button>';
+  } else if(isDriver&&!isOwner){
+    if(isMatched)t+='<button class="dtab" id="dtab-ch" onclick="dpanel(\'ch\')">&#128172; Chat'+_tabBadge(unread,'#dc2626')+'</button>';
+    t+='<button class="dtab" id="dtab-ap" onclick="dpanel(\'ap\')">&#128203; My Requests'+_tabBadge(pending,'#E8A520')+'</button>';
+    t+='<button class="dtab" id="dtab-rv" onclick="dpanel(\'rv\')">&#11088; Reviews</button>';
+    t+='<button class="dtab" id="dtab-dc" onclick="dpanel(\'dc\')">&#128196; Docs</button>';
+    t+='<button class="dtab" id="dtab-pr" onclick="dpanel(\'pr\')">&#128100; Profile</button>';
+  } else {
+    if(isMatched)t+='<button class="dtab" id="dtab-ch" onclick="dpanel(\'ch\')">&#128172; Chat'+_tabBadge(unread,'#dc2626')+'</button>';
+    t+='<button class="dtab" id="dtab-ap" onclick="dpanel(\'ap\')">Applications'+_tabBadge(pending,'#E8A520')+'</button>';
+    t+='<button class="dtab" id="dtab-rv" onclick="dpanel(\'rv\')">&#11088; Reviews</button>';
+    if(isDriver)t+='<button class="dtab" id="dtab-dc" onclick="dpanel(\'dc\')">&#128196; Docs</button>';
+    if(isOwner)t+='<button class="dtab" id="dtab-lc" onclick="dpanel(\'lc\')">&#128663; My Cars</button>';
+    t+='<button class="dtab" id="dtab-pr" onclick="dpanel(\'pr\')">&#128100; Profile</button>';
+  }
+  bar.innerHTML='<div style="display:flex;padding:0 4px">'+t+'</div>';
+  window._dtIsOwner=isOwner;window._dtIsDriver=isDriver;window._dtIsMatched=isMatched;window._dtUnread=unread;window._dtPending=pending;
+}
 async function initDash() {
   if(!U){go('login');return;}
   var firstName=P&&P.full_name?P.full_name.split(' ')[0]:'there';
   var roleLabel=P?(P.role==='driver'?'Driver Account':P.role==='owner'?'Owner Account':'TrustMate'):'';
   eid('dash-name').textContent='Hi '+firstName+' \uD83D\uDC4B';
   eid('dash-role').textContent=roleLabel;
-  // Populate mobile hero
   var heroName=eid('dash-hero-name'); if(heroName)heroName.textContent='Hi '+firstName+' \uD83D\uDC4B';
   var heroRole=eid('dash-hero-role'); if(heroRole)heroRole.textContent=roleLabel;
   var heroAv=eid('dash-hero-av');
@@ -3125,24 +3151,23 @@ async function initDash() {
     if(P&&P.photo_holding_id_url){heroAv.innerHTML='<img src="'+imgUrl(P.photo_holding_id_url,52,52)+'" style="width:52px;height:52px;object-fit:cover;object-position:top;border-radius:50%">';}
     else{heroAv.textContent=ini(P&&P.full_name||'?');}
   }
-  eid('sb-ap-l').textContent=P&&P.role==='driver'?'My Requests':'Applications';
   var isDriver=P&&(P.role==='driver'||P.role==='both');
   var isOwner=P&&(P.role==='owner'||P.role==='both');
+  eid('sb-ap-l').textContent=isDriver?'My Requests':'Applications';
   eid('sb-dc').style.display=isDriver?'flex':'none';
   eid('sb-lc').style.display=isOwner?'flex':'none';
   eid('adm-link-sb').style.display=P&&P.is_admin?'block':'none';
-  var dtDc=eid('dtab-dc'); if(dtDc)dtDc.style.display=isDriver?'':'none';
-  var dtLc=eid('dtab-lc'); if(dtLc)dtLc.style.display=isOwner?'':'none';
-  var dtApL=eid('dtab-ap-l'); if(dtApL)dtApL.textContent=isDriver?'My Requests':'Applications';
+  var pendingCnt=0;
   if(isDriver){
     var bR=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',U.id).eq('status','pending').eq('initiated_by','owner');
-    var cnt=bR.count||0;
+    pendingCnt=bR.count||0;
     var bdg=eid('sb-ap-badge');
-    if(bdg){bdg.textContent=cnt;bdg.style.display=cnt>0?'inline':'none';}
-    var dtBdg=eid('dtab-ap-badge');
-    if(dtBdg){dtBdg.textContent=cnt;dtBdg.style.display=cnt>0?'inline':'none';}
+    if(bdg){bdg.textContent=pendingCnt;bdg.style.display=pendingCnt>0?'inline':'none';}
   }
-  // Show Chat tab and unread badge for matched users
+  var isMatched=false;
+  if(isDriver){var _mR=await sb.from('applications').select('id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();isMatched=!!(_mR.data);}
+  else if(isOwner){var _mR2=await sb.from('applications').select('id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();isMatched=!!(_mR2.data);}
+  rebuildDashTabs(isOwner,isDriver,isMatched,0,pendingCnt);
   await refreshChatNav();
   showMobNav();
   dpanel('ov');
@@ -4123,15 +4148,18 @@ async function refreshChatNav(){
     :{data:null};
   var hasMatch=!!(appR&&appR.data);
   var sb2=eid('sb-ch'); if(sb2)sb2.style.display=hasMatch?'flex':'none';
-  var dtCh=eid('dtab-ch'); if(dtCh)dtCh.style.display=hasMatch?'':'none';
+  var unreadCnt=0;
   if(hasMatch){
     var appId=appR.data.id;
     var unread=await sb.from('messages').select('id',{count:'exact',head:true}).eq('application_id',appId).eq('read_by_recipient',false).neq('sender_id',U.id);
-    var cnt=unread.count||0;
+    unreadCnt=unread.count||0;
     var bdg=eid('ch-badge');
-    if(bdg){bdg.textContent=cnt;bdg.style.display=cnt>0?'inline':'none';}
-    var dtBdg2=eid('dtab-ch-badge');
-    if(dtBdg2){dtBdg2.textContent=cnt;dtBdg2.style.display=cnt>0?'inline':'none';}
+    if(bdg){bdg.textContent=unreadCnt;bdg.style.display=unreadCnt>0?'inline':'none';}
+    window._unreadMsgCount=unreadCnt;
+  }
+  // Rebuild mobile tab strip with up-to-date match + unread info
+  if(typeof rebuildDashTabs==='function'&&window._dtIsOwner!==undefined){
+    rebuildDashTabs(window._dtIsOwner,window._dtIsDriver,hasMatch,unreadCnt,window._dtPending||0);
   }
 }
 
@@ -5235,59 +5263,93 @@ async function doUnmatch(btn) {
 }
 async function pRv() {
   var el=eid('panel-rv');
-  if(!U||!P){el.innerHTML=empty('&#11088;','Please log in.');return;}
+  if(!U||!P){el.innerHTML=empty('⭐','Please log in.');return;}
   el.innerHTML=adSpin();
-
-  // Check if user already submitted a platform review
-  var myR=await sb.from('platform_reviews').select('*').eq('user_id',U.id).maybeSingle();
-  var mine=myR.data;
-
-  // Check for verified match to badge review
-  var isMatched=false, matchedName='';
-  if(P.role==='driver'&&DP){
-    var mChk=await sb.from('applications').select('owner_id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
-    if(mChk.data){isMatched=true;var opR=await sb.from('profiles').select('full_name').eq('id',mChk.data.owner_id).maybeSingle();matchedName=opR.data?opR.data.full_name:'';}
-  } else if(P.role==='owner'||P.role==='both'){
-    var mChk2=await sb.from('applications').select('driver_id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
-    if(mChk2.data){isMatched=true;var dpR=await sb.from('profiles').select('full_name').eq('id',mChk2.data.driver_id).maybeSingle();matchedName=dpR.data?dpR.data.full_name:'';}
+  var isOwner=P.role==='owner'||P.role==='both';
+  var isDriver=P.role==='driver'||P.role==='both';
+  var ownerHtml='';
+  if(isOwner){
+    // Show driver rating section for owners
+    var matchR=await sb.from('applications').select('id,driver_id,matched_at,driver_agreed_terms,owner_agreed_terms').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
+    if(matchR.data){
+      var ma=matchR.data;
+      var alreadyRatedR=await sb.from('reviews').select('id').eq('reviewer_id',U.id).eq('application_id',ma.id).maybeSingle();
+      var dProfR=await sb.from('profiles').select('id,full_name,location,photo_holding_id_url').eq('id',ma.driver_id).maybeSingle();
+      var dpR=await sb.from('driver_profiles').select('id,photo_headshot_url,trust_score').eq('user_id',ma.driver_id).maybeSingle();
+      var dp=dpR.data||{}; var dprof=dProfR.data||{};
+      var av=dp.photo_headshot_url?'<img src="'+imgUrl(dp.photo_headshot_url,80,80)+'" loading="lazy" style="width:52px;height:52px;object-fit:cover;object-position:top;border-radius:50%">':
+           '<div class="av" style="width:52px;height:52px;font-size:18px">'+ini(dprof.full_name||'?')+'</div>';
+      ownerHtml+='<div class="tbox" style="border:2px solid var(--gm);margin-bottom:16px">'
+        +'<div class="shd">&#11088; Rate Your Current Driver</div>'
+        +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'+av
+        +'<div><div style="font-size:15px;font-weight:800;color:var(--g)">'+(dprof.full_name||'Driver')+'</div>'
+        +(dprof.location?'<div style="font-size:12px;color:var(--muted)">&#128205; '+esc(dprof.location)+'</div>':'')
+        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">TrustScore: <strong style="color:var(--gm)">'+(dp.trust_score||0)+'</strong></div>'
+        +'</div></div>'
+        +(alreadyRatedR.data
+          ?'<div style="background:var(--gs);border-radius:8px;padding:10px 14px;font-size:13px;font-weight:700;color:var(--gm);text-align:center">&#10003; You have rated this driver</div>'
+          :(ma.driver_agreed_terms&&ma.owner_agreed_terms
+            ?'<button class="btn btn-gm btn-w" style="font-size:15px;font-weight:800;padding:13px" data-dpid="'+(dp.id||'')+'" data-aid="'+ma.id+'" data-dn="'+esc(dprof.full_name||'Driver')+'" onclick="openRatingModal2(this.dataset.dpid,this.dataset.aid,this.dataset.dn,false)">&#11088; Rate This Driver</button>'
+            :'<div style="font-size:12px;color:var(--muted);background:var(--cream);border-radius:7px;padding:9px 12px">&#11088; Rating available once both parties agree to rental terms in Chat.</div>'
+          ))
+        +'</div>';
+    } else {
+      ownerHtml+='<div class="warn-box">&#128274; You need an active rental match to rate a driver. <button class="btn btn-gm btn-sm" onclick="dpanel(\'ap\')">View Requests</button></div>';
+    }
+    // Past driver reviews given by owner
+    var pastRevR=await sb.from('reviews').select('id,rating,comment,created_at,application_id,driver_id').eq('reviewer_id',U.id).order('created_at',{ascending:false});
+    var pastRevs=pastRevR.data||[];
+    if(pastRevs.length){
+      var pastDrvIds=pastRevs.map(function(r){return r.driver_id;}).filter(Boolean);
+      var pastDrvProfR=pastDrvIds.length?await sb.from('profiles').select('id,full_name').in('id',pastDrvIds):{data:[]};
+      var pastDrvMap={};(pastDrvProfR.data||[]).forEach(function(p){pastDrvMap[p.id]=p;});
+      ownerHtml+='<div class="shd" style="margin-top:4px">Your Driver Reviews ('+pastRevs.length+')</div>';
+      ownerHtml+=pastRevs.map(function(rv){
+        var dn=(pastDrvMap[rv.driver_id]||{}).full_name||'Driver';
+        return '<div class="rev-item"><div class="rev-top"><span class="rev-name">'+esc(dn)+'</span>'+starRow((rv.rating/5)*100,12)+'</div>'
+          +'<div class="rev-txt">"'+esc(rv.comment||'')+'"</div>'
+          +'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
+      }).join('');
+    }
   }
 
-  // Load all approved platform reviews
+  // Platform review form section
+  var myR=await sb.from('platform_reviews').select('*').eq('user_id',U.id).maybeSingle();
+  var mine=myR.data;
+  var isMatchedForBadge=false, matchedName='';
+  if(isDriver&&DP){var mChk=await sb.from('applications').select('owner_id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();if(mChk.data){isMatchedForBadge=true;var opR=await sb.from('profiles').select('full_name').eq('id',mChk.data.owner_id).maybeSingle();matchedName=opR.data?opR.data.full_name:'';}}
+  else if(isOwner){var mChk2=await sb.from('applications').select('driver_id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();if(mChk2.data){isMatchedForBadge=true;var dpR2=await sb.from('profiles').select('full_name').eq('id',mChk2.data.driver_id).maybeSingle();matchedName=dpR2.data?dpR2.data.full_name:'';}}
   var allR=await sb.from('platform_reviews').select('*').eq('is_approved',true).order('created_at',{ascending:false});
   var allRevs=allR.data||[];
-
-  var userRole=P.role==='driver'?'Driver':'Vehicle Owner';
   var stars='<div style="display:flex;gap:6px;margin:10px 0 4px" id="prv-stars">'
     +[1,2,3,4,5].map(function(i){return '<span id="prvs'+i+'" onclick="setPrvStar('+i+')" style="font-size:28px;cursor:pointer;color:#ddd;transition:color .1s">&#9733;</span>';}).join('')
     +'</div>';
-
   var submitForm=mine
-    ? '<div class="alert-info" style="margin-bottom:16px"><strong>You already submitted a review.</strong> '+(mine.is_approved?'It\'s live on the platform &#9989;':'It\'s pending admin approval.')+'<br><div class="rev-item" style="margin-top:10px;background:#fff">'+starRow(mine.rating/5*100,14)+'<div class="rev-txt" style="margin-top:5px">"'+mine.comment+'"</div>'+(mine.is_matched&&mine.matched_name?'<div style="font-size:11px;color:var(--gm);margin-top:4px">&#9989; Matched with '+mine.matched_name+'</div>':'')+'</div></div>'
+    ? '<div class="warn-box"><strong>You already submitted a review.</strong> '+(mine.is_approved?'It\'s live &#9989;':'Pending admin approval.')+'<br><div class="rev-item" style="margin-top:10px;background:#fff">'+starRow(mine.rating/5*100,14)+'<div class="rev-txt" style="margin-top:5px">\''+mine.comment+'\'</div>'+(mine.is_matched&&mine.matched_name?'<div style="font-size:11px;color:var(--gm);margin-top:4px">&#9989; Matched with '+mine.matched_name+'</div>':'')+'</div></div>'
     : '<div class="tbox" style="margin-bottom:18px">'
       +'<div class="shd">Share Your Experience with TrustMate</div>'
       +'<p style="font-size:13px;color:var(--muted);margin-bottom:10px">Your feedback helps others trust the platform. Reviews are shown publicly after admin approval.</p>'
       +stars
       +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px" id="prv-star-lbl">Tap a star to rate</div>'
       +'<div class="fg"><label>Your review</label><textarea id="prv-txt" placeholder="Tell us about your experience finding a match on TrustMate..." style="height:90px"></textarea></div>'
-      +(isMatched?'<div style="font-size:12px;background:var(--gs);border:1px solid var(--gm);border-radius:7px;padding:8px 11px;margin-bottom:10px;color:var(--g)">&#9989; Your review will show a <strong>Verified Match</strong> badge — you matched with <strong>'+(matchedName||'a user')+'</strong>.</div>':'')
+      +(isMatchedForBadge?'<div style="font-size:12px;background:var(--gs);border:1px solid var(--gm);border-radius:7px;padding:8px 11px;margin-bottom:10px;color:var(--g)">&#9989; Your review will show a <strong>Verified Match</strong> badge \u2014 you matched with <strong>'+(matchedName||'a user')+'</strong>.</div>':'')
       +'<button class="btn btn-gm btn-w" id="prv-btn" onclick="subPrvReview()" disabled>Submit Review</button>'
       +'</div>';
-
   var reviewsHtml=allRevs.length
     ? allRevs.map(function(rv){
         var badge=rv.is_matched?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 7px;margin-left:6px">&#9989; Verified Match</span>':'';
         var roleLbl=rv.role==='driver'?'<span style="font-size:10px;background:#f0f9ff;color:#0369a1;border-radius:999px;padding:1px 7px;font-weight:700;margin-left:6px">Driver</span>':'<span style="font-size:10px;background:var(--gs);color:var(--gm);border-radius:999px;padding:1px 7px;font-weight:700;margin-left:6px">Owner</span>';
         var displayName=rv.reviewer_name||'TrustMate User';
-        return '<div class="rev-item"><div class="rev-top" style="flex-wrap:wrap;gap:4px"><span class="rev-name">'+displayName+(rv.car_label?', <span style="font-weight:500;color:var(--muted)">'+rv.car_label+'</span>':'')+'</span>'+roleLbl+badge+starRow(rv.rating/5*100,12)+'</div><div class="rev-txt">"'+rv.comment+'"</div>'+(rv.matched_name?'<div style="font-size:11px;color:var(--gm);margin-top:3px">Matched with '+rv.matched_name+'</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
+        return '<div class="rev-item"><div class="rev-top" style="flex-wrap:wrap;gap:4px"><span class="rev-name">'+displayName+(rv.car_label?', <span style="font-weight:500;color:var(--muted)">'+rv.car_label+'</span>':'')+'</span>'+roleLbl+badge+starRow(rv.rating/5*100,12)+'</div><div class="rev-txt">\''+rv.comment+'\'</div>'+(rv.matched_name?'<div style="font-size:11px;color:var(--gm);margin-top:3px">Matched with '+rv.matched_name+'</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
       }).join('')
-    : '<p style="font-size:13px;color:var(--muted);padding:8px 0">No reviews yet — be the first!</p>';
-
-  el.innerHTML='<div class="ptitle">Platform Reviews</div>'
+    : '<p style="font-size:13px;color:var(--muted);padding:8px 0">No reviews yet \u2014 be the first!</p>';
+  el.innerHTML='<div class="ptitle">'+(isOwner?'Driver Reviews':'Platform Reviews')+'</div>'
+    +ownerHtml
+    +(isOwner?'<div class="shd" style="margin-top:16px">TrustMate Platform Review</div>':'')
     +submitForm
     +'<div class="shd">What Our Users Say ('+allRevs.length+')</div>'
     +reviewsHtml;
-
-  window._prvStar=0; window._prvIsMatched=isMatched; window._prvMatchedName=matchedName; window._prvRole=(P&&P.role)||'driver';
+  window._prvStar=0; window._prvIsMatched=isMatchedForBadge; window._prvMatchedName=matchedName; window._prvRole=(P&&P.role)||'driver';
 }
 
 var _prvStar=0;
@@ -5940,10 +6002,11 @@ async function adOv(){
     sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended'),
     sb.from('cars').select('id,status,admin_status,location,owner_id,make,model,year'),
     sb.from('applications').select('id,driver_id,owner_id,status,initiated_by,created_at'),
+    sb.from('applications').select('id',{count:'exact',head:true}),
     sb.from('reviews').select('id,rating'),
     sb.from('trust_actions').select('id,points')
   ]);
-  var users=res[0].data||[],dps=res[1].data||[],cars=res[2].data||[],apps=res[3].data||[],revs=res[4].data||[],acts=res[5].data||[];
+  var users=res[0].data||[],dps=res[1].data||[],cars=res[2].data||[],apps=res[3].data||[],revs=res[4].data||[],acts=res[5].data||[],_appTotalCount=res[6]?res[6].count:null;
   // Analytics - fetch login and view data
   var today=new Date().toISOString().slice(0,10);
   var logRes=await sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false});
@@ -5984,7 +6047,7 @@ async function adOv(){
   var matched=apps.filter(function(a){return a.status==='approved';}).length;
   var avgR=revs.length?(revs.reduce(function(s,r){return s+r.rating;},0)/revs.length).toFixed(1):'-';
   // Application engagement stats
-  var totalApps=appStatData.length;
+  var totalApps=(_appTotalCount!=null?_appTotalCount:appStatData.length);
   var driversWhoApplied=Object.keys(drvAppMap).length;
   var ownersWhoReceived=Object.keys(ownAppMap).length;
   var ownersWhoViewed=(viewRes.data||[]).reduce(function(s,v){s[v.owner_id]=true;return s;},{});
@@ -6312,7 +6375,7 @@ async function incPromote(dpId){
   toast('Moved to New Registrations!');adInc();
 }
 async function incApprove(dpId){
-  await sb.from('driver_profiles').update({status:'approved'}).eq('id',dpId);
+  await sb.from('driver_profiles').update({status:'approved',approved_at:new Date().toISOString()}).eq('id',dpId);
   sendDriverEmail('driver_approved', dpId);
   toast('Approved! Welcome email sent.');adInc();
 }
@@ -6462,6 +6525,7 @@ async function adSetDrv(dpId,status){
   var n=document.getElementById('note-'+dpId);
   var reason=document.getElementById('rej-reason-'+dpId);
   var update={status:status,admin_note:n?n.value.trim()||null:null};
+  if(status==='approved')update.approved_at=new Date().toISOString();
   if(status==='rejected'){
     var reasonVal=reason?reason.value.trim():'';
     if(!reasonVal){toast('Please enter a rejection reason before declining.');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
@@ -6589,7 +6653,9 @@ async function adDrv(){
         +(d.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+d.photo_headshot_url+'\')"><img src="'+imgUrl(d.photo_headshot_url,120,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(p.full_name)+'</div>')
         +'<div><div style="font-size:14px;font-weight:700">'+(p.full_name||'-')+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">'+(p.email||'-')+' / '+(p.phone||'-')+(p.whatsapp?' / '+p.whatsapp:'')+' / '+(p.location||'-')+'</div></div></div>'
-        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><div style="font-size:13px;font-weight:700;color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</div>'+adPill(d.status||'pending')+(d.suspended?'<span class="pill p-r">SUSPENDED</span>':'')+'</div></div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><div style="font-size:13px;font-weight:700;color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</div>'+adPill(d.status||'pending')+(d.suspended?'<span class="pill p-r">SUSPENDED</span>':'')+(d.approved_at&&d.status==='approved'?'<div style="font-size:10px;color:var(--gm);margin-top:2px">&#9989; Approved: '+fmtD(d.approved_at)+'</div>':'')
+        +(d.rejected_at&&d.status==='rejected'?'<div style="font-size:10px;color:#dc2626;margin-top:2px">&#10060; Rejected: '+fmtD(d.rejected_at)+'</div>':'')
+        +'</div></div>'
         +'<div style="padding:9px 14px;background:var(--cream);border-top:1px solid var(--border)">'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">TrustScore</label><input type="number" min="0" max="100" id="stat-ts-'+d.id+'" value="'+(d.trust_score||0)+'" style="width:64px;padding:4px 6px;border:1.5px solid var(--gm);border-radius:6px;font-size:13px;font-weight:700;font-family:inherit;color:var(--gm)"/></div>'
@@ -6803,7 +6869,7 @@ async function adSaveStats(dpId){
 async function adOwn(){
   var el=document.getElementById('ap-own');
   el.innerHTML='<div class="ptitle">Manage Owners</div>'+adSpin();
-  var r=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,admin_status,admin_note,created_at,doc_id_url,photo_headshot_url,photo_holding_id_url,is_suspended,suspension_reason').in('role',['owner','both']).order('created_at',{ascending:false});
+  var r=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,admin_status,admin_note,created_at,admin_reviewed_at,doc_id_url,photo_headshot_url,photo_holding_id_url,is_suspended,suspension_reason').in('role',['owner','both']).order('created_at',{ascending:false});
   var owners=r.data||[];
   if(!owners.length){el.innerHTML='<div class="ptitle">Manage Owners</div>'+empty('&#127968;','No owners registered yet.');return;}
   var oids=owners.map(function(o){return o.id;});
@@ -6840,6 +6906,9 @@ async function adOwn(){
         +'<div style="font-size:12px;color:var(--muted)">'+esc(o.email||'')+' &middot; '+esc(o.phone||'')+(o.location?' &middot; &#128205;'+esc(o.location):'')+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">&#128663; '+oCars.length+' car'+(oCars.length!==1?'s':'')+' listed</div></div>'
         +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap"><span class="pill '+(o.admin_status==='approved'?'p-a':o.admin_status==='rejected'?'p-r':'p-p')+'">'+(o.admin_status||'pending')+'</span>'+(o.is_suspended?'<span class="pill p-r">SUSPENDED</span>':'')+'</div>'
+        +(o.admin_reviewed_at&&o.admin_status==='approved'?'<div style="font-size:10px;color:var(--gm);margin-top:3px">&#9989; Approved: '+fmtD(o.admin_reviewed_at)+'</div>':''
+        )+(o.admin_reviewed_at&&o.admin_status==='rejected'?'<div style="font-size:10px;color:#dc2626;margin-top:3px">&#10060; Rejected: '+fmtD(o.admin_reviewed_at)+'</div>':''
+        )
         +'</div>'
         // Car thumbnails
         +(oCars.length?'<div style="padding:6px 14px;display:flex;gap:8px;flex-wrap:wrap">'
@@ -7402,21 +7471,35 @@ async function adPrvReviews(){
   el.innerHTML='<div class="ptitle">Platform Reviews</div>'+adSpin();
   var r=await sb.from('platform_reviews').select('*').order('created_at',{ascending:false});
   var all=r.data||[];
+  var uids=Array.from(new Set(all.map(function(x){return x.user_id;}).filter(Boolean)));
+  var profMap={};
+  if(uids.length){var profR=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,role').in('id',uids);(profR.data||[]).forEach(function(p){profMap[p.id]=p;});}
   var pending=all.filter(function(x){return !x.is_approved;});
   var approved=all.filter(function(x){return x.is_approved;});
-  // Update badge
   var b=eid('prvr-badge');if(b){b.style.display=pending.length?'inline':'none';b.textContent=pending.length;}
   function revCard(rv,isPending){
     var stars='<span style="color:#E8A520">'+('★').repeat(rv.rating)+('☆').repeat(5-rv.rating)+'</span>';
     var badge=rv.is_matched?'<span style="font-size:10px;color:var(--gm);font-weight:700;margin-left:6px">&#9989; Verified Match'+(rv.matched_name?' with '+rv.matched_name:'')+'</span>':'';
     var roleLbl=rv.role==='driver'?'Driver':'Vehicle Owner';
+    var prof=profMap[rv.user_id]||{};
+    var profDetails='<div style="margin-top:8px;padding:8px 10px;background:var(--cream);border-radius:7px;border:1px solid var(--border)">'
+      +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-bottom:5px">Reviewer Details</div>'
+      +'<div style="font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:3px 10px">'
+      +'<span style="color:var(--muted)">Name</span><span style="font-weight:600">'+(rv.reviewer_name||prof.full_name||'\u2014')+'</span>'
+      +'<span style="color:var(--muted)">Email</span><span>'+(prof.email||'\u2014')+'</span>'
+      +(prof.phone?'<span style="color:var(--muted)">Phone</span><span>'+esc(prof.phone)+'</span>':'')
+      +(prof.whatsapp?'<span style="color:var(--muted)">WhatsApp</span><span>'+esc(prof.whatsapp)+'</span>':'')
+      +(prof.location?'<span style="color:var(--muted)">Location</span><span>&#128205; '+esc(prof.location)+'</span>':'')
+      +'<span style="color:var(--muted)">Role</span><span>'+(prof.role||rv.role||'\u2014')+'</span>'
+      +'</div></div>';
     return '<div class="rcard" style="border-left:4px solid '+(isPending?'var(--amber)':'var(--gm)')+';padding:14px;margin-bottom:10px">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
-      +'<div><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">'+roleLbl+badge+'</div>'
+      +'<div style="flex:1"><div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:4px">'+roleLbl+badge+'</div>'
       +stars
-      +'<div style="font-size:13px;margin-top:6px;line-height:1.6">"'+rv.comment+'"</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin-top:5px">'+fmtD(rv.created_at)+(isPending?' &middot; <strong style="color:#E8A520">Pending</strong>':' &middot; <strong style="color:var(--gm)">Approved</strong>')+'</div></div>'
-      +'<div style="display:flex;gap:6px;flex-shrink:0">'
+      +'<div style="font-size:13px;margin-top:6px;line-height:1.6">&ldquo;'+esc(rv.comment)+'&rdquo;</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-top:5px">'+fmtD(rv.created_at)+(isPending?' &middot; <strong style="color:#E8A520">Pending</strong>':' &middot; <strong style="color:var(--gm)">Approved</strong>')+'</div>'
+      +profDetails+'</div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0;flex-direction:column">'
       +(isPending?'<button class="btn btn-gm btn-sm" onclick="adPrvAction(\''+rv.id+'\',true)">&#9989; Approve</button>':'')
       +'<button class="btn btn-red btn-sm" onclick="adPrvAction(\''+rv.id+'\',false)">&#10006; '+(isPending?'Reject':'Remove')+'</button>'
       +'</div></div></div>';
