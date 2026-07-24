@@ -22,7 +22,7 @@ body{overflow-x:hidden;width:100%;max-width:100vw}
 *,*::before,*::after{box-sizing:border-box;max-width:100%}
 img,svg,video,canvas{max-width:100%;height:auto}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{--g:#1a2e1a;--gm:#1a5c28;--gs:#d4edd8;--cream:#faf9f5;--sand:#f0ede5;--border:#e8e5df;--text:#1a1a18;--muted:#6b6b60;--r:10px;--amber:#E8A520}
-body{font-family:DM Sans,system-ui,sans-serif;background:var(--cream);color:var(--text);line-height:1.5}
+body{font-family:DM Sans,system-ui,sans-serif;background:var(--cream);color:var(--text);line-height:1.5;padding-top:52px}
 
 .page{display:none}.page.on{display:block}
 nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;flex-direction:column}
@@ -275,7 +275,7 @@ nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;flex-dire
 .bntab.on{color:var(--gm)}
 .bntab.on .bnt-icon{filter:drop-shadow(0 0 4px rgba(26,92,40,.25))}
 /* ── Top nav slim ── */
-#top-nav{position:sticky;top:0;z-index:100;background:var(--g);display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:52px;flex-shrink:0}
+#top-nav{position:fixed;top:0;left:0;right:0;z-index:200;background:var(--g);display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:52px}
 /* ── Hamburger drawer ── */
 .hmenu-drawer{display:none;position:fixed;inset:0;z-index:200}
 .hmenu-drawer.on{display:block}
@@ -1928,9 +1928,9 @@ function trackView(page) {
 async function fetchDrivers(lim) {
   if(!lim&&_drvCache&&(Date.now()-_drvCacheTs)<300000)return _drvCache;
   var r = await sb.from('v_driver_listing')
-    .select('*')
+    .select('id,full_name,location,trust_score,is_matched,platforms,rentals_completed,photo_headshot_url,photo_holding_id_url,age,vehicle_types,bio,created_at')
     .order('trust_score',{ascending:false})
-    .limit(lim||200);
+    .limit(lim||60);
   if(!r.data||!r.data.length) return [];
   var seen=new Set();
   var _rd=r.data.filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;}).map(function(d){
@@ -2332,10 +2332,16 @@ function loadHome() {
     _homeCarsCache=cars;
     _renderHomeGrid();
   }).catch(function(){eid('h-cars').innerHTML=empty('&#128663;','Could not load.');});
-  fetchDrivers().then(function(drvs){
-    _homeDrvsCache=drvs;
-    _renderHomeGrid();
-  }).catch(function(){eid('h-drvs').innerHTML=empty('&#128100;','Could not load.');});
+  (function loadDrvsWithRetry(attempt){
+    fetchDrivers().then(function(drvs){
+      if(!drvs.length&&attempt<2){setTimeout(function(){_drvCache=null;loadDrvsWithRetry(attempt+1)},1500);return;}
+      _homeDrvsCache=drvs;
+      _renderHomeGrid();
+    }).catch(function(){
+      if(attempt<2){setTimeout(function(){_drvCache=null;loadDrvsWithRetry(attempt+1)},1500);}
+      else{eid('h-drvs').innerHTML=empty('&#128100;','Could not load. Tap to retry.').replace('</div>','<br><button class="btn btn-gm btn-sm" style="margin-top:8px" onclick="_drvCache=null;loadHome()">Retry</button></div>');}
+    });
+  })(0);
   // Load testimonials
   sb.from('platform_reviews').select('role,rating,comment,is_matched,matched_name,reviewer_name,car_label,created_at').eq('is_approved',true).order('created_at',{ascending:false}).limit(3).then(function(res){
     var revs=res.data||[];
@@ -5345,10 +5351,7 @@ async function pRv() {
     : '<p style="font-size:13px;color:var(--muted);padding:8px 0">No reviews yet \u2014 be the first!</p>';
   el.innerHTML='<div class="ptitle">'+(isOwner?'Driver Reviews':'Platform Reviews')+'</div>'
     +ownerHtml
-    +(isOwner?'<div class="shd" style="margin-top:16px">TrustMate Platform Review</div>':'')
-    +submitForm
-    +'<div class="shd">What Our Users Say ('+allRevs.length+')</div>'
-    +reviewsHtml;
+    +(isOwner?'':'<div class="shd" style="margin-top:16px">TrustMate Platform Review</div>'+submitForm+'<div class="shd">What Our Users Say ('+allRevs.length+')</div>'+reviewsHtml);
   window._prvStar=0; window._prvIsMatched=isMatchedForBadge; window._prvMatchedName=matchedName; window._prvRole=(P&&P.role)||'driver';
 }
 
