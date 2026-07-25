@@ -2360,7 +2360,7 @@ function _renderHomeGrid(){
   }
 }
 function _signupCard(icon,extra){
-  return '<div onclick="go(\'register\')" style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px"><div style="font-size:28px">'+icon+'</div><div style="font-size:14px;font-weight:800;color:#fff">+'+extra+' more</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px">Sign up to see everything</div><span style="background:var(--gm);color:#fff;font-size:12px;font-weight:700;padding:7px 18px;border-radius:999px">Join Now &#8594;</span></div>';
+  return '<div onclick="go(\'register\')" style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);border-radius:12px;padding:24px 16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:120px"><div style="font-size:28px">'+icon+'</div><div style="font-size:14px;font-weight:800;color:#fff">Sign up to see all</div><div style="font-size:12px;color:rgba(255,255,255,.7);margin-bottom:6px">Drivers &amp; cars available</div><span style="background:var(--gm);color:#fff;font-size:12px;font-weight:700;padding:7px 18px;border-radius:999px">Join Now &#8594;</span></div>';
 }
 
 // ── PAGES ──────────────────────────────────────────────
@@ -7940,7 +7940,10 @@ async function adApp(){
   var apps=r.data||[];
   if(!apps.length){el.innerHTML='<div class="ptitle">All Applications</div><div class="empty"><p>No applications yet.</p></div>';return;}
   var allIds=Array.from(new Set(apps.map(function(a){return a.driver_id;}).concat(apps.map(function(a){return a.owner_id;}).filter(Boolean))));
-  var pr=await sb.from('profiles').select('id,full_name,phone,email').in('id',allIds);
+  var pr=await sb.from('profiles').select('id,full_name,phone,email,email_confirmed').in('id',allIds);
+  // Only show applications where the driver has confirmed their email
+  var confirmedDriverIds=new Set((pr.data||[]).filter(function(p){return p.email_confirmed;}).map(function(p){return p.id;}));
+  apps=apps.filter(function(a){return confirmedDriverIds.has(a.driver_id);});
   var carIds=Array.from(new Set(apps.map(function(a){return a.car_id;}).filter(Boolean)));
   var carRes=carIds.length?await sb.from('cars').select('id,make,model,year').in('id',carIds):{data:[]};
   var carMap={};(carRes.data||[]).forEach(function(c){carMap[c.id]=c;});
