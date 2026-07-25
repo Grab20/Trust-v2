@@ -4663,8 +4663,10 @@ async function pLc(){
         +'<button class="btn btn-out btn-sm" onclick="toggleCarEdit(\''+c.id+'\')">Cancel</button>'
         +'</div></div>'
         +'<div style="display:flex;justify-content:flex-end;gap:8px;padding-top:8px;border-top:1px solid var(--border);margin-top:8px">'
-        +'<button class="btn btn-out btn-sm" onclick="toggleCarEdit(\''+c.id+'\')">&#9998; Edit</button>'
-        +'<button class="btn btn-red btn-sm" data-cid="'+c.id+'" data-cmake="'+esc(c.make)+' '+esc(c.model)+'" onclick="ownerRemoveCar(this.dataset.cid,this.dataset.cmake)">&#128465; Remove</button>'
+        +'<button class="btn btn-out btn-sm" onclick="toggleCarEdit(\''+c.id+'\')">\u270e Edit</button>'
+        +(isMatched
+          ?'<div style="font-size:11px;color:#0369a1;font-weight:600;align-self:center">\ud83d\udd12 Unmatch driver before removing</div>'
+          :'<button class="btn btn-red btn-sm" data-cid="'+c.id+'" data-cmake="'+esc(c.make)+' '+esc(c.model)+'" onclick="ownerRemoveCar(this.dataset.cid,this.dataset.cmake)">\U0001f5d1 Remove</button>')
         +'</div>'
         +'</div>';
     }).join('');
@@ -6832,16 +6834,18 @@ async function adDrv(){
   var allDps=r.data||[];
   if(!allDps.length){el.innerHTML='<div class="ptitle">Manage Drivers</div><div class="empty"><p>No drivers yet.</p></div>';return;}
   var adDrvFilter=window._adDrvFilter||'all';
-  var dps=adDrvFilter==='all'?allDps:allDps.filter(function(d){return d.status===adDrvFilter;});
+  var removedDps=allDps.filter(function(d){return d.status==='removed';});
+  var nonRemovedDps=allDps.filter(function(d){return d.status!=='removed';});
+  var counts={all:nonRemovedDps.length,removed:removedDps.length};
+  var dps=adDrvFilter==='all'?nonRemovedDps:adDrvFilter==='removed'?removedDps:nonRemovedDps.filter(function(d){return d.status===adDrvFilter;});
   var uids=allDps.map(function(d){return d.user_id;});
   var pr=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location').in('id',uids);
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
-  var counts={all:allDps.length};
-  ['pending','approved','rejected','incomplete'].forEach(function(s){counts[s]=allDps.filter(function(d){return d.status===s;}).length;});
+  ['pending','approved','rejected','incomplete'].forEach(function(s){counts[s]=nonRemovedDps.filter(function(d){return d.status===s;}).length;});
   el.innerHTML='<div class="ptitle">Manage Drivers</div>'
     +'<div style="margin-bottom:10px"><input id="adm-drv-q" type="text" placeholder="&#128269; Search driver name or email..." value="'+esc(window._adDrvQ||'')+'" style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adDrvSearch()"/></div>'
     +'<div class="tbb-row" id="drv-tabs">'
-    +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')']].map(function(t){return '<button class="tbb'+(adDrvFilter===t[0]?' on':'')+'" onclick="window._adDrvFilter=\''+t[0]+'\';adDrv()">'+t[1]+'</button>';}).join('')
+    +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')'],['removed','Removed ('+counts.removed+')']].map(function(t){return '<button class="tbb'+(adDrvFilter===t[0]?' on':'')+'" onclick="window._adDrvFilter=\''+t[0]+'\';adDrv()">'+t[1]+'</button>';}).join('')
     +'</div>'
     +'<div class="psub">'+dps.length+' shown</div>'
     +dps.map(function(d){
@@ -6901,6 +6905,7 @@ async function adDrv(){
         +(d.status!=='approved'?'<button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button>':'')
         +(d.status!=='rejected'?'<button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Reject</button>':'')
         +(!d.suspended?'<button class="btn btn-red btn-sm" onclick="adSuspend(\''+d.id+'\',true)">Suspend</button>':'<button class="btn btn-gm btn-sm" onclick="adSuspend(\''+d.id+'\',false)">Unsuspend</button>')
+        +(d.status!=='removed'?'<button class="btn btn-red btn-sm" style="background:#7f1d1d;border-color:#7f1d1d" onclick="adRemoveDrv(\''+d.id+'\')">&#128465; Remove Driver</button>':'<button class="btn btn-gm btn-sm" onclick="adRestoreDrv(\''+d.id+'\')">&#8617; Restore</button>')
         +'<input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/>'
         +'<button class="btn btn-amb btn-sm" onclick="openRatingModal2(\''+d.id+'\',null,\''+(p.full_name||'Driver').replace(/[\'\"]/g,'')+'\',true)">Rate / Override</button>'
         +'<button class="btn btn-out btn-sm" onclick="adToggleReviews(\''+d.id+'\',\''+(p.full_name||'Driver').replace(/[\'\"]/g,'')+'\')">&#11088; Reviews</button>'
@@ -7027,6 +7032,20 @@ async function adSuspend(dpId,s){
     await sb.from('profiles').update({is_suspended:s,suspension_reason:s?reason:null,suspended_at:s?new Date().toISOString():null}).eq('id',r.data[0].user_id);
   }
   toast(s?'Driver suspended':'Driver reinstated'); adDrv();
+}
+async function adRemoveDrv(dpId){
+  var reason=prompt('Reason for removing this driver (they will be hidden from listings):');
+  if(reason===null)return;
+  reason=reason.trim()||'Removed by admin';
+  var r=await sb.from('driver_profiles').update({status:'removed',removed_at:new Date().toISOString(),removal_reason:reason}).eq('id',dpId).select('user_id');
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast('Driver removed from listings.'); adDrv();
+}
+async function adRestoreDrv(dpId){
+  if(!confirm('Restore this driver to pending status?'))return;
+  var r=await sb.from('driver_profiles').update({status:'pending',removed_at:null,removal_reason:null}).eq('id',dpId);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast('Driver restored to pending.'); adDrv();
 }
 async function adSuspendOwner(oid,s){
   var reason=null;
@@ -7332,7 +7351,7 @@ async function adCar(){
     +'</div>'
     +'<div class="psub">'+cars.length+' shown</div>'
     +(adCarFilter==='removed'
-      ?'<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Removed</th><th>Car</th><th>Owner</th><th>Location</th><th>Reason</th></tr></thead><tbody>'
+      ?'<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Removed</th><th>Car</th><th>Owner</th><th>Location</th><th>By</th><th>Reason</th></tr></thead><tbody>'
         +cars.map(function(c){
           var op=pm[c.owner_id]||{};
           return '<tr>'
@@ -7340,6 +7359,7 @@ async function adCar(){
             +'<td><strong>'+esc(c.make)+' '+esc(c.model)+' '+c.year+'</strong></td>'
             +'<td>'+(op.full_name||'-')+'<br><span style="font-size:10px;color:var(--muted)">'+(op.phone||op.email||'')+'</span></td>'
             +'<td style="font-size:11px">'+esc(c.location||'-')+'</td>'
+            +'<td><span style="background:'+(c.removed_by&&c.removed_by!==c.owner_id?'#fef2f2':'#dbeafe')+';color:'+(c.removed_by&&c.removed_by!==c.owner_id?'#dc2626':'#0369a1')+';font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px'+'">'+(c.removed_by&&c.removed_by!==c.owner_id?'Admin':'Owner')+'</span></td>'
             +'<td style="font-size:12px;color:#7f1d1d">'+(c.removal_reason?esc(c.removal_reason):'<span style="color:var(--muted)">—</span>')+'</td>'
             +'</tr>';
         }).join('')
@@ -7360,6 +7380,7 @@ async function adCar(){
         +(c.admin_status!=='rejected'?'<button class="btn btn-red btn-sm" onclick="adSetCar(\''+c.id+'\',\'rejected\')">Reject</button>':'')
         +(c.admin_status==='approved'?'<button class="btn btn-out btn-sm" onclick="adSetCar(\''+c.id+'\',\'pending\')">Revoke</button>':'')
         +(c.admin_status==='approved'?(c.applications_paused?'<button class="btn btn-gm btn-sm" onclick="adTogglePauseCar(\''+c.id+'\',false)">&#9654; Resume Applications</button>':'<button class="btn btn-amb btn-sm" onclick="adTogglePauseCar(\''+c.id+'\',true)">&#9646;&#9646; Pause Applications</button>'):'')
+        +'<button class="btn btn-red btn-sm" onclick="adAdminRemoveCar(\''+c.id+'\')">&#128465; Remove</button>'
         +'<button class="btn btn-amb btn-sm" data-cid="'+c.id+'" onclick="adToggleCarEdit(this.dataset.cid)">&#9998; Edit</button>'
         +'<input id="cnote-'+c.id+'" placeholder="Note..." style="flex:1;min-width:100px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/>'
         +'</div>'
@@ -7443,6 +7464,14 @@ async function adTogglePauseCar(cid,pause){
   toast(pause?'Applications paused — drivers can see the car but cannot apply.':'Applications resumed — drivers can now apply.');
   _carCache=null;
   adCar();
+}
+async function adAdminRemoveCar(cid){
+  var reason=prompt('Reason for removing this car from listings:');
+  if(reason===null)return;
+  reason=reason.trim()||'Removed by admin';
+  var r=await sb.from('cars').update({status:'removed',removed_at:new Date().toISOString(),removed_by:null,removal_reason:'[Admin] '+reason}).eq('id',cid);
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast('Car removed from listings.'); adCar(); adOv();
 }
 async function adSetCar(cid,status){
   var c=document.getElementById('cc-'+cid);
