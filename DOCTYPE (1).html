@@ -1388,6 +1388,50 @@ nav div::-webkit-scrollbar{display:none}
   </div>
 </div>
 
+<!-- WEEKLY TRUSTSCORE UPDATE MODAL -->
+<div class="overlay" id="weekly-update-modal">
+  <div class="modal" style="max-width:460px;padding:0;border-radius:16px;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#1a2e1a,#2d5a27);padding:20px 20px 16px;position:relative">
+      <button class="mx" onclick="closeModal('weekly-update-modal')" style="position:absolute;top:12px;right:12px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:50%;width:28px;height:28px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">×</button>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:rgba(255,255,255,.6);margin-bottom:4px">Weekly Update</div>
+      <div style="font-size:18px;font-weight:800;color:#fff">TrustScore Update</div>
+      <div id="wu-driver-name" style="font-size:13px;color:rgba(255,255,255,.75);margin-top:3px"></div>
+    </div>
+    <div style="padding:18px 20px">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.55">Help keep this driver's TrustScore up to date. Your feedback builds their driving CV on TrustMate and helps future owners make informed decisions.</p>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:10px">Select any that apply this week</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px" id="wu-options">
+        <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,background .15s" id="wu-opt-0">
+          <input type="checkbox" value="payment_ontime" data-pts="5" style="width:18px;height:18px;accent-color:#1a5c28;flex-shrink:0" onchange="wuStyleOpt(0,this)">
+          <span style="font-size:18px;flex-shrink:0">✅</span>
+          <div><div style="font-size:13px;font-weight:600;color:var(--text)">Paid weekly rental on time</div><div style="font-size:11px;color:var(--muted)">+5 TrustScore pts</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,background .15s" id="wu-opt-1">
+          <input type="checkbox" value="late_payment" data-pts="-8" style="width:18px;height:18px;accent-color:#dc2626;flex-shrink:0" onchange="wuStyleOpt(1,this)">
+          <span style="font-size:18px;flex-shrink:0">⚠️</span>
+          <div><div style="font-size:13px;font-weight:600;color:var(--text)">Late payment</div><div style="font-size:11px;color:var(--muted)">-8 TrustScore pts</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,background .15s" id="wu-opt-2">
+          <input type="checkbox" value="lack_communication" data-pts="-3" style="width:18px;height:18px;accent-color:#dc2626;flex-shrink:0" onchange="wuStyleOpt(2,this)">
+          <span style="font-size:18px;flex-shrink:0">💬</span>
+          <div><div style="font-size:13px;font-weight:600;color:var(--text)">Lack of communication</div><div style="font-size:11px;color:var(--muted)">-3 TrustScore pts</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:border-color .15s,background .15s" id="wu-opt-3">
+          <input type="checkbox" value="missed_payment" data-pts="-25" style="width:18px;height:18px;accent-color:#dc2626;flex-shrink:0" onchange="wuStyleOpt(3,this)">
+          <span style="font-size:18px;flex-shrink:0">❌</span>
+          <div><div style="font-size:13px;font-weight:600;color:var(--text)">Missed payment</div><div style="font-size:11px;color:var(--muted)">-25 TrustScore pts</div></div>
+        </label>
+      </div>
+      <div class="fg" style="margin-bottom:16px">
+        <label style="font-size:12px;font-weight:600;color:var(--muted)">Additional comments <span style="font-weight:400">(Optional)</span></label>
+        <textarea id="wu-comment" placeholder="Any other feedback about this week..." style="height:72px;resize:vertical;font-size:13px"></textarea>
+      </div>
+      <button class="btn btn-gm btn-w" id="wu-submit-btn" onclick="subWeeklyUpdate()" style="font-size:15px;font-weight:800;padding:13px">Submit Weekly Update</button>
+      <button class="btn btn-out btn-w" style="margin-top:8px" onclick="closeModal('weekly-update-modal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- UNMATCH MODAL -->
 <div class="overlay" id="unmatch-modal">
   <div class="modal" style="max-width:400px;padding:24px">
@@ -3482,7 +3526,7 @@ async function pOv() {
           +(alreadyRated
             ?'<div style="padding:10px 14px;background:var(--gs);border-radius:8px;font-size:13px;font-weight:700;color:var(--gm);text-align:center;margin-bottom:8px">&#10003; You have rated this driver</div>'
             :(a.driver_agreed_terms&&a.owner_agreed_terms
-              ?'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:800;margin-bottom:8px" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openRatingModal2(this.dataset.dpid,this.dataset.aid,this.dataset.dn,false)">&#11088; Rate This Driver</button>'
+              ?'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:800;margin-bottom:8px" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openWeeklyUpdate(this.dataset.dpid,this.dataset.aid,this.dataset.dn)">&#128197; Weekly TrustScore Update</button>'
               :'<div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:8px 10px;background:var(--cream);border-radius:7px">&#11088; Rating available once both parties agree to rental terms in Chat.</div>'))
           +'<div style="display:flex;gap:8px;margin-top:6px">'
           +'<button class="btn btn-gm btn-sm" style="flex:1" onclick="dpanel(\'ch\')">&#128172; Open Chat</button>'
@@ -3496,7 +3540,7 @@ async function pOv() {
         +statCard(matchedApps.length,'Matched','var(--gm)','Active match','ap')
         +statCard(pendingCount,'Pending',pendingCount>0?'#E8A520':'var(--muted)',pendingCount>0?'Review':'No pending','ap')
         +statCard(approvedCars,'My Cars','var(--g)','Tap to view','lc')
-        +(isMatched&&matchedApps[0]?'<div class="stat-chip" onclick="dpanel(\"rv\")" style="border-color:var(--gm)"><div class="stat-chip-n" style="font-size:22px;color:var(--gm)">&#11088;</div><div class="stat-chip-l">Rate Driver</div><div class="stat-chip-h">Tap to rate</div></div>':'')
+        +(isMatched&&matchedApps[0]?(function(){var _a=matchedApps[0],_dp2=mdpm[_a.driver_id]||{},_pf2=mpm[_a.driver_id]||{};return '<div class="stat-chip" onclick="openWeeklyUpdate(\''+esc(_dp2.id||'')+'\',\''+_a.id+'\',\''+esc(_pf2.full_name||'Driver')+'\')" style="border-color:var(--gm)"><div class="stat-chip-n" style="font-size:22px;color:var(--gm)">&#128197;</div><div class="stat-chip-l">Weekly Update</div><div class="stat-chip-h">Rate this week</div></div>';})():'')
       +'</div>';
 
       // ── Past rentals carousel ──
@@ -5544,6 +5588,55 @@ var TA_LIST=[
   {type:'missed_payment',pts:-25,label:'Missed payment',pos:false},
   {type:'vehicle_theft',pts:-100,label:'Vehicle theft / absconding',pos:false}
 ];
+var _wuDpId=null,_wuAppId=null;
+function openWeeklyUpdate(dpId, appId, name) {
+  _wuDpId=dpId; _wuAppId=appId;
+  var el=document.getElementById('wu-driver-name');
+  if(el)el.textContent='Driver: '+name;
+  // Reset all checkboxes and styling
+  document.querySelectorAll('#wu-options input[type=checkbox]').forEach(function(cb,i){
+    cb.checked=false; wuStyleOpt(i,cb);
+  });
+  var cmt=document.getElementById('wu-comment');if(cmt)cmt.value='';
+  var btn=document.getElementById('wu-submit-btn');if(btn){btn.disabled=false;btn.textContent='Submit Weekly Update';}
+  openModal('weekly-update-modal');
+}
+function wuStyleOpt(idx, cb) {
+  var lbl=document.getElementById('wu-opt-'+idx);
+  if(!lbl)return;
+  var pos=parseFloat(cb.getAttribute('data-pts')||'0')>0;
+  if(cb.checked){
+    lbl.style.borderColor=pos?'#1a5c28':'#dc2626';
+    lbl.style.background=pos?'#f0fdf4':'#fff1f2';
+  } else {
+    lbl.style.borderColor='var(--border)';
+    lbl.style.background='';
+  }
+}
+async function subWeeklyUpdate() {
+  var checks=Array.from(document.querySelectorAll('#wu-options input[type=checkbox]:checked'));
+  if(!checks.length){toast('Please select at least one option.');return;}
+  var btn=document.getElementById('wu-submit-btn');
+  btn.disabled=true; btn.textContent='Submitting...';
+  var comment=(document.getElementById('wu-comment')||{}).value||'';
+  var errors=[];
+  for(var i=0;i<checks.length;i++){
+    var type=checks[i].value, pts=parseInt(checks[i].getAttribute('data-pts')||'0');
+    try {
+      var _resp=await fetch('https://qyyflivkmnwikagnvstv.supabase.co/functions/v1/send-match-email',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68'},
+        body:JSON.stringify({type:'trust_action',application_id:_wuAppId||null,driver_profile_id:_wuDpId,action_type:type,pts:pts,owner_id:U?U.id:null,submitted_by:'owner',send_email:false,comment:comment||null})
+      });
+      var _res=await _resp.json();
+      if(!_resp.ok||_res.error)errors.push(checks[i].value);
+    } catch(e){ errors.push(checks[i].value); }
+  }
+  if(errors.length){toast('Some updates failed. Please try again.');btn.disabled=false;btn.textContent='Submit Weekly Update';return;}
+  closeModal('weekly-update-modal');
+  toast('Weekly update submitted — TrustScore updated!');
+  if(typeof pOv==='function')setTimeout(pOv,600);
+}
 function openRatingModal2(dpId, appId, name, isAdmin) {
   rmDpId=dpId; rmAppId=appId; rmIsAdmin=!!isAdmin;
   eid('rm-title').textContent=(isAdmin?'Admin Rate: ':'Rate Driver: ')+name;
