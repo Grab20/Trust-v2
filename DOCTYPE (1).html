@@ -1094,23 +1094,8 @@ nav div::-webkit-scrollbar{display:none}
       <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:12px 0 4px;padding-top:8px;border-top:1px solid var(--border)">Your Photos &amp; ID (required)</div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Used to verify your identity. Required to protect both you and the driver you'll be matched with.</div>
       <div class="doc-grid" style="margin-bottom:12px">
-        <div class="dbox" id="o-selfie" onclick="openOwnerSelfie()" style="cursor:pointer">
-          <canvas id="o-selfie-canvas" style="display:none;width:52px;height:52px;border-radius:50%;object-fit:cover"></canvas>
-          <div id="o-selfie-icon" style="font-size:18px">&#129399;</div>
-          <div style="font-size:10px;font-weight:600">Selfie *</div>
-          <div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">Opens camera</div>
-        </div>
+        <div class="dbox" id="o-selfie"><input type="file" accept="image/*" capture="user" onchange="mDoc('o-selfie','o_selfie',this)"><div style="font-size:18px">&#129399;</div><div style="font-size:10px;font-weight:600">Selfie *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">&#128247; Opens camera</div></div>
         <div class="dbox" id="oid"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('oid','oid_f',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID / Passport *</div><div style="font-size:9px;color:var(--muted);margin-top:3px">Screenshot or photo copy accepted</div></div>
-      </div>
-      <!-- Selfie camera overlay -->
-      <div id="selfie-overlay" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.85);flex-direction:column;align-items:center;justify-content:center">
-        <div style="color:#fff;font-size:15px;font-weight:700;margin-bottom:12px">Take a Selfie</div>
-        <video id="selfie-video" autoplay playsinline muted style="width:min(320px,90vw);border-radius:12px;background:#000"></video>
-        <div style="display:flex;gap:12px;margin-top:16px">
-          <button onclick="captureOwnerSelfie()" style="background:var(--gm);color:#fff;border:none;border-radius:999px;padding:12px 28px;font-size:15px;font-weight:700;cursor:pointer">&#128247; Capture</button>
-          <button onclick="closeOwnerSelfie()" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:999px;padding:12px 22px;font-size:14px;cursor:pointer">Cancel</button>
-        </div>
-        <canvas id="selfie-capture" style="display:none"></canvas>
       </div>
       <div style="font-size:11px;font-weight:700;color:var(--g);text-transform:uppercase;letter-spacing:.4px;margin:0 0 8px">Car Details</div>
       <div class="frow"><div class="fg"><label>Make *</label><input id="o-mk" placeholder="Toyota"/></div><div class="fg"><label>Model *</label><input id="o-mo" placeholder="Corolla"/></div></div>
@@ -2910,60 +2895,6 @@ function mDoc(boxId,key,inp){
   // Tick owner checklist
   var clId={o_selfie:'oc-selfie',oid_f:'oc-oid',cf:'oc-cf',cs:'oc-cs',cb:'oc-cb'}[key];
   if(clId){var cl=eid(clId);if(cl){cl.style.color='var(--gm)';cl.style.fontWeight='600';cl.innerHTML='&#10003; '+_oclabels[key];}}
-}
-function tickOwnerSelfie(){
-  var cl=eid('oc-selfie');
-  if(cl){cl.style.color='var(--gm)';cl.style.fontWeight='600';cl.innerHTML='&#10003; Selfie photo';}
-}
-var _selfieStream=null;
-function openOwnerSelfie(){
-  var overlay=eid('selfie-overlay');
-  if(!overlay)return;
-  overlay.style.display='flex';
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false})
-    .then(function(stream){
-      _selfieStream=stream;
-      var v=eid('selfie-video');
-      if(v){v.srcObject=stream;v.play();}
-    })
-    .catch(function(err){
-      closeOwnerSelfie();
-      // Fallback: let them upload a file instead
-      alert('Camera not available ('+err.message+'). Please upload a selfie photo instead.');
-      var inp=document.createElement('input');
-      inp.type='file';inp.accept='image/*';
-      inp.onchange=function(){if(inp.files[0]){docFiles.o_selfie=inp.files[0];eid('o-selfie').classList.add('up');eid('o-selfie-icon').textContent='✓';tickOwnerSelfie();}};
-      inp.click();
-    });
-}
-function closeOwnerSelfie(){
-  var overlay=eid('selfie-overlay');
-  if(overlay)overlay.style.display='none';
-  if(_selfieStream){_selfieStream.getTracks().forEach(function(t){t.stop();});_selfieStream=null;}
-}
-function captureOwnerSelfie(){
-  var v=eid('selfie-video');
-  var cap=eid('selfie-capture');
-  if(!v||!cap)return;
-  cap.width=v.videoWidth||640;
-  cap.height=v.videoHeight||480;
-  cap.getContext('2d').drawImage(v,0,0,cap.width,cap.height);
-  cap.toBlob(function(blob){
-    docFiles.o_selfie=blob;
-    // Show preview in the dbox
-    var preview=eid('o-selfie-canvas');
-    var icon=eid('o-selfie-icon');
-    if(preview){
-      preview.width=cap.width;preview.height=cap.height;
-      preview.getContext('2d').drawImage(cap,0,0);
-      preview.style.display='block';
-    }
-    if(icon)icon.style.display='none';
-    eid('o-selfie').classList.add('up');
-    tickOwnerSelfie();
-    closeOwnerSelfie();
-    toast('Selfie captured!');
-  },'image/jpeg',0.88);
 }
 // ── IMAGE VALIDATION & COMPRESSION ─────────────────────────
 var _BLOCKED_TYPES=['video/','image/heic','image/heif'];
