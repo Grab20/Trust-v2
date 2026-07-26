@@ -2205,8 +2205,9 @@ function drvHTML(d) {
   var isOwn=P&&(P.role==='owner'||P.role==='both')&&U&&U.id!==d.user_id;
   var acts='<button class="btn btn-out btn-sm" data-dpid="'+d.id+'" onclick="go(\'profile\',this.getAttribute(\'data-dpid\'))">View</button>';
   if(d.isMatched){
-    // Driver is matched - show status, no connect button
     acts+=' <span style="font-size:11px;font-weight:600;color:#0369a1;background:#e0f2fe;padding:3px 9px;border-radius:999px">&#128274; Currently Matched - Not Available</span>';
+  } else if(d.applications_paused){
+    acts+=' <span style="font-size:11px;font-weight:600;color:#92400e;background:#fef3c7;padding:3px 9px;border-radius:999px">&#9646;&#9646; Applications paused</span>';
   } else if(isOwn){
     acts+=' <button class="btn btn-gm btn-sm" data-dpid="'+d.id+'" data-uid="'+d.user_id+'" data-dn="'+name+'" onclick="ownerMatchBtn(this)">Connect with Driver</button>';
   } else if(!U){
@@ -2240,7 +2241,7 @@ function drvHTML(d) {
     +(acc>0?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#fff1f2;border:1px solid #fecdd3;border-radius:999px;color:#dc2626;font-weight:600">&#9888; '+acc+' Accident'+(acc!==1?'s':'')+'</span>':'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#f0faf2;border:1px solid #a7f3c1;border-radius:999px;color:#1a5c28;font-weight:600">&#10004; 0 Accidents</span>')
     +'</div>';
   return '<div class="dcard" style="border-radius:12px;margin-bottom:12px;overflow:hidden">'
-    +(isVerif?'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#d4edd8;font-size:11px;color:#1a5c28;font-weight:700">&#9989; Verified</div>':'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#fef3c7;font-size:11px;color:#7a5200;font-weight:700">&#9888; Pending Verification</div>')
+    +(d.applications_paused?'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#fef3c7;font-size:11px;color:#92400e;font-weight:700">&#9646;&#9646; Applications Paused</div>':isVerif?'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#d4edd8;font-size:11px;color:#1a5c28;font-weight:700">&#9989; Verified</div>':'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#fef3c7;font-size:11px;color:#7a5200;font-weight:700">&#9888; Pending Verification</div>')
     +'<div class="dcard-body">'
     // Top row: avatar + info + TrustScore
     +'<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:10px">'
@@ -2267,6 +2268,8 @@ function drvHTML(d) {
 }
 async function ownerMatchBtn(btn) {
   if (!U){go('login');return;}
+  // Check owner is not paused
+  if(P&&P.applications_paused){toast('Your account applications are currently paused by admin. Please contact support.');return;}
   // Check owner has at least one admin-approved car before opening modal
   var owCarChk=await sb.from('cars').select('id',{count:'exact',head:true}).eq('owner_id',U.id).eq('admin_status','approved').neq('status','removed');
   if((owCarChk.count||0)<1){
@@ -6761,7 +6764,7 @@ async function adSetDrv(dpId,status){
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   toast(status==='approved'?'Driver approved! Welcome email sent.':'Driver rejected. Rejection email sent.');
-  adReg();adPendingDocs();adOv();
+  adReg();adPendingDocs();adOv();adDrv();
 }
 async function adSetOwner(pid,status){
   var c=document.getElementById('ro-'+pid);
@@ -6771,7 +6774,7 @@ async function adSetOwner(pid,status){
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   toast(status==='approved'?'Owner approved!':'Owner declined');
-  adReg();adOv();
+  adReg();adOv();adOwn();
 }
 
 async function adMoveIncomplete(type,id){
@@ -6880,7 +6883,7 @@ async function adDrv(){
         +(d.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+d.photo_headshot_url+'\')"><img src="'+imgUrl(d.photo_headshot_url,120,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(p.full_name)+'</div>')
         +'<div><div style="font-size:14px;font-weight:700">'+(p.full_name||'-')+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">'+(p.email||'-')+' / '+(p.phone||'-')+(p.whatsapp?' / '+p.whatsapp:'')+' / '+(p.location||'-')+'</div></div></div>'
-        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><div style="font-size:13px;font-weight:700;color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</div>'+adPill(d.status||'pending')+(d.suspended?'<span class="pill p-r">SUSPENDED</span>':'')+(d.approved_at&&d.status==='approved'?'<div style="font-size:10px;color:var(--gm);margin-top:2px">&#9989; Approved: '+fmtD(d.approved_at)+'</div>':'')
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><div style="font-size:13px;font-weight:700;color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</div>'+adPill(d.status||'pending')+(d.suspended?'<span class="pill p-r">SUSPENDED</span>':'')+(d.applications_paused?'<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid #fcd34d">PAUSED</span>':'')+(d.approved_at&&d.status==='approved'?'<div style="font-size:10px;color:var(--gm);margin-top:2px">&#9989; Approved: '+fmtD(d.approved_at)+'</div>':'')
         +(d.rejected_at&&d.status==='rejected'?'<div style="font-size:10px;color:#dc2626;margin-top:2px">&#10060; Rejected: '+fmtD(d.rejected_at)+'</div>':'')
         +'</div></div>'
         +'<div style="padding:9px 14px;background:var(--cream);border-top:1px solid var(--border)">'
@@ -6928,6 +6931,7 @@ async function adDrv(){
         +'<div class="rcard-acts">'
         +(d.status!=='approved'?'<button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button>':'')
         +(d.status!=='rejected'?'<button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Reject</button>':'')
+        +(d.status==='approved'?(d.applications_paused?'<button class="btn btn-gm btn-sm" onclick="adTogglePauseDrv(\''+d.id+'\',false)">&#9654; Resume Applications</button>':'<button class="btn btn-amb btn-sm" onclick="adTogglePauseDrv(\''+d.id+'\',true)">&#9646;&#9646; Pause Applications</button>'):'')
         +(!d.suspended?'<button class="btn btn-red btn-sm" onclick="adSuspend(\''+d.id+'\',true)">Suspend</button>':'<button class="btn btn-gm btn-sm" onclick="adSuspend(\''+d.id+'\',false)">Unsuspend</button>')
         +(d.status!=='removed'?'<button class="btn btn-red btn-sm" style="background:#7f1d1d;border-color:#7f1d1d" onclick="adRemoveDrv(\''+d.id+'\')">&#128465; Remove Driver</button>':'<button class="btn btn-gm btn-sm" onclick="adRestoreDrv(\''+d.id+'\')">&#8617; Restore</button>')
         +'<input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/>'
@@ -7079,6 +7083,30 @@ async function adSuspendOwner(oid,s){
   if(r.error){toast('Error: '+r.error.message);return;}
   toast(s?'Owner suspended':'Owner reinstated'); adOwn();
 }
+async function adTogglePauseDrv(dpId,pause){
+  var r=await sb.from('driver_profiles').update({applications_paused:pause}).eq('id',dpId).select();
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast(pause?'Driver applications paused':'Driver applications resumed'); adDrv();
+}
+async function adTogglePauseOwner(oid,pause){
+  var r=await sb.from('profiles').update({applications_paused:pause}).eq('id',oid).select();
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast(pause?'Owner applications paused':'Owner applications resumed'); adOwn();
+}
+async function adRemoveOwner(oid){
+  var reason=prompt('Reason for removing this owner (their profile will be hidden):');
+  if(reason===null)return;
+  reason=reason.trim()||'Removed by admin';
+  var r=await sb.from('profiles').update({is_removed:true,removed_at:new Date().toISOString(),removal_reason:reason,admin_status:'removed'}).eq('id',oid).select();
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast('Owner removed from platform.'); adOwn();
+}
+async function adRestoreOwner(oid){
+  if(!confirm('Restore this owner to pending status?'))return;
+  var r=await sb.from('profiles').update({is_removed:false,removed_at:null,removal_reason:null,admin_status:'pending'}).eq('id',oid).select();
+  if(r.error){toast('Error: '+r.error.message);return;}
+  toast('Owner restored to pending.'); adOwn();
+}
 async function adSaveStats(dpId){
   var gn=function(id){var el=document.getElementById(id);return el?parseInt(el.value)||0:0;};
   var gs=function(id){var el=document.getElementById(id);return el?el.value.trim()||null:null;};
@@ -7111,7 +7139,7 @@ async function adSaveStats(dpId){
 async function adOwn(){
   var el=document.getElementById('ap-own');
   el.innerHTML='<div class="ptitle">Manage Owners</div>'+adSpin();
-  var r=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,admin_status,admin_note,created_at,admin_reviewed_at,doc_id_url,photo_headshot_url,photo_holding_id_url,is_suspended,suspension_reason').in('role',['owner','both']).order('created_at',{ascending:false});
+  var r=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,admin_status,admin_note,created_at,admin_reviewed_at,doc_id_url,photo_headshot_url,photo_holding_id_url,is_suspended,suspension_reason,applications_paused,is_removed').in('role',['owner','both']).order('created_at',{ascending:false});
   var owners=r.data||[];
   if(!owners.length){el.innerHTML='<div class="ptitle">Manage Owners</div>'+empty('&#127968;','No owners registered yet.');return;}
   var oids=owners.map(function(o){return o.id;});
@@ -7147,7 +7175,7 @@ async function adOwn(){
         +'</div>'
         +'<div style="font-size:12px;color:var(--muted)">'+esc(o.email||'')+' &middot; '+esc(o.phone||'')+(o.location?' &middot; &#128205;'+esc(o.location):'')+'</div>'
         +'<div style="font-size:11px;color:var(--muted)">&#128663; '+oCars.length+' car'+(oCars.length!==1?'s':'')+' listed</div></div>'
-        +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap"><span class="pill '+(o.admin_status==='approved'?'p-a':o.admin_status==='rejected'?'p-r':'p-p')+'">'+(o.admin_status||'pending')+'</span>'+(o.is_suspended?'<span class="pill p-r">SUSPENDED</span>':'')+'</div>'
+        +'<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap"><span class="pill '+(o.admin_status==='approved'?'p-a':o.admin_status==='rejected'?'p-r':'p-p')+'">'+(o.admin_status||'pending')+'</span>'+(o.is_suspended?'<span class="pill p-r">SUSPENDED</span>':'')+(o.applications_paused?'<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid #fcd34d">PAUSED</span>':'')+(o.is_removed?'<span class="pill p-r">REMOVED</span>':'')+'</div>'
         +(o.admin_reviewed_at&&o.admin_status==='approved'?'<div style="font-size:10px;color:var(--gm);margin-top:3px">&#9989; Approved: '+fmtD(o.admin_reviewed_at)+'</div>':''
         )+(o.admin_reviewed_at&&o.admin_status==='rejected'?'<div style="font-size:10px;color:#dc2626;margin-top:3px">&#10060; Rejected: '+fmtD(o.admin_reviewed_at)+'</div>':''
         )
@@ -7166,8 +7194,10 @@ async function adOwn(){
         // Edit toggle
         +'<div style="padding:6px 14px 8px;display:flex;gap:6px;flex-wrap:wrap">'
         +'<button class="btn btn-out btn-sm" data-id="'+o.id+'" onclick="ownToggle(this.dataset.id)">&#9998; Edit Details</button>'
+        +(o.admin_status==='approved'?(o.applications_paused?'<button class="btn btn-gm btn-sm" onclick="adTogglePauseOwner(\''+o.id+'\',false)">&#9654; Resume Applications</button>':'<button class="btn btn-amb btn-sm" onclick="adTogglePauseOwner(\''+o.id+'\',true)">&#9646;&#9646; Pause Applications</button>'):'')
         +(!o.is_suspended?'<button class="btn btn-red btn-sm" onclick="adSuspendOwner(\''+o.id+'\',true)">&#128683; Suspend Owner</button>':'<button class="btn btn-gm btn-sm" onclick="adSuspendOwner(\''+o.id+'\',false)">&#10003; Reinstate Owner</button>')
         +(o.is_suspended&&o.suspension_reason?'<span style="font-size:11px;color:#7f1d1d;align-self:center">Reason: '+esc(o.suspension_reason)+'</span>':'')
+        +(!o.is_removed?'<button class="btn btn-red btn-sm" style="background:#7f1d1d;border-color:#7f1d1d" onclick="adRemoveOwner(\''+o.id+'\')">&#128465; Remove Owner</button>':'<button class="btn btn-gm btn-sm" onclick="adRestoreOwner(\''+o.id+'\')">&#8617; Restore Owner</button>')
         +'</div>'
         // Edit panel
         +'<div id="own-edit-'+o.id+'" style="display:none;padding:0 14px 14px">'
