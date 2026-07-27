@@ -5421,8 +5421,10 @@ async function subMatch() {
     // Re-fetch DP live so an admin approval during this session is reflected immediately
     if(U){var _dpR=await sb.from('driver_profiles').select('*').eq('user_id',U.id).maybeSingle();if(_dpR.data)DP=_dpR.data;}
     if(!DP||DP.status!=='approved'){toast('Your profile must be approved by admin before you can apply.');btn.disabled=false;btn.textContent='Send Request';return;}
-    var hasTripsOrRating=(DP.uber_trips||DP.uber_rating||DP.bolt_trips||DP.bolt_rating||DP.indrive_trips||DP.indrive_rating);
-    if(!hasTripsOrRating&&!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
+    var hasTripsOrRating=(DP.uber_trips||DP.uber_rating||DP.bolt_trips||DP.bolt_rating||DP.indrive_trips||DP.indrive_rating
+      ||DP.self_uber_trips||DP.self_uber_rating||DP.self_bolt_trips||DP.self_bolt_rating||DP.self_indrive_trips||DP.self_indrive_rating);
+    var noPlatforms=!DP.platforms||!DP.platforms.length||(DP.platforms.length===1&&(DP.platforms[0]||'').toLowerCase()==='none');
+    if(!noPlatforms&&!hasTripsOrRating&&!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
     // Application limit: drivers with trust score <50 can only send 2 per day
     if(DP.trust_score<50){
       var today=new Date(); today.setHours(0,0,0,0);
@@ -5454,7 +5456,22 @@ async function subMatch() {
     if(dEx.data&&dEx.data.length){toast('This driver is already matched.');btn.disabled=false;btn.textContent='Send Request';return;}
     ins={owner_id:U.id,driver_id:dUid,status:'pending',message:msg||null,initiated_by:'owner'};
   }
-  var r=await sb.from('applications').insert(ins).select('id').maybeSingle();
+  // Upsert: if a prior rejected/declined application exists for same car+driver, reset it
+  var r;
+  if(ins.car_id&&ins.driver_id){
+    var prior=await sb.from('applications').select('id,status').eq('car_id',ins.car_id).eq('driver_id',ins.driver_id).maybeSingle();
+    if(prior.data){
+      if(prior.data.status==='approved'||prior.data.status==='pending'){
+        toast(prior.data.status==='approved'?'You are already matched for this car.':'You already have a pending request for this car.');
+        btn.disabled=false;btn.textContent='Send Request';return;
+      }
+      r=await sb.from('applications').update({status:'pending',message:ins.message||null,counter_price:ins.counter_price||null,updated_at:new Date().toISOString()}).eq('id',prior.data.id).select('id').maybeSingle();
+    } else {
+      r=await sb.from('applications').insert(ins).select('id').maybeSingle();
+    }
+  } else {
+    r=await sb.from('applications').insert(ins).select('id').maybeSingle();
+  }
   btn.disabled=false; btn.textContent='Send Request';
   if(r.error){toast('Error: '+r.error.message);return;}
   if (typeof gtag === 'function') {
