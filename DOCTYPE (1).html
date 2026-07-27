@@ -5456,19 +5456,17 @@ async function subMatch() {
     if(dEx.data&&dEx.data.length){toast('This driver is already matched.');btn.disabled=false;btn.textContent='Send Request';return;}
     ins={owner_id:U.id,driver_id:dUid,status:'pending',message:msg||null,initiated_by:'owner'};
   }
-  // Upsert: if a prior rejected/declined application exists for same car+driver, reset it
+  // Block reapplication to same car if previously rejected; guard against duplicate key
   var r;
   if(ins.car_id&&ins.driver_id){
     var prior=await sb.from('applications').select('id,status').eq('car_id',ins.car_id).eq('driver_id',ins.driver_id).maybeSingle();
     if(prior.data){
-      if(prior.data.status==='approved'||prior.data.status==='pending'){
-        toast(prior.data.status==='approved'?'You are already matched for this car.':'You already have a pending request for this car.');
-        btn.disabled=false;btn.textContent='Send Request';return;
-      }
-      r=await sb.from('applications').update({status:'pending',message:ins.message||null,counter_price:ins.counter_price||null,updated_at:new Date().toISOString()}).eq('id',prior.data.id).select('id').maybeSingle();
-    } else {
-      r=await sb.from('applications').insert(ins).select('id').maybeSingle();
+      var msg=prior.data.status==='approved'?'You are already matched for this car.'
+        :prior.data.status==='pending'?'You already have a pending request for this car.'
+        :'You have already applied to this car and were not accepted. You cannot reapply.';
+      toast(msg);btn.disabled=false;btn.textContent='Send Request';return;
     }
+    r=await sb.from('applications').insert(ins).select('id').maybeSingle();
   } else {
     r=await sb.from('applications').insert(ins).select('id').maybeSingle();
   }
