@@ -2831,6 +2831,8 @@ function reg1() {
   if(!eid('reg-pp').checked){showErr('reg-err','Please accept the Privacy Policy and POPIA consent.');return;}
   var n=eid('r1n').value.trim(),e=eid('r1e').value.trim(),p=eid('r1p').value;
   if(!n||!e||!p){showErr('reg-err','Please fill in all fields.');return;}
+  var nameParts=n.split(' ').filter(function(s){return s.length>0;});
+  if(nameParts.length<2){showErr('reg-err','Please enter your full name (first and last name).');return;}
   if(p.length<6){showErr('reg-err','Password must be at least 6 characters.');return;}
   rName=n;rEmail=e;rPass=p;
   eid('reg-s1').style.display='none';
@@ -4019,29 +4021,80 @@ async function pPr() {
   }
   // Edit form
   if(!pending){
-    html+='<div class="tbox">'
-      +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#9998; Request Profile Edit</div>'
-      +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Changes are reviewed by admin before going live.</p>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
-      +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Full Name</label><input id="pr-name" value="'+esc(P.full_name||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
-      +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Phone</label><input id="pr-phone" value="'+esc(P.phone||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
-      +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">WhatsApp</label><input id="pr-wa" value="'+esc(P.whatsapp||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
-      +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Location</label><input id="pr-loc" value="'+esc(P.location||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
-      +(isD?'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Years Driving</label><input id="pr-yrs" type="number" value="'+(DP&&DP.years_driving||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>':'')
-      +'</div>'
-      +(isD?'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted)">Bio</label><textarea id="pr-bio" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;height:64px;resize:vertical">'+(DP&&DP.bio||'')+'</textarea></div>':'')
-      +'<button class="btn btn-gm btn-w" onclick="submitProfileEdit()">&#128190; Submit for Review</button>'
-      +'</div>';
+    if(isD){
+      // Drivers: address + safe parking save directly; name cannot be changed
+      var locParts=(P.location||'').split(',').map(function(s){return s.trim();});
+      html+='<div class="tbox" style="margin-bottom:10px">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#128205; Address &amp; Parking</div>'
+        +'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">These save immediately.</p>'
+        +'<div style="display:grid;grid-template-columns:80px 1fr;gap:8px;margin-bottom:6px">'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Street No.</label><input id="pr-street-no" value="'+esc(locParts[0]||'')+'" placeholder="12" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Street Name</label><input id="pr-street-name" value="'+esc(locParts[1]||'')+'" placeholder="Main Street" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'</div>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Suburb</label><input id="pr-suburb" value="'+esc(locParts[2]||'')+'" placeholder="Sandton" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Province</label><select id="pr-province" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"><option value="">Select province</option>'
+        +['Gauteng','Western Cape','KwaZulu-Natal','Eastern Cape','Limpopo','Mpumalanga','North West','Free State','Northern Cape'].map(function(pv){return '<option value="'+pv+'"'+(locParts[3]===pv?' selected':'')+'>'+pv+'</option>';}).join('')
+        +'</select></div>'
+        +'</div>'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;background:var(--cream);border:1px solid var(--border);border-radius:8px;padding:10px 12px">'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--g)">Safe Parking Available</div><div style="font-size:11px;color:var(--muted);margin-top:2px">Do you have a garage, carport or secure parking?</div></div>'
+        +'<label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0"><input type="checkbox" id="pr-parking" style="opacity:0;width:0;height:0"'+(DP&&DP.safe_parking?' checked':'')+'/><span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:'+(DP&&DP.safe_parking?'var(--gm)':'#ccc')+';border-radius:24px;transition:.3s" id="pr-parking-knob"><span style="position:absolute;content:\'\';height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;transform:'+(DP&&DP.safe_parking?'translateX(20px)':'translateX(0)')+'" id="pr-parking-ball"></span></span></label>'
+        +'</div>'
+        +'<button class="btn btn-gm btn-w" onclick="saveDriverAddress()">&#128190; Save Address &amp; Parking</button>'
+        +'</div>'
+        +'<div class="tbox">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#9998; Request Contact Edit</div>'
+        +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Contact changes are reviewed by admin before going live. Your name can only be changed by admin.</p>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Phone</label><input id="pr-phone" value="'+esc(P.phone||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">WhatsApp</label><input id="pr-wa" value="'+esc(P.whatsapp||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Years Driving</label><input id="pr-yrs" type="number" value="'+(DP&&DP.years_driving||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'</div>'
+        +'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted)">Bio</label><textarea id="pr-bio" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;height:64px;resize:vertical">'+(DP&&DP.bio||'')+'</textarea></div>'
+        +'<button class="btn btn-gm btn-w" onclick="submitProfileEdit()">&#128190; Submit for Review</button>'
+        +'</div>';
+    } else {
+      // Owners: can edit name (goes through admin approval)
+      html+='<div class="tbox">'
+        +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#9998; Request Profile Edit</div>'
+        +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Changes are reviewed by admin before going live.</p>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Full Name</label><input id="pr-name" value="'+esc(P.full_name||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Phone</label><input id="pr-phone" value="'+esc(P.phone||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">WhatsApp</label><input id="pr-wa" value="'+esc(P.whatsapp||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Location</label><input id="pr-loc" value="'+esc(P.location||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'</div>'
+        +'<button class="btn btn-gm btn-w" onclick="submitProfileEdit()">&#128190; Submit for Review</button>'
+        +'</div>';
+    }
   }
   el.innerHTML=html;
 }
+async function saveDriverAddress(){
+  var sno=(eid('pr-street-no')||{}).value.trim()||'';
+  var sname=(eid('pr-street-name')||{}).value.trim()||'';
+  var sub=(eid('pr-suburb')||{}).value.trim()||'';
+  var prov=(eid('pr-province')||{}).value.trim()||'';
+  var parking=(eid('pr-parking')||{}).checked;
+  var loc=[sno,sname,sub,prov].filter(Boolean).join(', ');
+  if(!loc){toast('Please enter at least a suburb and province.');return;}
+  var pr=await sb.from('profiles').update({location:loc}).eq('id',U.id).select();
+  var dp=await sb.from('driver_profiles').update({safe_parking:parking}).eq('user_id',U.id).select();
+  if((pr.error)||(dp.error)){toast('Error saving: '+((pr.error||dp.error).message));return;}
+  if(P)P.location=loc;
+  if(DP)DP.safe_parking=parking;
+  toast('Address & parking saved!');
+  pPr();
+}
 async function submitProfileEdit(){
   var changes={};
-  var nm=(eid('pr-name')||{}).value||''; if(nm&&nm!==P.full_name)changes.full_name=nm;
+  var isD=P&&(P.role==='driver'||P.role==='both');
+  // Drivers cannot change their name; owners can
+  if(!isD){var nm=(eid('pr-name')||{}).value||''; if(nm&&nm!==P.full_name)changes.full_name=nm;}
   var ph=(eid('pr-phone')||{}).value||''; if(ph!==P.phone)changes.phone=ph;
   var wa=(eid('pr-wa')||{}).value||''; if(wa!==P.whatsapp)changes.whatsapp=wa;
-  var lo=(eid('pr-loc')||{}).value||''; if(lo!==P.location)changes.location=lo;
-  var isD=P&&(P.role==='driver'||P.role==='both');
+  var lo=(eid('pr-loc')||{}).value||''; if(lo&&lo!==P.location)changes.location=lo;
   if(isD){
     var yrs=(eid('pr-yrs')||{}).value||''; if(yrs&&parseInt(yrs)!==(DP&&DP.years_driving))changes.years_driving=parseInt(yrs);
     var bio=(eid('pr-bio')||{}).value||''; if(bio!==(DP&&DP.bio||''))changes.bio=bio;
@@ -6270,7 +6323,7 @@ async function adOv(){
     sb.from('profiles').select('id,full_name,email,role,admin_status,location,created_at,email_confirmed'),
     sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended'),
     sb.from('cars').select('id,status,admin_status,location,owner_id,make,model,year'),
-    sb.from('applications').select('id,driver_id,owner_id,status,initiated_by,created_at'),
+    sb.from('applications').select('id,driver_id,owner_id,status,initiated_by,created_at,unmatched_at'),
     sb.from('applications').select('id',{count:'exact',head:true}),
     sb.from('reviews').select('id,rating'),
     sb.from('trust_actions').select('id,points')
@@ -6288,7 +6341,7 @@ async function adOv(){
   var badge=document.getElementById('abadge');
   if(badge){badge.textContent=total;badge.style.display=total>0?'inline':'none';}
 
-  var matched=apps.filter(function(a){return a.status==='approved';}).length;
+  var matched=apps.filter(function(a){return a.status==='approved'&&!a.unmatched_at;}).length;
   var avgR=revs.length?(revs.reduce(function(s,r){return s+r.rating;},0)/revs.length).toFixed(1):'-';
 
   var html='<div class="ptitle">Dashboard</div>';
@@ -6915,7 +6968,12 @@ async function adDrv(){
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Lic. Obtained (dd/mm/yyyy)</label><input type="text" id="stat-licdate-'+d.id+'" value="'+esc(d.license_date||'')+'" placeholder="e.g. 15/06/2018" style="width:140px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit"/></div>'
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">Lic. Expiry (dd/mm/yyyy)</label><input type="text" id="stat-licexp-'+d.id+'" value="'+esc(d.license_expiry_date||'')+'" placeholder="e.g. 15/06/2028" style="width:140px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit"/></div>'
         +'<div style="font-size:10px;color:var(--muted)"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px">PDP Expiry (dd/mm/yyyy)</label><input type="text" id="stat-pdpexp-'+d.id+'" value="'+esc(d.pdp_expiry_date||'')+'" placeholder="e.g. 15/06/2026" style="width:140px;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:11px;font-family:inherit"/></div>'
-        +'<button class="btn btn-g btn-sm" style="align-self:flex-end" onclick="adSaveStats(\''+d.id+'\')">Save</button>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:6px">'
+        +'<div style="flex:1;min-width:160px"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);margin-bottom:2px">Full Name</label><input type="text" id="stat-name-'+d.id+'" value="'+esc(p.full_name||'')+'" placeholder="First Last" style="width:100%;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
+        +'<div style="flex:1;min-width:160px"><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);margin-bottom:2px">Location</label><input type="text" id="stat-loc-'+d.id+'" value="'+esc(p.location||'')+'" placeholder="e.g. 12 Main St, Sandton, Gauteng" style="width:100%;padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"/></div>'
+        +'<div><label style="display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);margin-bottom:2px">Safe Parking</label><select id="stat-parking-'+d.id+'" style="padding:4px 6px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit"><option value="true"'+(d.safe_parking?' selected':'')+'>Yes</option><option value="false"'+(!d.safe_parking?' selected':'')+'>No</option></select></div>'
+        +'<button class="btn btn-g btn-sm" style="align-self:flex-end" onclick="adSaveStats(\''+d.id+'\',\''+d.user_id+'\')">Save</button>'
         +'</div>'
         +'<div style="margin-bottom:8px"><div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);margin-bottom:6px">Platform Stats</div>'
         +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'
@@ -7122,7 +7180,7 @@ async function adRestoreOwner(oid){
   if(r.error){toast('Error: '+r.error.message);return;}
   toast('Owner restored to pending.'); adOwn();
 }
-async function adSaveStats(dpId){
+async function adSaveStats(dpId,userId){
   var gn=function(id){var el=document.getElementById(id);return el?parseInt(el.value)||0:0;};
   var gs=function(id){var el=document.getElementById(id);return el?el.value.trim()||null:null;};
   var ts=gn('stat-ts-'+dpId);
@@ -7132,6 +7190,7 @@ async function adSaveStats(dpId){
   var late=gn('stat-late-'+dpId);
   var missed=gn('stat-missed-'+dpId);
   var acc=gn('stat-accidents-'+dpId);
+  var parkingEl=document.getElementById('stat-parking-'+dpId);
   var update={
     trust_score:Math.max(0,Math.min(100,ts)),
     years_driving:exp,
@@ -7143,9 +7202,21 @@ async function adSaveStats(dpId){
     license_expiry_date:gs('stat-licexp-'+dpId),
     pdp_expiry_date:gs('stat-pdpexp-'+dpId)
   };
+  if(parkingEl)update.safe_parking=(parkingEl.value==='true');
   var r=await sb.from('driver_profiles').update(update).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');return;}
+  if(userId){
+    var nm=gs('stat-name-'+dpId);
+    var lo=gs('stat-loc-'+dpId);
+    var profUpd={};
+    if(nm)profUpd.full_name=nm;
+    if(lo)profUpd.location=lo;
+    if(Object.keys(profUpd).length){
+      var pr=await sb.from('profiles').update(profUpd).eq('id',userId).select();
+      if(pr.error){toast('Stats saved but profile update failed: '+pr.error.message);adDrv();return;}
+    }
+  }
   toast('Driver stats updated!');
   adDrv();
 }
