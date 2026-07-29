@@ -1181,7 +1181,9 @@ nav div::-webkit-scrollbar{display:none}
       </div>
       <div class="fg"><label>Full name *</label><input id="r1n" placeholder="Your full name"/></div>
       <div class="fg"><label>Email *</label><input id="r1e" type="email" placeholder="you@example.com"/></div>
+      <div class="fg"><label>Phone number *</label><input id="r1ph" type="tel" placeholder="+27..." /></div>
       <div class="fg"><label>Password *</label><input id="r1p" type="password" placeholder="Min 6 characters"/></div>
+      <div class="fg"><label>Confirm password *</label><input id="r1p2" type="password" placeholder="Repeat your password"/></div>
       <div class="consent-box">
         <div style="font-size:11px;font-weight:700;color:var(--g);margin-bottom:9px;text-transform:uppercase;letter-spacing:.4px">Required before continuing</div>
         <div class="consent-row">
@@ -1193,13 +1195,30 @@ nav div::-webkit-scrollbar{display:none}
           <label for="reg-pp">I consent to the <a onclick="openModal('popia-modal')">Privacy Policy &amp; POPIA</a></label>
         </div>
       </div>
-      <button class="btn btn-g btn-w" onclick="reg1()">Continue</button>
+      <button class="btn btn-g btn-w" id="reg1-btn" onclick="reg1()">Continue</button>
       <div class="afoot">Already registered? <a onclick="go('login')">Sign in</a></div>
+    </div>
+
+    <!-- S1 OTP -->
+    <div id="reg-s1-otp" style="display:none">
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:40px;margin-bottom:8px">&#128231;</div>
+        <div style="font-size:16px;font-weight:700;color:var(--g);margin-bottom:6px">Verify your email</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.6">We sent a 6-digit code to<br><strong id="otp-email-display" style="color:var(--g)"></strong></div>
+      </div>
+      <div class="fg">
+        <label>Enter your 6-digit code *</label>
+        <input id="reg-otp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" style="font-size:24px;text-align:center;letter-spacing:8px;font-weight:700;padding:12px"/>
+      </div>
+      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Check your spam/junk folder if you don&apos;t see it within a minute.</div>
+      <button class="btn btn-g btn-w" id="otp-verify-btn" onclick="regVerifyOtp()">Verify &amp; Continue</button>
+      <div class="afoot">Didn&apos;t receive it? <a onclick="regResendOtp()" id="otp-resend-link">Resend code</a> &middot; <a onclick="regBackToS1()">Change email</a></div>
     </div>
 
     <!-- S2 Driver -->
     <div id="reg-s2-d" style="display:none">
-      <div class="frow"><div class="fg"><label>Phone *</label><input id="d-ph" type="tel" placeholder="+27..."/></div><div class="fg"><label>Age *</label><input id="d-ag" type="number" min="18" placeholder="25"/></div></div>
+      <input type="hidden" id="d-ph"/>
+      <div class="fg"><label>Age *</label><input id="d-ag" type="number" min="18" placeholder="25"/></div>
       <div class="fg"><label>Full Address *</label>
         <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;margin-bottom:6px">
           <input id="d-street-no" type="text" placeholder="No. *" maxlength="10"/>
@@ -1357,7 +1376,7 @@ nav div::-webkit-scrollbar{display:none}
 
     <!-- S2 Owner -->
     <div id="reg-s2-o" style="display:none">
-      <div class="fg"><label>Phone *</label><input id="o-ph" type="tel" placeholder="+27..."/></div>
+      <input type="hidden" id="o-ph"/>
       <div class="fg"><label>City / Location *</label><input id="o-lo" placeholder="e.g. Midrand, Johannesburg"/>
         <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">&#128204; Be specific — include your suburb or area (e.g. <em>Midrand, Johannesburg</em> or <em>Bellville, Cape Town</em>). This is used to match your vehicle with nearby drivers.</div>
       </div>
@@ -1946,7 +1965,7 @@ async function sendDriverEmail(type, driverProfileId) {
     });
   } catch(e) { console.warn('Email notification failed', e); }
 }
-var rRole = 'driver', rName = '', rEmail = '', rPass = '';
+var rRole = 'driver', rName = '', rEmail = '', rPass = '', rPhone = '', rUid = null;
 var oCarData = {};
 var docFiles = {};
 var platFiles={uber:[],bolt:[],indrive:[]};
@@ -3185,25 +3204,82 @@ function setRole(r) {
   if(s3)s3.style.display=r==='owner'?'none':'';
   if(s3line&&s3line.classList.contains('sbi-line'))s3line.style.display=r==='owner'?'none':'';
 }
-function reg1() {
+async function reg1() {
   clearErr('reg-err');
   if(!eid('reg-tc').checked){showErr('reg-err','Please accept the Terms and Conditions.');return;}
   if(!eid('reg-pp').checked){showErr('reg-err','Please accept the Privacy Policy and POPIA consent.');return;}
-  var n=eid('r1n').value.trim(),e=eid('r1e').value.trim(),p=eid('r1p').value;
-  if(!n||!e||!p){showErr('reg-err','Please fill in all fields.');return;}
+  var n=eid('r1n').value.trim(),e=eid('r1e').value.trim(),ph=eid('r1ph').value.trim(),p=eid('r1p').value,p2=eid('r1p2').value;
+  if(!n||!e||!ph||!p||!p2){showErr('reg-err','Please fill in all fields.');return;}
   var nameParts=n.split(' ').filter(function(s){return s.length>0;});
   if(nameParts.length<2){showErr('reg-err','Please enter your full name (first and last name).');return;}
   if(p.length<6){showErr('reg-err','Password must be at least 6 characters.');return;}
-  rName=n;rEmail=e;rPass=p;
+  if(p!==p2){showErr('reg-err','Passwords do not match.');return;}
+  rName=n;rEmail=e;rPhone=ph;rPass=p;rUid=null;
+  // Populate hidden phone fields in S2
+  if(eid('d-ph'))eid('d-ph').value=ph;
+  if(eid('o-ph'))eid('o-ph').value=ph;
+  var btn=eid('reg1-btn');btn.textContent='Sending code…';btn.disabled=true;
+  var r=await sb.auth.signInWithOtp({email:rEmail,options:{shouldCreateUser:true}});
+  btn.textContent='Continue';btn.disabled=false;
+  if(r.error){
+    var msg=r.error.message;
+    if(/rate.limit|too.many/i.test(msg))msg='Too many attempts for this email. Please wait a few minutes and try again.';
+    showErr('reg-err',msg);return;
+  }
+  eid('otp-email-display').textContent=rEmail;
   eid('reg-s1').style.display='none';
+  eid('reg-s1-otp').style.display='block';
+  clearErr('reg-err');
+  var otpInp=eid('reg-otp');if(otpInp){otpInp.value='';setTimeout(function(){otpInp.focus();},100);}
+}
+async function regVerifyOtp() {
+  clearErr('reg-err');
+  var code=(eid('reg-otp').value||'').trim().replace(/\s/g,'');
+  if(!code||code.length<6){showErr('reg-err','Please enter the 6-digit code from your email.');return;}
+  var btn=eid('otp-verify-btn');btn.textContent='Verifying…';btn.disabled=true;
+  var r=await sb.auth.verifyOtp({email:rEmail,token:code,type:'email'});
+  btn.textContent='Verify & Continue';btn.disabled=false;
+  if(r.error){
+    var msg=r.error.message;
+    if(/expired|invalid/i.test(msg))msg='Invalid or expired code. Check the code in your email or request a new one.';
+    showErr('reg-err',msg);return;
+  }
+  // Email verified — capture uid and set password
+  var uid=r.data&&r.data.user?r.data.user.id:null;
+  if(uid){
+    rUid=uid;
+    // Attach password so the account can sign in with email+password
+    await sb.auth.updateUser({password:rPass});
+  }
+  clearErr('reg-err');
+  eid('reg-s1-otp').style.display='none';
   eid('rs1').className='sbi done'; eid('rs2').className='sbi on';
   eid('reg-s2-d').style.display=rRole==='driver'?'block':'none';
   eid('reg-s2-o').style.display=rRole==='owner'?'block':'none';
 }
-function backS1(){eid('reg-s1').style.display='block';eid('reg-s2-d').style.display='none';eid('reg-s2-o').style.display='none';eid('rs1').className='sbi on';eid('rs2').className='sbi';}
+async function regResendOtp() {
+  var link=eid('otp-resend-link');link.textContent='Sending…';
+  var r=await sb.auth.signInWithOtp({email:rEmail,options:{shouldCreateUser:true}});
+  link.textContent='Resend code';
+  if(r.error){showErr('reg-err',r.error.message);return;}
+  clearErr('reg-err');
+  toast('New code sent to '+rEmail);
+  var otpInp=eid('reg-otp');if(otpInp){otpInp.value='';otpInp.focus();}
+}
+function regBackToS1(){
+  eid('reg-s1-otp').style.display='none';
+  eid('reg-s1').style.display='block';
+  clearErr('reg-err');
+}
+function backS1(){
+  eid('reg-s1').style.display='block';
+  eid('reg-s2-d').style.display='none';
+  eid('reg-s2-o').style.display='none';
+  eid('rs1').className='sbi on';eid('rs2').className='sbi';
+}
 function reg2d() {
   clearErr('reg-err');
-  var ph=eid('d-ph').value.trim(),ag=eid('d-ag').value;
+  var ph=rPhone||(eid('d-ph')?eid('d-ph').value.trim():''),ag=eid('d-ag').value;
   var streetNo=eid('d-street-no').value.trim(),streetName=eid('d-street-name').value.trim();
   var suburb=eid('d-suburb').value.trim(),province=eid('d-province').value.trim();
   var wa=eid('d-wa').value.trim(),idNo=eid('d-id').value.trim(),lic=eid('d-lic').value.trim();
@@ -3318,9 +3394,9 @@ async function upFile(bucket,path,file,field){
 async function reg2o() {
   clearErr('reg-err'); clearErr('reg-err-o');
   function oErr(msg){showErr('reg-err',msg);showErr('reg-err-o',msg);}
-  var ph=eid('o-ph').value.trim(),lo=eid('o-lo').value.trim(),wa=eid('o-wa').value.trim();
+  var ph=rPhone||(eid('o-ph')?eid('o-ph').value.trim():''),lo=eid('o-lo').value.trim(),wa=eid('o-wa').value.trim();
   var mk=eid('o-mk').value.trim(),mo=eid('o-mo').value.trim(),yr=eid('o-yr').value,pr=eid('o-pr').value;
-  if(!ph){oErr('Phone number is required.');return;}
+  if(!ph){oErr('Phone number is required. Please go back to Step 1.');return;}
   if(!wa){oErr('WhatsApp number is required.');return;}
   if(!lo){oErr('City / Location is required.');return;}
   if(!mk||!mo||!yr||!pr){oErr('Please fill in all car details (make, model, year and weekly rate).');return;}
@@ -3354,36 +3430,61 @@ async function reg3() {
 async function doReg() {
   clearErr('reg-err');
   var isD=rRole==='driver';
-  var ph=isD?eid('d-ph').value.trim():oCarData.ph;
+  var ph=rPhone||(isD?eid('d-ph').value.trim():oCarData.ph)||'';
   var lo=isD?eid('d-lo').value.trim():oCarData.lo;
   var wa=isD?(eid('d-wa').value.trim()||null):(oCarData.wa||null);
   var pc=isD?(eid('d-pc')?eid('d-pc').value:null):(eid('o-pc')?eid('o-pc').value:null);
+  var uid=rUid||null;
   var ownerIdUrl=null,ownerHsUrl=null;
-  if(rRole==='owner'){
-    var safeEmail=rEmail.replace(/[^a-z0-9]/gi,'_');
-    if(docFiles.oid_f){
-      var oidComp=await _compressImage(docFiles.oid_f);
-      var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
-      var prePath='pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt;
-      var preUp=await sb.storage.from('profile-photos').upload(prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
-      if(!preUp.error)ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath).data.publicUrl;
+
+  if(!uid){
+    // Fallback: OTP verification was skipped or failed — use signUp
+    if(rRole==='owner'){
+      var safeEmail=rEmail.replace(/[^a-z0-9]/gi,'_');
+      if(docFiles.oid_f){
+        var oidComp=await _compressImage(docFiles.oid_f);
+        var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
+        var prePath='pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt;
+        var preUp=await sb.storage.from('profile-photos').upload(prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
+        if(!preUp.error)ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath).data.publicUrl;
+      }
+      if(docFiles.o_selfie){
+        var selfieBlob=docFiles.o_selfie;
+        var selfiePath='pre-reg/'+safeEmail+'-selfie-'+Date.now()+'.jpg';
+        var selfieUp=await sb.storage.from('profile-photos').upload(selfiePath,selfieBlob,{upsert:true,contentType:'image/jpeg'});
+        if(!selfieUp.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath).data.publicUrl;
+      }
     }
-    if(docFiles.o_selfie){
-      var selfieBlob=docFiles.o_selfie;
-      var selfiePath='pre-reg/'+safeEmail+'-selfie-'+Date.now()+'.jpg';
-      var selfieUp=await sb.storage.from('profile-photos').upload(selfiePath,selfieBlob,{upsert:true,contentType:'image/jpeg'});
-      if(!selfieUp.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath).data.publicUrl;
+    var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl}}});
+    if(r.error){
+      var msg=r.error.message;
+      if(/rate.limit|too.many/i.test(msg))msg='Too many signup attempts for this email. Please wait 1 hour and try again, or use a different email address.';
+      showErr('reg-err',msg);return;
+    }
+    uid=r.data&&r.data.user?r.data.user.id:null;
+    if(!uid){showErr('reg-err','Signup failed. Please try again.');return;}
+  } else {
+    // OTP-verified path: upload owner photos now (uid is already known)
+    if(rRole==='owner'){
+      var safeEmail2=rEmail.replace(/[^a-z0-9]/gi,'_');
+      if(docFiles.oid_f){
+        var oidComp2=await _compressImage(docFiles.oid_f);
+        var preExt2=oidComp2!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
+        var prePath2='pre-reg/'+safeEmail2+'-id-'+Date.now()+'.'+preExt2;
+        var preUp2=await sb.storage.from('profile-photos').upload(prePath2,oidComp2,{upsert:true,contentType:oidComp2.type||docFiles.oid_f.type});
+        if(!preUp2.error)ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath2).data.publicUrl;
+      }
+      if(docFiles.o_selfie){
+        var selfieBlob2=docFiles.o_selfie;
+        var selfiePath2='pre-reg/'+safeEmail2+'-selfie-'+Date.now()+'.jpg';
+        var selfieUp2=await sb.storage.from('profile-photos').upload(selfiePath2,selfieBlob2,{upsert:true,contentType:'image/jpeg'});
+        if(!selfieUp2.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath2).data.publicUrl;
+      }
+      // Update profile metadata with owner photo urls
+      await sb.auth.updateUser({data:{doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl}});
     }
   }
-  var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl}}});
-  if(r.error){
-    var msg=r.error.message;
-    if(/rate.limit|too.many/i.test(msg))msg='Too many signup attempts for this email. Please wait 1 hour and try again, or use a different email address.';
-    showErr('reg-err',msg);return;
-  }
-  var uid=r.data&&r.data.user?r.data.user.id:null;
-  if(!uid){showErr('reg-err','Signup failed. Please try again.');return;}
-  var hasSession=!!(r.data&&r.data.session);
+
   var now=new Date().toISOString();
   await sb.from('profiles').upsert({id:uid,email:rEmail,full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',terms_accepted:true,popia_accepted:true,terms_accepted_at:now,popia_accepted_at:now,terms_version:'1.0',tc_accepted_at:now,tc_version:'July 2026'},{onConflict:'id'});
   var t=Date.now();
@@ -3467,15 +3568,22 @@ async function doReg() {
   if (typeof gtag === 'function') {
     gtag('event', 'sign_up', { method: rRole === 'driver' ? 'driver_registration' : 'owner_registration' });
   }
-  var needsVerify = !(r.data && r.data.session);
-  if (needsVerify) {
-    eid('verify-email-addr').textContent = rEmail;
-    eid('verify-err').classList.remove('on');
-    eid('verify-ok').style.display='none';
-    go('verify');
-  } else {
+  // If OTP was verified, email is already confirmed — go straight to login
+  if(rUid){
+    rUid=null;rPhone='';
     toast('Account created! Awaiting admin approval before going live.');
     go('login');
+  } else {
+    var needsVerify = !(r&&r.data&&r.data.session);
+    if (needsVerify) {
+      eid('verify-email-addr').textContent = rEmail;
+      eid('verify-err').classList.remove('on');
+      eid('verify-ok').style.display='none';
+      go('verify');
+    } else {
+      toast('Account created! Awaiting admin approval before going live.');
+      go('login');
+    }
   }
 }
 
