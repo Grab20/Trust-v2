@@ -608,6 +608,7 @@ nav div::-webkit-scrollbar{display:none}
 
 <div id="page-drivers" class="page">
   <div class="sec"><div class="sec-inner">
+    <div id="drvs-banner"></div>
     <div class="sec-head"><div><h2>Verified Drivers</h2><p id="drvs-sub">Loading...</p></div></div>
     <div style="margin-bottom:14px">
       <input id="drvs-search" type="text" placeholder="&#128269; Search name, place..." oninput="filterDrivers()" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:#fff;margin-bottom:8px"/>
@@ -2618,6 +2619,8 @@ async function loadDrivers() {
   if(sortEl)sortEl.value=defSort;
   _drvsOffset=0;
   _drvsNearestCache=null;
+  var _drvsBanner=eid('drvs-banner');
+  if(_drvsBanner)_drvsBanner.innerHTML=idpReminderBannerHTML();
   // Load owner's car prefs for personalized match scoring
   _ownerMatchPrefs=null;_ownerMatchCarId=null;
   if(U&&P&&(P.role==='owner'||P.role==='both')){
@@ -3220,6 +3223,7 @@ async function initDash() {
   await refreshChatNav();
   showMobNav();
   dpanel('ov');
+  _idpOnboardingCheck();
 }
 function dpanel(name) {
   document.querySelectorAll('#page-dashboard .panel').forEach(function(p){p.classList.remove('on');});
@@ -3428,6 +3432,8 @@ async function pOv() {
         +'<div class="stat-chip-h">'+hint+'</div>'
         +'</div>';
     }
+
+    html+=idpReminderBannerHTML();
 
     if(isMatched){
       // ════ MATCHED STATE: Current match first, stats below ════
@@ -4646,7 +4652,8 @@ async function pLc(){
     if(a.car_id) matchedCars[a.car_id]=dName;
     else ownerMatchedDriver=dName;
   });
-  var html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+  var html=idpReminderBannerHTML();
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
     +'<div class="shd" style="margin-bottom:0">My Cars ('+cars.length+')</div>'
     +'<button class="btn btn-gm btn-sm" onclick="toggleAddCar()">&#43; Add Another Car</button>'
     +'</div>';
@@ -4885,6 +4892,261 @@ async function submitCarEdit(cid){
   clearMatchCache(cid);
   toast('Car details updated successfully.');
   pLc();
+}
+
+// ── IDEAL DRIVER ONBOARDING ─────────────────────────────────────────────────
+
+function _idpObKey(){return U?'tm_idp_ob_'+U.id:null;}
+
+function _idpObDone(){
+  var k=_idpObKey(); if(!k)return true;
+  return localStorage.getItem(k)==='done';
+}
+
+function _idpObSkipped(){
+  var k=_idpObKey(); if(!k)return false;
+  return localStorage.getItem(k)==='skipped';
+}
+
+function _setIdpObDone(){
+  var k=_idpObKey(); if(k)localStorage.setItem(k,'done');
+  // Analytics
+  try{sb.from('page_views').insert({page:'idp_onboarding_complete',visitor_id:U.id}).then(function(){});}catch(e){}
+}
+
+function _setIdpObSkipped(){
+  var k=_idpObKey(); if(k)localStorage.setItem(k,'skipped');
+  try{sb.from('page_views').insert({page:'idp_onboarding_skip',visitor_id:U.id}).then(function(){});}catch(e){}
+}
+
+async function _idpOnboardingCheck(){
+  if(!U||!P)return;
+  var isOwner=P.role==='owner'||P.role==='both';
+  if(!isOwner)return;
+  if(_idpObDone())return;
+  // Check if any of owner's cars already have prefs set
+  var r=await sb.from('cars').select('id,ideal_driver_prefs').eq('owner_id',U.id).neq('status','removed').limit(20);
+  var cars=r.data||[];
+  var anyHasPrefs=cars.some(function(c){return c.ideal_driver_prefs&&Object.keys(c.ideal_driver_prefs).length>0;});
+  if(anyHasPrefs){_setIdpObDone();return;}
+  // Delay slightly so dashboard renders first
+  setTimeout(function(){showIdpOnboarding(cars);},600);
+}
+
+function idpReminderBannerHTML(){
+  if(!U||!P)return '';
+  var isOwner=P.role==='owner'||P.role==='both';
+  if(!isOwner||_idpObDone())return '';
+  return '<div style="background:linear-gradient(135deg,#1a2e1a 0%,#1a5c28 100%);border-radius:12px;padding:16px 18px;margin-bottom:16px;position:relative;overflow:hidden">'
+    +'<div style="position:absolute;top:-20px;right:-20px;font-size:80px;opacity:.08;line-height:1">&#127942;</div>'
+    +'<div style="display:flex;align-items:flex-start;gap:12px">'
+    +'<div style="font-size:28px;flex-shrink:0">&#127775;</div>'
+    +'<div style="flex:1">'
+    +'<div style="font-size:14px;font-weight:800;color:#fff;margin-bottom:4px">Find Your Ideal Driver</div>'
+    +'<div style="font-size:12px;color:rgba(255,255,255,.8);margin-bottom:10px;line-height:1.5">Complete your preferences to unlock personalised driver recommendations. You\'ll get <strong style="color:#d4edd8">&#127942; Match Scores</strong>, <strong style="color:#d4edd8">&#11088; better ranked applications</strong> and <strong style="color:#d4edd8">&#9889; faster driver selection</strong>.</div>'
+    +'<button class="btn" style="background:#fff;color:var(--g);font-size:12px;font-weight:700;padding:7px 16px;border-radius:8px" onclick="showIdpOnboarding(null)">Complete Preferences</button>'
+    +'</div>'
+    +'</div>'
+    +'</div>';
+}
+
+var _idpObCars=null;
+
+function showIdpOnboarding(cars){
+  _idpObCars=cars;
+  var existing=document.getElementById('idp-ob-modal');
+  if(existing)existing.remove();
+  var modal=document.createElement('div');
+  modal.id='idp-ob-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML='<div id="idp-ob-box" style="background:var(--cream);border-radius:18px;max-width:520px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.25)">'
+    +'<div id="idp-ob-content"></div>'
+    +'</div>';
+  document.body.appendChild(modal);
+  _idpObShowStep(1);
+}
+
+function _idpObProgress(step,total){
+  var dots='';
+  for(var i=1;i<=total;i++){
+    dots+='<div style="width:'+(i===step?'24px':'8px')+';height:8px;border-radius:999px;background:'+(i===step?'var(--gm)':i<step?'var(--gs)':'#ddd')+';transition:all .3s"></div>';
+  }
+  return '<div style="display:flex;align-items:center;gap:6px;justify-content:center;margin-bottom:20px">'+dots+'</div>';
+}
+
+function _idpObShowStep(n){
+  var hasCars=_idpObCars&&_idpObCars.length>1;
+  var totalSteps=hasCars?4:3;
+  var box=document.getElementById('idp-ob-content');
+  if(!box)return;
+
+  if(n===1){
+    box.innerHTML='<div style="padding:28px 24px 24px">'
+      +_idpObProgress(1,totalSteps)
+      +'<div style="text-align:center;margin-bottom:20px">'
+      +'<div style="font-size:48px;margin-bottom:10px">&#128663;</div>'
+      +'<div style="font-size:22px;font-weight:900;color:var(--g);font-family:\'Playfair Display\',serif;margin-bottom:8px">Find Your Ideal Driver</div>'
+      +'<div style="font-size:14px;color:#555;line-height:1.6;max-width:380px;margin:0 auto">We\'ve upgraded TrustMate with smarter driver matching. Tell us what you\'re looking for, and we\'ll automatically recommend drivers that best match your preferences.</div>'
+      +'<div style="font-size:13px;color:var(--gm);font-weight:700;margin-top:8px">&#9201; It only takes about 60 seconds.</div>'
+      +'</div>'
+      // Before / After
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:22px">'
+      +'<div style="background:#fee2e2;border-radius:12px;padding:14px">'
+      +'<div style="font-size:11px;font-weight:800;color:#991b1b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Before</div>'
+      +'<div style="display:flex;flex-direction:column;gap:7px">'
+      +'<div style="font-size:12px;color:#555;display:flex;gap:6px"><span>&#128300;</span>Browse every application manually</div>'
+      +'<div style="font-size:12px;color:#555;display:flex;gap:6px"><span>&#128260;</span>Compare drivers one by one</div>'
+      +'<div style="font-size:12px;color:#555;display:flex;gap:6px"><span>&#9201;</span>Spend more time deciding</div>'
+      +'</div>'
+      +'</div>'
+      +'<div style="background:var(--gs);border-radius:12px;padding:14px">'
+      +'<div style="font-size:11px;font-weight:800;color:var(--gm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">After</div>'
+      +'<div style="display:flex;flex-direction:column;gap:7px">'
+      +'<div style="font-size:12px;color:var(--g);display:flex;gap:6px"><span>&#127942;</span>Match Score for every driver</div>'
+      +'<div style="font-size:12px;color:var(--g);display:flex;gap:6px"><span>&#11088;</span>Drivers auto-ranked by fit</div>'
+      +'<div style="font-size:12px;color:var(--g);display:flex;gap:6px"><span>&#9989;</span>Understand why each is recommended</div>'
+      +'<div style="font-size:12px;color:var(--g);display:flex;gap:6px"><span>&#9889;</span>Find the right driver faster</div>'
+      +'</div>'
+      +'</div>'
+      +'</div>'
+      +'<button class="btn btn-gm btn-w" style="padding:14px;font-size:15px;font-weight:800;border-radius:12px;margin-bottom:10px" onclick="_idpObShowStep(2)">Get Started &#8594;</button>'
+      +'<button class="btn btn-out btn-w" style="padding:11px;font-size:13px" onclick="_idpObSkip()">Skip for Now</button>'
+      +'</div>';
+  }
+
+  else if(n===2){
+    var pfx='ob';
+    box.innerHTML='<div style="padding:20px 24px 24px">'
+      +_idpObProgress(2,totalSteps)
+      +'<div style="font-size:18px;font-weight:900;color:var(--g);font-family:\'Playfair Display\',serif;margin-bottom:4px">&#127775; Ideal Driver Preferences</div>'
+      +'<div style="font-size:13px;color:#666;margin-bottom:16px">Tell us what matters most to you. These are your defaults — you can always adjust per vehicle.</div>'
+      +'<div id="ob-idp-form">'+renderIdpForm(pfx,null)+'</div>'
+      +'<div style="display:flex;gap:10px;margin-top:16px">'
+      +'<button class="btn btn-out" style="padding:11px 16px;font-size:13px" onclick="_idpObShowStep(1)">&#8592; Back</button>'
+      +'<button class="btn btn-gm" style="flex:1;padding:13px;font-size:14px;font-weight:800;border-radius:12px" onclick="_idpObNext2('+(hasCars?3:3)+')">Continue &#8594;</button>'
+      +'</div>'
+      +'</div>';
+  }
+
+  else if(n===3&&hasCars){
+    box.innerHTML='<div style="padding:20px 24px 24px">'
+      +_idpObProgress(3,totalSteps)
+      +'<div style="font-size:18px;font-weight:900;color:var(--g);font-family:\'Playfair Display\',serif;margin-bottom:4px">&#128663; Apply Your Preferences</div>'
+      +'<div style="font-size:13px;color:#666;margin-bottom:16px">How would you like to use these preferences?</div>'
+      +'<div id="ob-apply-opts">'
+      +'<label id="ob-opt1-lbl" style="display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border:2px solid var(--gm);border-radius:12px;cursor:pointer;margin-bottom:10px;background:var(--gs)">'
+      +'<input type="radio" name="ob-apply" value="all" checked style="margin-top:2px;accent-color:var(--gm)">'
+      +'<div><div style="font-size:13px;font-weight:700;color:var(--g)">&#9989; Apply to all my vehicle listings</div>'
+      +'<div style="font-size:11px;color:#666;margin-top:3px">Recommended — uses the same preferences across all '+_idpObCars.length+' vehicles</div>'
+      +'<div style="display:inline-block;background:var(--gm);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-top:5px">Recommended</div>'
+      +'</div></label>'
+      +'<label id="ob-opt2-lbl" style="display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border:2px solid var(--border);border-radius:12px;cursor:pointer;background:#fff">'
+      +'<input type="radio" name="ob-apply" value="individual" style="margin-top:2px;accent-color:var(--gm)">'
+      +'<div><div style="font-size:13px;font-weight:700;color:var(--g)">Configure each vehicle individually</div>'
+      +'<div style="font-size:11px;color:#666;margin-top:3px">Set different preferences per car in My Cars</div>'
+      +'</div></label>'
+      +'</div>'
+      +'<div style="display:flex;gap:10px;margin-top:16px">'
+      +'<button class="btn btn-out" style="padding:11px 16px;font-size:13px" onclick="_idpObShowStep(2)">&#8592; Back</button>'
+      +'<button class="btn btn-gm" style="flex:1;padding:13px;font-size:14px;font-weight:800;border-radius:12px" onclick="_idpObSave(true)">Continue &#8594;</button>'
+      +'</div>'
+      +'</div>';
+    // Radio style toggle
+    document.querySelectorAll('input[name="ob-apply"]').forEach(function(radio){
+      radio.addEventListener('change',function(){
+        var l1=document.getElementById('ob-opt1-lbl');
+        var l2=document.getElementById('ob-opt2-lbl');
+        if(l1)l1.style.cssText=l1.style.cssText.replace(/border:[^;]+/,'border:2px solid '+(radio.value==='all'?'var(--gm)':'var(--border)')).replace(/background:[^;]+/,'background:'+(radio.value==='all'?'var(--gs)':'#fff'));
+        if(l2)l2.style.cssText=l2.style.cssText.replace(/border:[^;]+/,'border:2px solid '+(radio.value==='individual'?'var(--gm)':'var(--border)')).replace(/background:[^;]+/,'background:'+(radio.value==='individual'?'var(--gs)':'#fff'));
+      });
+    });
+  }
+
+  else if(n===3&&!hasCars||(n===4)){
+    // Success screen
+    _idpObShowSuccess(totalSteps);
+  }
+}
+
+function _idpObNext2(nextStep){
+  // Validate that at least one field is set
+  var prefs=readIdpPrefs('ob');
+  if(!prefs||Object.keys(prefs).length===0){
+    toast('Please set at least one preference to continue.');return;
+  }
+  window._idpObPrefs=prefs;
+  var hasCars=_idpObCars&&_idpObCars.length>1;
+  if(hasCars) _idpObShowStep(3);
+  else _idpObSave(false);
+}
+
+async function _idpObSave(fromApplyScreen){
+  var prefs=window._idpObPrefs||readIdpPrefs('ob');
+  if(!prefs||Object.keys(prefs).length===0){toast('Please set at least one preference.');return;}
+  var applyAll=true;
+  if(fromApplyScreen){
+    var sel=document.querySelector('input[name="ob-apply"]:checked');
+    applyAll=!sel||sel.value==='all';
+  }
+  var cars=_idpObCars||[];
+  // If no cars loaded yet, fetch them
+  if(!cars.length){
+    var r=await sb.from('cars').select('id').eq('owner_id',U.id).neq('status','removed');
+    cars=r.data||[];
+  }
+  var btn=document.querySelector('#idp-ob-content .btn-gm');
+  if(btn){btn.disabled=true;btn.textContent='Saving...';}
+  try{
+    if(applyAll&&cars.length){
+      var ids=cars.map(function(c){return c.id;});
+      await sb.from('cars').update({ideal_driver_prefs:prefs}).in('id',ids);
+    }
+    // If individual, save to first car only so something is set
+    else if(cars.length){
+      await sb.from('cars').update({ideal_driver_prefs:prefs}).eq('id',cars[0].id);
+    }
+    // Bust caches so scores recalculate
+    _carCache=null; _drvCache=null; _msCache={};
+    _ownerMatchPrefs=prefs; _ownerMatchCarId=cars.length?cars[0].id:null;
+    _setIdpObDone();
+    _idpObShowSuccess((_idpObCars&&_idpObCars.length>1)?4:3);
+  }catch(e){
+    toast('Error saving preferences. Please try again.');
+    if(btn){btn.disabled=false;btn.textContent='Continue →';}
+  }
+}
+
+function _idpObShowSuccess(totalSteps){
+  var box=document.getElementById('idp-ob-content');
+  if(!box)return;
+  box.innerHTML='<div style="padding:28px 24px 32px;text-align:center">'
+    +_idpObProgress(totalSteps,totalSteps)
+    +'<div style="font-size:64px;margin-bottom:12px">&#127881;</div>'
+    +'<div style="font-size:24px;font-weight:900;color:var(--g);font-family:\'Playfair Display\',serif;margin-bottom:8px">You\'re Ready!</div>'
+    +'<div style="font-size:14px;color:#555;margin-bottom:20px;line-height:1.6">Your driver preferences have been saved.</div>'
+    +'<div style="background:var(--gs);border:1.5px solid var(--gm);border-radius:12px;padding:16px;text-align:left;margin-bottom:22px">'
+    +'<div style="font-size:12px;font-weight:800;color:var(--gm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">From now on, TrustMate will:</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">'
+    +'<div style="font-size:13px;color:var(--g);display:flex;gap:8px;align-items:flex-start"><span>&#127942;</span>Calculate a Match Score for every applicant</div>'
+    +'<div style="font-size:13px;color:var(--g);display:flex;gap:8px;align-items:flex-start"><span>&#128200;</span>Rank drivers based on compatibility</div>'
+    +'<div style="font-size:13px;color:var(--g);display:flex;gap:8px;align-items:flex-start"><span>&#128161;</span>Explain why each driver is recommended</div>'
+    +'<div style="font-size:13px;color:var(--g);display:flex;gap:8px;align-items:flex-start"><span>&#128640;</span>Help you find the right driver faster</div>'
+    +'</div>'
+    +'</div>'
+    +'<button class="btn btn-gm btn-w" style="padding:14px;font-size:15px;font-weight:800;border-radius:12px;margin-bottom:10px" onclick="_idpObClose();dpanel(\'lc\')">&#128663; Go to My Listings</button>'
+    +'<button class="btn btn-out btn-w" style="padding:11px;font-size:13px" onclick="_idpObClose();dpanel(\'ap\')">View Applications</button>'
+    +'</div>';
+}
+
+function _idpObSkip(){
+  _setIdpObSkipped();
+  _idpObClose();
+  toast('You can set up preferences anytime from My Cars.');
+}
+
+function _idpObClose(){
+  var m=document.getElementById('idp-ob-modal');
+  if(m)m.remove();
 }
 
 // ── IDEAL DRIVER PREFERENCES ────────────────────────────────────────────────
@@ -5133,7 +5395,7 @@ async function pAp() {
     try{sb.from('application_views').insert({owner_id:U.id}).then(function(){});}catch(e){}
     var r=await sb.from('applications').select('id,driver_id,owner_id,car_id,status,initiated_by,message,counter_price,owner_notes,unmatch_reason,unmatched_at,created_at,driver_agreed_terms,owner_agreed_terms').eq('owner_id',U.id).order('created_at',{ascending:false}).limit(200);
     var apps=r.data||[];
-    if(!apps.length){el.innerHTML=empty('&#128203;','No applications yet. Browse drivers and connect with them.');return;}
+    if(!apps.length){el.innerHTML=idpReminderBannerHTML()+empty('&#128203;','No applications yet. Browse drivers and connect with them.');return;}
 
     // Collect all driver IDs
     var dIds=[...new Set(apps.map(function(a){return a.driver_id;}).filter(Boolean))];
@@ -5197,7 +5459,7 @@ async function pAp() {
       }).join('')
       +'</div>';
 
-    el.innerHTML='<div class="shd">Applications & Matches ('+apps.length+')</div>'+sortBar+sortedApps.map(function(a){
+    el.innerHTML=idpReminderBannerHTML()+'<div class="shd">Applications & Matches ('+apps.length+')</div>'+sortBar+sortedApps.map(function(a){
       var dp=dpm[a.driver_id]||{};
       var pf=pfm[a.driver_id]||{};
       var car=cm[a.car_id]||null;
