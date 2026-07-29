@@ -9847,9 +9847,11 @@ async function adStats(){
     var matchedApps=apps.filter(function(a){return a.status==='approved';});
     var matchRate=totalApps>0?((matchedApps.length/totalApps)*100).toFixed(1):0;
 
-    // Recently active drivers — logged in within 30 days
-    var recentLoginUids=new Set(logins.filter(function(l){return l.created_at>=d30&&(l.role==='driver'||l.role==='both');}).map(function(l){return l.user_id;}));
-    var recentActiveDrvs=dps.filter(function(d){return recentLoginUids.has(d.user_id);});
+    // Active in last 30 days
+    var recentDrvUids=new Set(logins.filter(function(l){return l.created_at>=d30&&(l.role==='driver'||l.role==='both');}).map(function(l){return l.user_id;}));
+    var recentOwnUids=new Set(logins.filter(function(l){return l.created_at>=d30&&(l.role==='owner'||l.role==='both');}).map(function(l){return l.user_id;}));
+    var activeDrvs30=dps.filter(function(d){return recentDrvUids.has(d.user_id);});
+    var activeOwns30=approvedOwns.filter(function(p){return recentOwnUids.has(p.id);});
 
     html+='<div class="occ-sh">&#127973; Marketplace Health</div>';
     html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:24px">';
@@ -9858,13 +9860,17 @@ async function adStats(){
     html+=anKpi(approvedDrvs.length,'Approved Drivers','#15803d',
       'anDrill("Approved Drivers",'+JSON.stringify(approvedDrvs.map(function(d){var p=pm[d.user_id]||{};return [esc(p.full_name||'—'),esc(p.email||'—'),d.trust_score||0,d.rentals_completed||0,fmtD(d.created_at)];}))+',[\"Name\",\"Email\",\"TrustScore\",\"Rentals\",\"Joined\"])');
 
-    // Recently Active Drivers (30d)
-    html+=anKpi(recentActiveDrvs.length,'Recently Active (30d)','#0369a1',
-      'anDrill("Recently Active Drivers (30d)",'+JSON.stringify(recentActiveDrvs.map(function(d){var p=pm[d.user_id]||{};return [esc(p.full_name||'—'),esc(p.email||'—'),d.trust_score||0,fmtD(d.created_at)];}))+',[\"Name\",\"Email\",\"TrustScore\",\"Joined\"])');
+    // Active Drivers (30d)
+    html+=anKpi(activeDrvs30.length,'Active Drivers (30d)','#0369a1',
+      'anDrill("Active Drivers — Last 30 Days",'+JSON.stringify(activeDrvs30.map(function(d){var p=pm[d.user_id]||{};return [esc(p.full_name||'—'),esc(p.email||'—'),d.trust_score||0,fmtD(d.created_at)];}))+',[\"Name\",\"Email\",\"TrustScore\",\"Joined\"])');
 
     // Approved Owners
     html+=anKpi(approvedOwns.length,'Approved Owners','#7c3aed',
       'anDrill("Approved Owners",'+JSON.stringify(approvedOwns.map(function(p){var vc=cars.filter(function(c){return c.owner_id===p.id;}).length;return [esc(p.full_name||'—'),esc(p.email||'—'),vc,fmtD(p.created_at)];}))+',[\"Name\",\"Email\",\"Vehicles\",\"Joined\"])');
+
+    // Active Owners (30d)
+    html+=anKpi(activeOwns30.length,'Active Owners (30d)','#0284c7',
+      'anDrill("Active Owners — Last 30 Days",'+JSON.stringify(activeOwns30.map(function(p){var vc=cars.filter(function(c){return c.owner_id===p.id;}).length;return [esc(p.full_name||'—'),esc(p.email||'—'),vc,fmtD(p.created_at)];}))+',[\"Name\",\"Email\",\"Vehicles\",\"Joined\"])');
 
     // Active Cars
     html+=anKpi(activeCars.length,'Active Cars','#d97706',
