@@ -4631,9 +4631,19 @@ async function pLc(){
     +'<button class="btn btn-gm btn-sm" onclick="toggleAddCar()">&#43; Add Another Car</button>'
     +'</div>';
 
-  // Add car form (hidden by default)
-  html+='<div id="add-car-form" style="display:none;background:#fff;border:1.5px solid var(--gm);border-radius:10px;padding:16px;margin-bottom:16px">'
-    +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:12px">&#128663; New Car Details</div>'
+  // Add car form (hidden by default) — 3-step wizard
+  html+='<div id="add-car-form" style="display:none;background:#fff;border:1.5px solid var(--gm);border-radius:12px;padding:20px;margin-bottom:16px">'
+    // ── Step indicator ──
+    +'<div style="display:flex;align-items:flex-start;margin-bottom:20px">'
+    +'<div style="display:flex;flex-direction:column;align-items:center;flex:1"><div id="nc-si1-dot" style="width:28px;height:28px;border-radius:50%;background:var(--gm);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">1</div><div id="nc-si1-lbl" style="font-size:10px;font-weight:600;color:var(--gm);margin-top:3px;text-align:center">Car Details</div></div>'
+    +'<div id="nc-sline1" style="flex:1;height:2px;background:var(--border);margin-top:14px"></div>'
+    +'<div style="display:flex;flex-direction:column;align-items:center;flex:1"><div id="nc-si2-dot" style="width:28px;height:28px;border-radius:50%;background:var(--border);color:#999;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">2</div><div id="nc-si2-lbl" style="font-size:10px;font-weight:600;color:#999;margin-top:3px;text-align:center">Ideal Driver</div></div>'
+    +'<div id="nc-sline2" style="flex:1;height:2px;background:var(--border);margin-top:14px"></div>'
+    +'<div style="display:flex;flex-direction:column;align-items:center;flex:1"><div id="nc-si3-dot" style="width:28px;height:28px;border-radius:50%;background:var(--border);color:#999;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center">3</div><div id="nc-si3-lbl" style="font-size:10px;font-weight:600;color:#999;margin-top:3px;text-align:center">Confirm</div></div>'
+    +'</div>'
+    // ── Step 1: Car Details ──
+    +'<div id="nc-step1">'
+    +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:12px">&#128663; Car Details</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
     +'<div class="fg"><label>Make *</label><input id="nc-make" placeholder="e.g. Toyota"></div>'
     +'<div class="fg"><label>Model *</label><input id="nc-model" placeholder="e.g. Corolla"></div>'
@@ -4649,10 +4659,29 @@ async function pLc(){
     +'<input type="checkbox" id="nc-dep-tog" onchange="eid(\'nc-dep-wrap\').style.display=this.checked?\'block\':\'none\'" style="width:16px;height:16px;accent-color:var(--gm)"> Yes, require a deposit</label>'
     +'<div id="nc-dep-wrap" style="display:none"><input id="nc-dep" type="number" placeholder="Amount e.g. 5000"></div></div>'
     +'<div class="fg"><label>Description</label><textarea id="nc-desc" placeholder="Describe the car..." style="height:60px;resize:vertical"></textarea></div>'
-    +'<div style="display:flex;gap:8px">'
-    +'<button class="btn btn-gm" style="flex:1" onclick="submitNewCar()">&#10003; Submit Car</button>'
+    +'<div style="display:flex;gap:8px;margin-top:12px">'
+    +'<button class="btn btn-gm" style="flex:1" onclick="ncGoStep(2)">Next: Ideal Driver &#8594;</button>'
     +'<button class="btn btn-out" onclick="toggleAddCar()">Cancel</button>'
-    +'</div></div>';
+    +'</div></div>'
+    // ── Step 2: Find Your Ideal Driver ──
+    +'<div id="nc-step2" style="display:none">'
+    +'<div style="margin-bottom:16px"><div style="font-size:15px;font-weight:800;color:var(--g)">&#128100; Find Your Ideal Driver</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-top:4px">Tell us what you\'re looking for and we\'ll recommend the best matching drivers.</div></div>'
+    +renderIdpForm('nc',null)
+    +'<div style="display:flex;gap:8px;margin-top:4px">'
+    +'<button class="btn btn-out" onclick="ncGoStep(1)">&#8592; Back</button>'
+    +'<button class="btn btn-gm" style="flex:1" onclick="ncGoStep(3)">Next: Review &#8594;</button>'
+    +'</div></div>'
+    // ── Step 3: Review & Submit ──
+    +'<div id="nc-step3" style="display:none">'
+    +'<div style="font-size:15px;font-weight:800;color:var(--g);margin-bottom:14px">&#10003; Review &amp; Submit</div>'
+    +'<div id="nc-prefs-summary"></div>'
+    +'<div style="font-size:12px;color:var(--muted);margin:10px 0 14px;padding:10px 12px;background:var(--sand);border-radius:7px">&#8505; These are preferences, not requirements. Drivers who don\'t meet every preference can still apply.</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-out" onclick="ncGoStep(2)">&#8592; Edit Preferences</button>'
+    +'<button class="btn btn-gm" style="flex:1" onclick="submitNewCar()">&#10003; Submit Car Listing</button>'
+    +'</div></div>'
+    +'</div>';
 
   // List existing cars
   if(!cars.length){
@@ -4689,6 +4718,10 @@ async function pLc(){
         +'<div class="fg"><label>Fuel Policy</label><select id="ec-fuel-'+c.id+'"><option value="driver_pays"'+(c.fuel_policy==='driver_pays'?' selected':'')+'>Driver Pays</option><option value="owner_pays"'+(c.fuel_policy==='owner_pays'?' selected':'')+'>Owner Pays</option></select></div>'
         +'</div>'
         +'<div class="fg" style="margin-bottom:8px"><label>Deposit (R, blank = none)</label><input id="ec-dep-'+c.id+'" type="number" value="'+(c.deposit||'')+'" placeholder="Leave blank for no deposit"></div>'
+        +'<div style="border-top:1.5px solid var(--border);margin:14px 0 12px;padding-top:12px">'
+        +'<div style="font-size:12px;font-weight:800;color:var(--gm);text-transform:uppercase;letter-spacing:.4px;margin-bottom:12px">&#128100; Ideal Driver Preferences</div>'
+        +renderIdpForm('ec-'+c.id, c.ideal_driver_prefs||null)
+        +'</div>'
         +'<div style="display:flex;gap:8px">'
         +'<button class="btn btn-gm btn-sm" style="flex:1" data-cid="'+c.id+'" onclick="submitCarEdit(this.dataset.cid)">&#10003; Save Changes</button>'
         +'<button class="btn btn-out btn-sm" onclick="toggleCarEdit(\''+c.id+'\')">Cancel</button>'
@@ -4707,7 +4740,10 @@ async function pLc(){
 }
 function toggleAddCar(){
   var f=eid('add-car-form');
-  if(f) f.style.display=f.style.display==='none'?'block':'none';
+  if(!f)return;
+  var opening=f.style.display==='none';
+  f.style.display=opening?'block':'none';
+  if(opening)ncGoStep(1);
 }
 async function submitNewCar(){
   var make=(eid('nc-make').value||'').trim();
@@ -4719,6 +4755,7 @@ async function submitNewCar(){
     toast('Please fill in Make, Model, Year, Price and Location.');return;
   }
   var dep=eid('nc-dep-tog')&&eid('nc-dep-tog').checked&&eid('nc-dep').value?parseInt(eid('nc-dep').value)||null:null;
+  var prefs=readIdpPrefs('nc');
   var r=await sb.from('cars').insert({
     owner_id:U.id,
     make:make, model:model, year:year,
@@ -4729,6 +4766,7 @@ async function submitNewCar(){
     fuel_policy:eid('nc-fuel').value,
     deposit:dep,
     description:(eid('nc-desc').value||'').trim()||null,
+    ideal_driver_prefs:prefs,
     admin_status:'pending'
   }).select('id').maybeSingle();
   if(r.error){toast('Error: '+r.error.message);return;}
@@ -4811,6 +4849,7 @@ async function submitCarEdit(cid){
   }
   var dep=(eid('ec-dep-'+cid)||{}).value;
   dep=dep&&dep.trim()?parseInt(dep)||null:null;
+  var prefs=readIdpPrefs('ec-'+cid);
   var r=await sb.from('cars').update({
     make:make.trim(), model:model.trim(), year:year,
     color:((eid('ec-color-'+cid)||{}).value||'').trim()||null,
@@ -4818,13 +4857,144 @@ async function submitCarEdit(cid){
     location:loc.trim(),
     transmission:(eid('ec-trans-'+cid)||{}).value||'manual',
     fuel_policy:(eid('ec-fuel-'+cid)||{}).value||'driver_pays',
-    deposit:dep
+    deposit:dep,
+    ideal_driver_prefs:prefs
   }).eq('id',cid).eq('owner_id',U.id);
   if(r.error){toast('Error: '+r.error.message);return;}
   _carCache=null;
   toast('Car details updated successfully.');
   pLc();
 }
+
+// ── IDEAL DRIVER PREFERENCES ────────────────────────────────────────────────
+
+function _idpSelHTML(id,opts,cur){
+  var s='<select id="'+id+'" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:#fff;color:var(--g)">';
+  opts.forEach(function(o){s+='<option value="'+o[0]+'"'+(String(cur)===String(o[0])?' selected':'')+'>'+o[1]+'</option>';});
+  return s+'</select>';
+}
+
+function renderIdpForm(pfx,prefs){
+  var p=prefs||{};
+  var pid=function(k){return pfx+'-idp-'+k;};
+  var ageOpts=[[18,'18+'],[20,'20+'],[25,'25+'],[30,'30+'],[35,'35+'],[40,'40+'],[45,'45+'],[50,'50+'],[55,'55+'],[60,'60+'],['','No Preference']];
+  var ylOpts=[];for(var i=0;i<=10;i++)ylOpts.push([i,i+'+']);ylOpts.push([15,'15+'],[20,'20+'],['','No Preference']);
+  var citizenOpts=[['sa','South African Citizen'],['permit','Valid Work Permit'],['either','Either']];
+  var genderOpts=[['m','Male'],['f','Female'],['','No Preference']];
+  var expOpts=[];for(var j=0;j<=10;j++)expOpts.push([j,j+'+']);expOpts.push([15,'15+'],[20,'20+'],['','No Preference']);
+  var tripsOpts=[[0,'0+'],[50,'50+'],[100,'100+'],[250,'250+'],[500,'500+'],[1000,'1,000+'],[2500,'2,500+'],[5000,'5,000+'],[10000,'10,000+'],['','No Preference']];
+  var distOpts=[[5,'5 km'],[10,'10 km'],[20,'20 km'],[50,'50 km'],[100,'100 km'],['','Anywhere']];
+  var tsVal=p.min_trust_score!=null?p.min_trust_score:105;
+  var tsLbl=tsVal>=105?'No Preference':tsVal+'+';
+  var ss='background:var(--sand);border-radius:10px;padding:14px 16px;margin-bottom:12px';
+  var sh='font-size:11px;font-weight:800;color:var(--gm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px';
+  var gr='display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:10px';
+  var fl='display:flex;flex-direction:column;gap:4px';
+  var lb='font-size:12px;font-weight:600;color:var(--g)';
+  var h='';
+  h+='<div style="'+ss+'">';
+  h+='<div style="'+sh+'">&#128100; Basic Requirements</div>';
+  h+='<div style="'+gr+'">';
+  h+='<div style="'+fl+'"><label style="'+lb+'">Minimum Age</label>'+_idpSelHTML(pid('min_age'),ageOpts,p.min_age!=null?p.min_age:'')+'</div>';
+  h+='<div style="'+fl+'"><label style="'+lb+'">Min Years Licensed</label>'+_idpSelHTML(pid('min_years_licensed'),ylOpts,p.min_years_licensed!=null?p.min_years_licensed:'')+'</div>';
+  h+='<div style="'+fl+'"><label style="'+lb+'">Citizenship</label>'+_idpSelHTML(pid('citizenship'),citizenOpts,p.citizenship||'either')+'</div>';
+  h+='<div style="'+fl+'"><label style="'+lb+'">Preferred Gender</label>'+_idpSelHTML(pid('preferred_gender'),genderOpts,p.preferred_gender||'')+'</div>';
+  h+='</div></div>';
+  h+='<div style="'+ss+'">';
+  h+='<div style="'+sh+'">&#127939; Experience</div>';
+  h+='<div style="'+gr+'">';
+  h+='<div style="'+fl+'"><label style="'+lb+'">Min Driving Experience</label>'+_idpSelHTML(pid('min_driving_exp'),expOpts,p.min_driving_exp!=null?p.min_driving_exp:'')+'</div>';
+  h+='<div style="'+fl+'"><label style="'+lb+'">Min E-hailing Trips</label>'+_idpSelHTML(pid('min_trips'),tripsOpts,p.min_trips!=null?p.min_trips:'')+'</div>';
+  h+='<div style="'+fl+';grid-column:span 2">';
+  h+='<label style="'+lb+'">Min TrustScore &mdash; <span id="'+pid('ts_disp')+'" style="color:var(--gm)">'+tsLbl+'</span></label>';
+  h+='<input type="range" id="'+pid('min_trust_score')+'" min="40" max="105" step="5" value="'+tsVal+'" style="width:100%;accent-color:var(--gm);margin:4px 0" oninput="_idpTsChange(\''+pid('ts_disp')+'\',this.value)">';
+  h+='<div style="display:flex;justify-content:space-between;font-size:10px;color:#999;margin-top:-2px"><span>40</span><span>55</span><span>70</span><span>85</span><span>100</span><span>No Pref</span></div>';
+  h+='</div>';
+  h+='</div></div>';
+  h+='<div style="'+ss+';margin-bottom:0">';
+  h+='<div style="'+sh+'">&#128205; Location</div>';
+  h+='<div style="'+gr+'">';
+  h+='<div style="'+fl+'"><label style="'+lb+'">Max Distance From Vehicle</label>'+_idpSelHTML(pid('max_distance_km'),distOpts,p.max_distance_km!=null?p.max_distance_km:'')+'</div>';
+  h+='<div style="'+fl+'"><label style="'+lb+'">Preferred Area</label><input id="'+pid('preferred_area')+'" type="text" value="'+(p.preferred_area?p.preferred_area.replace(/"/g,'&quot;'):'')+'" placeholder="e.g. Sandton, Johannesburg" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:#fff;color:var(--g)"></div>';
+  h+='</div></div>';
+  return h;
+}
+
+function _idpTsChange(dispId,val){
+  var el=document.getElementById(dispId);
+  if(el)el.textContent=parseInt(val)>=105?'No Preference':parseInt(val)+'+';
+}
+
+function readIdpPrefs(pfx){
+  var pid=function(k){return pfx+'-idp-'+k;};
+  var gv=function(k){var el=document.getElementById(pid(k));return el?el.value:'';};
+  var gi=function(k){var v=gv(k);return v===''?null:parseInt(v);};
+  var ts=parseInt(gv('min_trust_score'));
+  return {
+    min_age:gi('min_age'),
+    min_years_licensed:gi('min_years_licensed'),
+    citizenship:gv('citizenship')||'either',
+    preferred_gender:gv('preferred_gender')||null,
+    min_driving_exp:gi('min_driving_exp'),
+    min_trips:gi('min_trips'),
+    min_trust_score:isNaN(ts)||ts>=105?null:ts,
+    max_distance_km:gi('max_distance_km'),
+    preferred_area:(document.getElementById(pid('preferred_area'))||{value:''}).value.trim()||null
+  };
+}
+
+function idpSummaryHTML(prefs){
+  var p=prefs||{};
+  var citMap={sa:'SA Citizen',permit:'Work Permit',either:'Either'};
+  var genMap={m:'Male',f:'Female'};
+  var items=[
+    ['Min Age',p.min_age!=null?p.min_age+'+':'No Preference'],
+    ['Years Licensed',p.min_years_licensed!=null?p.min_years_licensed+'+':'No Preference'],
+    ['Citizenship',citMap[p.citizenship]||'Either'],
+    ['Gender',genMap[p.preferred_gender]||'No Preference'],
+    ['Driving Exp',p.min_driving_exp!=null?p.min_driving_exp+'+':'No Preference'],
+    ['E-hailing Trips',p.min_trips!=null?p.min_trips.toLocaleString()+'+':'No Preference'],
+    ['TrustScore',p.min_trust_score!=null?p.min_trust_score+'+':'No Preference'],
+    ['Distance',p.max_distance_km!=null?p.max_distance_km+' km':'Anywhere'],
+    ['Area',p.preferred_area||'Any area']
+  ];
+  var h='<div style="background:var(--gs);border:1.5px solid var(--gm);border-radius:10px;padding:14px 16px">';
+  h+='<div style="font-size:11px;font-weight:800;color:var(--gm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">&#128100; Your Ideal Driver</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px">';
+  items.forEach(function(item){
+    h+='<div style="background:#fff;border-radius:7px;padding:8px 10px">';
+    h+='<div style="font-size:10px;font-weight:600;color:#888;margin-bottom:2px">'+item[0]+'</div>';
+    h+='<div style="font-size:13px;font-weight:700;color:var(--g)">'+item[1]+'</div>';
+    h+='</div>';
+  });
+  h+='</div></div>';
+  return h;
+}
+
+function ncGoStep(n){
+  if(n===2){
+    var mk=(eid('nc-make')||{}).value||'';
+    var mo=(eid('nc-model')||{}).value||'';
+    var yr=parseInt((eid('nc-year')||{}).value)||0;
+    var pr=parseInt((eid('nc-price')||{}).value)||0;
+    var lo=(eid('nc-loc')||{}).value||'';
+    if(!mk.trim()||!mo.trim()||!yr||!pr||!lo.trim()){
+      toast('Please fill in Make, Model, Year, Price and Location.');return;
+    }
+  }
+  for(var i=1;i<=3;i++){var s=eid('nc-step'+i);if(s)s.style.display=i===n?'block':'none';}
+  for(var j=1;j<=3;j++){
+    var dot=eid('nc-si'+j+'-dot');
+    var lbl=eid('nc-si'+j+'-lbl');
+    var line=j<=2?eid('nc-sline'+j):null;
+    if(!dot)continue;
+    if(j<n){dot.style.background='var(--gm)';dot.style.color='#fff';dot.textContent='✓';if(lbl){lbl.style.color='var(--gm)';}if(line)line.style.background='var(--gm)';}
+    else if(j===n){dot.style.background='var(--gm)';dot.style.color='#fff';dot.textContent=String(j);if(lbl)lbl.style.color='var(--gm)';}
+    else{dot.style.background='var(--border)';dot.style.color='#999';dot.textContent=String(j);if(lbl)lbl.style.color='#999';if(line)line.style.background='var(--border)';}
+  }
+  if(n===3){var sumEl=eid('nc-prefs-summary');if(sumEl)sumEl.innerHTML=idpSummaryHTML(readIdpPrefs('nc'));}
+}
+
 async function pAp() {
   var el=eid('panel-ap'); el.innerHTML=skelCards(3);
   var isO=P&&(P.role==='owner'||P.role==='both');
