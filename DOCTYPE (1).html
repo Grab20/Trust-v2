@@ -3210,7 +3210,8 @@ async function _sendRegOtp(email){
   var d=await res.json();
   if(!res.ok){
     if(d.error==='rate_limit')return{error:'Too many attempts. Please wait 5 minutes before requesting a new code.'};
-    return{error:d.error||'Failed to send code. Please try again.'};
+    if(d.error==='no_api_key')return{error:'Email service not configured. Please contact support.'};
+    return{error:(d.detail||d.error||'Failed to send code. Please try again.')};
   }
   return{ok:true};
 }
@@ -9829,7 +9830,7 @@ async function adStats(){
   var d30=new Date(now-30*864e5).toISOString();
 
   // Tab bar
-  var tabs=[['overview','&#127968; Marketplace'],['funnel','&#129378; Funnel'],['drivers','&#128100; Drivers'],['owners','&#127968; Owners'],['trust','&#9989; Trust'],['ratings','&#11088; Ratings'],['location','&#128205; Locations'],['activity','&#128336; Activity']];
+  var tabs=[['overview','&#127968; Marketplace'],['funnel','&#129378; Funnel'],['drivers','&#128100; Drivers'],['owners','&#127968; Owners'],['trust','&#9989; Trust'],['ratings','&#11088; Ratings'],['location','&#128205; Location'],['activity','&#128336; Activity']];
   var html='<div style="padding:24px">'
     +'<div class="occ-sh">&#128202; Analytics Dashboard</div>'
     +'<div class="an-tabs" style="flex-wrap:wrap">'
@@ -10280,7 +10281,7 @@ async function adStats(){
 
   // ── LOCATION ANALYTICS ────────────────────────────────────────────────────
   }else if(activeTab==='location'){
-    html+='<div class="occ-sh">&#128205; Vehicle & Driver Locations</div>';
+    html+='<div class="occ-sh">&#128205; Location</div>';
 
     // Build city data
     var cityData={};
@@ -10291,7 +10292,6 @@ async function adStats(){
     });
     dps.filter(function(d){return d.status==='approved';}).forEach(function(d){
       var p=pm[d.user_id]||{};
-      // Use location from profile if available
       var city=((p.location||'')||(d.location||'')||'Unknown').split(',')[0].trim()||'Unknown';
       if(!cityData[city])cityData[city]={cars:[],drivers:[],apps:0,matches:0};
       cityData[city].drivers.push(d);
@@ -10305,35 +10305,36 @@ async function adStats(){
     });
 
     var cityList=Object.entries(cityData).sort(function(a,b){return (b[1].cars.length+b[1].drivers.length)-(a[1].cars.length+a[1].drivers.length);});
-    var maxVal=cityList.length?Math.max.apply(null,cityList.map(function(e){return e[1].cars.length+e[1].drivers.length;})):1;
+    var maxVal=cityList.length?Math.max.apply(null,cityList.map(function(e){return Math.max(e[1].cars.length,e[1].drivers.length);})):1;
 
-    // Visual bar chart
+    // Grouped bar chart: one group per city, two bars (drivers + cars)
     html+='<div class="d360-card" style="margin-bottom:20px"><div class="d360-card-body">'
-      +'<div style="display:flex;gap:16px;font-size:11px;font-weight:600;margin-bottom:12px">'
-      +'<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#7c3aed;display:inline-block"></span>Cars</span>'
-      +'<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#1a5c28;display:inline-block"></span>Drivers</span>'
-      +'</div>';
+      +'<div style="display:flex;gap:20px;font-size:12px;font-weight:600;margin-bottom:16px;align-items:center">'
+      +'<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#1a5c28;display:inline-block"></span>Drivers</span>'
+      +'<span style="display:flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#7c3aed;display:inline-block"></span>Cars</span>'
+      +'</div>'
+      +'<div style="overflow-x:auto"><div style="display:flex;align-items:flex-end;gap:12px;min-width:'+(cityList.length*80)+'px;height:180px;padding-bottom:28px;position:relative;border-bottom:2px solid var(--border)">';
+
     cityList.forEach(function(e){
       var city=e[0],d=e[1];
-      var carPct=maxVal?Math.round(d.cars.length/maxVal*100):0;
-      var drvPct=maxVal?Math.round(d.drivers.length/maxVal*100):0;
-      var convPct=d.apps>0?Math.round(d.matches/d.apps*100):0;
-      html+='<div style="margin-bottom:14px;cursor:pointer" onclick="anShowCity(\''+esc(city)+'\',window._anCityData)">'
-        +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:12px">'
-        +'<span style="font-weight:700">'+esc(city)+'</span>'
-        +'<span style="font-size:11px;color:var(--muted)">'
-        +'<span style="color:#7c3aed;font-weight:600">'+d.cars.length+' cars</span>'
-        +' &nbsp; <span style="color:#1a5c28;font-weight:600">'+d.drivers.length+' drivers</span>'
-        +' &nbsp; <span style="color:#d97706">'+d.apps+' apps</span>'
-        +(d.apps?'&nbsp; <span style="color:var(--gm)">'+convPct+'% match</span>':'')
-        +'&nbsp; <span style="font-size:10px">&#128269;</span></span>'
+      var drvH=maxVal?Math.round(d.drivers.length/maxVal*140):0;
+      var carH=maxVal?Math.round(d.cars.length/maxVal*140):0;
+      html+='<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1;min-width:60px;cursor:pointer" onclick="anShowCity(\''+esc(city)+'\',window._anCityData)">'
+        +'<div style="display:flex;align-items:flex-end;gap:3px;height:140px">'
+        +'<div style="display:flex;flex-direction:column;align-items:center">'
+        +'<span style="font-size:10px;font-weight:700;color:#1a5c28;margin-bottom:2px">'+d.drivers.length+'</span>'
+        +'<div style="width:22px;height:'+drvH+'px;background:#1a5c28;border-radius:4px 4px 0 0;transition:opacity .15s" title="'+d.drivers.length+' drivers"></div>'
         +'</div>'
-        +'<div style="display:flex;flex-direction:column;gap:3px">'
-        +'<div style="background:var(--border);border-radius:999px;height:8px;overflow:hidden"><div style="width:'+carPct+'%;height:100%;background:#7c3aed;border-radius:999px"></div></div>'
-        +'<div style="background:var(--border);border-radius:999px;height:8px;overflow:hidden"><div style="width:'+drvPct+'%;height:100%;background:#1a5c28;border-radius:999px"></div></div>'
-        +'</div></div>';
+        +'<div style="display:flex;flex-direction:column;align-items:center">'
+        +'<span style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:2px">'+d.cars.length+'</span>'
+        +'<div style="width:22px;height:'+carH+'px;background:#7c3aed;border-radius:4px 4px 0 0;transition:opacity .15s" title="'+d.cars.length+' cars"></div>'
+        +'</div>'
+        +'</div>'
+        +'<div style="font-size:10px;font-weight:600;text-align:center;color:var(--muted);max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px" title="'+esc(city)+'">'+esc(city)+'</div>'
+        +'</div>';
     });
-    html+='</div></div>';
+
+    html+='</div></div></div></div>';
 
     // Table view
     html+='<div class="occ-sh">&#128203; City Summary</div>';
