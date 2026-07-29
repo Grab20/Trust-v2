@@ -2240,6 +2240,18 @@ function drvHTML(d) {
     +(lateP>0?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#fff1f2;border:1px solid #fecdd3;border-radius:999px;color:#dc2626;font-weight:600">&#9201; '+lateP+' Late</span>':'')
     +(acc>0?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#fff1f2;border:1px solid #fecdd3;border-radius:999px;color:#dc2626;font-weight:600">&#9888; '+acc+' Accident'+(acc!==1?'s':'')+'</span>':'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:4px 10px;background:#f0faf2;border:1px solid #a7f3c1;border-radius:999px;color:#1a5c28;font-weight:600">&#10004; 0 Accidents</span>')
     +'</div>';
+  // Match score badge (for logged-in owners browsing drivers)
+  var matchBadgeRow='';
+  if(_ownerMatchPrefs&&isOwn&&!d.isMatched&&!d.applications_paused){
+    var _mkey=(_ownerMatchCarId||'?')+':'+(d.user_id||'?');
+    var _ms=getMatchScore(d,_ownerMatchPrefs,_mkey);
+    if(_ms.hasPrefs){
+      matchBadgeRow='<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;padding:8px 10px;background:var(--sand);border-radius:8px">'
+        +msScoreBadgeHTML(_ms.score,_ownerMatchCarId,d.user_id)
+        +(_ms.reasons.good.length?'<span style="font-size:11px;color:var(--muted)">'+_ms.reasons.good.slice(0,2).map(function(r){return'• '+r;}).join(' ')+'</span>':'')
+        +'</div>';
+    }
+  }
   return '<div class="dcard" style="border-radius:12px;margin-bottom:12px;overflow:hidden">'
     +(d.applications_paused?'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#fef3c7;font-size:11px;color:#92400e;font-weight:700">&#9646;&#9646; Applications Paused</div>':isVerif?'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#d4edd8;font-size:11px;color:#1a5c28;font-weight:700">&#9989; Verified</div>':'<div style="display:flex;align-items:center;gap:6px;padding:5px 14px;background:#fef3c7;font-size:11px;color:#7a5200;font-weight:700">&#9888; Pending Verification</div>')
     +'<div class="dcard-body">'
@@ -2263,6 +2275,7 @@ function drvHTML(d) {
     // Platform stats — inline row, compact
     +(platRow?'<div style="display:flex;gap:6px;margin-bottom:0;overflow-x:auto;padding-bottom:2px">'+platRow+'</div>':'')
     +statsRow
+    +matchBadgeRow
     +'<div class="dacts" style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">'+acts+'</div>'
     +'</div></div>';
 }
@@ -2597,7 +2610,7 @@ function carsLoadMore(){
   if(!_carsHasMore)return;
   _runCarsQuery(false);
 }
-function loadDrivers() {
+async function loadDrivers() {
   eid('drvs-grid').innerHTML=skelCards(6);
   var defSort=U?'nearest':'score';
   _drvsQuery={q:'',sort:defSort,plat:'',status:'',city:''};
@@ -2605,6 +2618,12 @@ function loadDrivers() {
   if(sortEl)sortEl.value=defSort;
   _drvsOffset=0;
   _drvsNearestCache=null;
+  // Load owner's car prefs for personalized match scoring
+  _ownerMatchPrefs=null;_ownerMatchCarId=null;
+  if(U&&P&&(P.role==='owner'||P.role==='both')){
+    var _cpr=await sb.from('cars').select('id,ideal_driver_prefs').eq('owner_id',U.id).eq('admin_status','approved').neq('status','removed').limit(1).maybeSingle();
+    if(_cpr&&_cpr.data){_ownerMatchPrefs=_cpr.data.ideal_driver_prefs||null;_ownerMatchCarId=_cpr.data.id||null;}
+  }
   _runDriversQuery(true);
 }
 function filterDrivers(){
@@ -4084,6 +4103,7 @@ async function saveDriverAddress(){
   if((pr.error)||(dp.error)){toast('Error saving: '+((pr.error||dp.error).message));return;}
   if(P)P.location=loc;
   if(DP)DP.safe_parking=parking;
+  clearMatchCache(U.id);
   toast('Address & parking saved!');
   pPr();
 }
@@ -4862,6 +4882,7 @@ async function submitCarEdit(cid){
   }).eq('id',cid).eq('owner_id',U.id);
   if(r.error){toast('Error: '+r.error.message);return;}
   _carCache=null;
+  clearMatchCache(cid);
   toast('Car details updated successfully.');
   pLc();
 }
@@ -4995,6 +5016,114 @@ function ncGoStep(n){
   if(n===3){var sumEl=eid('nc-prefs-summary');if(sumEl)sumEl.innerHTML=idpSummaryHTML(readIdpPrefs('nc'));}
 }
 
+// ── MATCH SCORE ENGINE ────────────────────────────────────────────────────
+var _MS_W={trust_score:.30,driving_exp:.20,years_licensed:.15,trips:.15,distance:.10,age:.05,gender:.03,citizenship:.02};
+var _msCache={};
+var _ownerMatchPrefs=null,_ownerMatchCarId=null;
+
+function _msTS(d,p){var req=p.min_trust_score,v=d.trust_score;if(req==null)return{s:1,met:null,val:v};if(v==null)return{s:.4,met:false,val:null};return{s:v>=req?1:Math.max(.1,v/req),met:v>=req,val:v};}
+function _msExp(d,p){var req=p.min_driving_exp,v=d.years_driving;if(req==null)return{s:1,met:null,val:v};if(v==null)return{s:.4,met:false,val:null};return{s:v>=req?1:Math.max(.15,v/req),met:v>=req,val:v};}
+function _msYL(d,p){var req=p.min_years_licensed,v=null;if(d.license_date){v=Math.floor((Date.now()-new Date(d.license_date).getTime())/(1000*60*60*24*365.25));}else{v=d.years_driving;}if(req==null)return{s:1,met:null,val:v};if(v==null)return{s:.4,met:false,val:null};return{s:v>=req?1:Math.max(.15,v/req),met:v>=req,val:v};}
+function _msTrp(d,p){var req=p.min_trips,total=(parseInt(d.uber_trips)||0)+(parseInt(d.bolt_trips)||0)+(parseInt(d.indrive_trips)||0),hasData=!!(d.uber_trips||d.bolt_trips||d.indrive_trips);if(req==null)return{s:1,met:null,val:total};if(!hasData)return{s:.35,met:false,val:0};if(req===0||total>=req)return{s:1,met:true,val:total};return{s:Math.max(.1,total/req),met:false,val:total};}
+function _msDist(d,p){var area=p.preferred_area,maxD=p.max_distance_km,loc=(d.location||'').toLowerCase();if(!area&&maxD==null)return{s:1,met:null,val:null};if(area){var terms=area.toLowerCase().split(/[,\s]+/).filter(function(t){return t.length>2;});var m=terms.some(function(t){return loc.includes(t);});return{s:m?1:.55,met:m,val:area};}return{s:.8,met:null,val:maxD?maxD+' km':null};}
+function _msAge(d,p){var req=p.min_age,v=d.age;if(req==null)return{s:1,met:null,val:v};if(v==null)return{s:.5,met:false,val:null};return{s:v>=req?1:Math.max(.3,v/req),met:v>=req,val:v};}
+function _msGen(d,p){var req=p.preferred_gender,v=d.gender;if(!req)return{s:1,met:null,val:v};if(!v)return{s:.5,met:false,val:null};return{s:v===req?1:0,met:v===req,val:v};}
+function _msCit(d,p){var req=p.citizenship,v=d.citizenship;if(!req||req==='either')return{s:1,met:null,val:v};if(!v)return{s:.5,met:false,val:null};var m=(req==='sa'&&v==='sa')||(req==='permit'&&(v==='permit'||v==='sa'));return{s:m?1:.2,met:m,val:v};}
+
+function calculateMatchScore(driver,ownerPrefs){
+  var p=ownerPrefs||{};
+  var c={trust_score:_msTS(driver,p),driving_exp:_msExp(driver,p),years_licensed:_msYL(driver,p),trips:_msTrp(driver,p),distance:_msDist(driver,p),age:_msAge(driver,p),gender:_msGen(driver,p),citizenship:_msCit(driver,p)};
+  var total=0;Object.keys(_MS_W).forEach(function(k){total+=c[k].s*_MS_W[k];});
+  var score=Math.round(total*100);
+  var hasPrefs=p.min_trust_score!=null||p.min_driving_exp!=null||p.min_years_licensed!=null||p.min_trips!=null||p.max_distance_km!=null||p.preferred_area||p.min_age!=null||p.preferred_gender||(p.citizenship&&p.citizenship!=='either');
+  return{score:score,components:c,reasons:_msReasons(driver,p,c),hasPrefs:!!hasPrefs};
+}
+function _msReasons(driver,p,c){
+  var good=[],warn=[];
+  if(c.trust_score.met===true&&p.min_trust_score!=null)good.push('TrustScore '+(driver.trust_score||0)+' meets '+p.min_trust_score+'+ requirement');
+  else if(c.trust_score.met===false&&p.min_trust_score!=null)warn.push('TrustScore '+(driver.trust_score||0)+' below preferred '+p.min_trust_score);
+  if(c.driving_exp.met===true&&p.min_driving_exp!=null)good.push((driver.years_driving||0)+' years driving experience');
+  else if(c.driving_exp.met===false&&p.min_driving_exp!=null)warn.push('Less driving experience than preferred ('+p.min_driving_exp+'+ yrs)');
+  if(c.years_licensed.met===true&&p.min_years_licensed!=null)good.push((c.years_licensed.val||0)+' years licensed');
+  else if(c.years_licensed.met===false&&p.min_years_licensed!=null)warn.push('Fewer years licensed than preferred ('+p.min_years_licensed+'+ yrs)');
+  if(c.trips.met===true&&p.min_trips!=null)good.push((c.trips.val||0).toLocaleString()+' verified e-hailing trips');
+  else if(c.trips.met===false&&p.min_trips!=null)warn.push((c.trips.val||0).toLocaleString()+' trips ('+p.min_trips.toLocaleString()+'+ preferred)');
+  if(c.distance.met===true)good.push('Located in your preferred area');
+  else if(c.distance.met===false)warn.push('Outside preferred area ('+(p.preferred_area||'')+ ')');
+  if(c.age.met===true&&p.min_age!=null)good.push('Age '+(c.age.val||'?')+' meets your preference');
+  else if(c.age.met===false&&p.min_age!=null)warn.push('Age '+(c.age.val||'?')+' ('+p.min_age+'+ preferred)');
+  if(c.gender.met===true&&p.preferred_gender)good.push('Matches preferred gender');
+  else if(c.gender.met===false&&p.preferred_gender)warn.push('Gender does not match preference');
+  if(c.citizenship.met===true&&p.citizenship&&p.citizenship!=='either')good.push('Meets citizenship requirement');
+  else if(c.citizenship.met===false&&p.citizenship&&p.citizenship!=='either')warn.push('Citizenship requirement not met');
+  return{good:good,warn:warn};
+}
+function getMatchScore(driver,ownerPrefs,cacheKey){
+  if(cacheKey&&_msCache[cacheKey])return _msCache[cacheKey];
+  var r=calculateMatchScore(driver,ownerPrefs);
+  if(cacheKey)_msCache[cacheKey]=r;
+  return r;
+}
+function clearMatchCache(uid){
+  if(!uid){_msCache={};return;}
+  Object.keys(_msCache).forEach(function(k){if(k.indexOf(uid)!==-1)delete _msCache[k];});
+}
+function msScoreColor(s){return s>=80?'var(--gm)':s>=60?'#E8A520':'#b91c1c';}
+function msScoreBadgeHTML(score,carId,driverUserId){
+  var col=msScoreColor(score);
+  var onclick=carId&&driverUserId?'onclick="showMatchModal(\''+carId+'\',\''+driverUserId+'\')"':'';
+  return '<span '+onclick+' style="display:inline-flex;align-items:center;gap:3px;background:'+col+';color:#fff;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;cursor:'+(carId&&driverUserId?'pointer':'default')+';user-select:none">&#127942; '+score+'% Match</span>';
+}
+function showMatchModal(carId,driverUserId){
+  var res=_msCache[carId+':'+driverUserId];
+  if(!res){toast('Score not loaded');return;}
+  var c=res.components,r=res.reasons;
+  var KEYS=['trust_score','driving_exp','years_licensed','trips','distance','age','gender','citizenship'];
+  var LBLS={trust_score:'TrustScore',driving_exp:'Driving Experience',years_licensed:'Years Licensed',trips:'E-hailing Trips',distance:'Distance',age:'Age',gender:'Gender',citizenship:'Citizenship'};
+  var VALS={
+    trust_score:c.trust_score.val!=null?c.trust_score.val:'N/A',
+    driving_exp:c.driving_exp.val!=null?c.driving_exp.val+' yrs':'N/A',
+    years_licensed:c.years_licensed.val!=null?c.years_licensed.val+' yrs':'N/A',
+    trips:c.trips.val!=null?c.trips.val.toLocaleString():'N/A',
+    distance:c.distance.val!=null?String(c.distance.val):'N/A',
+    age:c.age.val!=null?c.age.val:'N/A',
+    gender:c.gender.val?({m:'Male',f:'Female'}[c.gender.val]||c.gender.val):'N/A',
+    citizenship:c.citizenship.val?({sa:'SA Citizen',permit:'Work Permit'}[c.citizenship.val]||c.citizenship.val):'N/A'
+  };
+  var rows=KEYS.map(function(k){
+    var comp=c[k],pct=Math.round(comp.s*100),col=pct>=80?'var(--gm)':pct>=50?'#E8A520':'#b91c1c';
+    var icon=comp.met===true?'<span style="color:var(--gm)">&#10003;</span>':comp.met===false?'<span style="color:#b91c1c">&#9888;</span>':'<span style="color:#ccc">&mdash;</span>';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="flex:0 0 130px"><div style="font-size:12px;font-weight:600;color:var(--g)">'+LBLS[k]+'</div><div style="font-size:11px;color:#888;margin-top:1px">'+VALS[k]+'</div></div>'
+      +'<div style="flex:1;height:6px;background:#eee;border-radius:3px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+col+';border-radius:3px"></div></div>'
+      +'<div style="flex:0 0 32px;text-align:right;font-size:11px;font-weight:700;color:'+col+'">'+pct+'%</div>'
+      +icon+'</div>';
+  }).join('');
+  var goodH=r.good.length?r.good.map(function(x){return'<div style="display:flex;gap:6px;font-size:12px;color:var(--g);padding:3px 0"><span style="color:var(--gm)">&#10003;</span>'+x+'</div>';}).join(''):'';
+  var warnH=r.warn.length?r.warn.map(function(x){return'<div style="display:flex;gap:6px;font-size:12px;color:#b45309;padding:3px 0"><span>&#9888;</span>'+x+'</div>';}).join(''):'';
+  var scoreCol=msScoreColor(res.score);
+  var modal=document.createElement('div');
+  modal.id='match-modal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:flex-end;justify-content:center;padding:0';
+  modal.innerHTML='<div style="background:#fff;border-radius:18px 18px 0 0;max-width:480px;width:100%;padding:22px 20px;max-height:88vh;overflow-y:auto">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'
+    +'<div style="font-size:16px;font-weight:800;color:var(--g)">&#127942; Why this driver matches</div>'
+    +'<button onclick="document.getElementById(\'match-modal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999;line-height:1">&#10005;</button>'
+    +'</div>'
+    +'<div style="background:var(--gs);border:1.5px solid var(--gm);border-radius:10px;padding:14px;text-align:center;margin-bottom:16px">'
+    +'<div style="font-size:36px;font-weight:900;color:'+scoreCol+'">'+res.score+'%</div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-top:2px">Match Score</div>'
+    +'<div style="font-size:11px;color:#888;margin-top:4px">This score reflects how closely this driver\'s profile matches your preferred driver profile.</div>'
+    +'</div>'
+    +rows
+    +((goodH||warnH)?'<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">'+goodH+warnH+'</div>':'')
+    +'</div>';
+  modal.addEventListener('click',function(e){if(e.target===modal)modal.remove();});
+  // Remove any existing modal first
+  var existing=document.getElementById('match-modal');if(existing)existing.remove();
+  document.body.appendChild(modal);
+}
+
 async function pAp() {
   var el=eid('panel-ap'); el.innerHTML=skelCards(3);
   var isO=P&&(P.role==='owner'||P.role==='both');
@@ -5012,9 +5141,9 @@ async function pAp() {
 
     // Fetch driver profiles and their profile info in parallel
     var [dpRes, pfRes, carRes] = await Promise.all([
-      dIds.length ? sb.from('driver_profiles').select('id,user_id,trust_score,photo_headshot_url,platforms,years_driving,late_payments,missed_payments,accidents,damage_incidents,rentals_completed,doc_id_url,doc_license_url,screenshot_uber_url,screenshot_bolt_url,screenshot_indrive_url,uber_rating,uber_trips,bolt_rating,bolt_trips,indrive_rating,indrive_trips').in('user_id',dIds) : {data:[]},
+      dIds.length ? sb.from('driver_profiles').select('id,user_id,trust_score,photo_headshot_url,platforms,years_driving,late_payments,missed_payments,accidents,damage_incidents,rentals_completed,doc_id_url,doc_license_url,screenshot_uber_url,screenshot_bolt_url,screenshot_indrive_url,uber_rating,uber_trips,bolt_rating,bolt_trips,indrive_rating,indrive_trips,age,license_date,gender,citizenship').in('user_id',dIds) : {data:[]},
       dIds.length ? sb.from('profiles').select('id,full_name,location,phone,whatsapp,email').in('id',dIds) : {data:[]},
-      carIds.length ? sb.from('cars').select('id,make,model,year,photo_front_url,location,price_per_week,transmission').in('id',carIds) : {data:[]}
+      carIds.length ? sb.from('cars').select('id,make,model,year,photo_front_url,location,price_per_week,transmission,ideal_driver_prefs').in('id',carIds) : {data:[]}
     ]);
 
     var dpm={},pfm={},cm={};
@@ -5022,7 +5151,49 @@ async function pAp() {
     (pfRes.data||[]).forEach(function(p){pfm[p.id]=p;});
     (carRes.data||[]).forEach(function(c){cm[c.id]=c;});
 
-    el.innerHTML='<div class="shd">Applications & Matches ('+apps.length+')</div>'+apps.map(function(a){
+    // Calculate match scores for all applications
+    var appScores={};
+    apps.forEach(function(a){
+      var dp=dpm[a.driver_id]||{};
+      var pf=pfm[a.driver_id]||{};
+      var car=cm[a.car_id]||{};
+      var prefs=car.ideal_driver_prefs||null;
+      if(!prefs){appScores[a.id]={score:null,hasPrefs:false,components:{},reasons:{good:[],warn:[]}};return;}
+      var dForScore=Object.assign({},dp,{location:pf.location||''});
+      var ckey=(a.car_id||'?')+':'+(a.driver_id||'?');
+      appScores[a.id]=getMatchScore(dForScore,prefs,ckey);
+    });
+
+    // Sort applications
+    var _apSort=window._apSort||'match';
+    var sortedApps=apps.slice().sort(function(a,b){
+      if(_apSort==='match'){
+        var sa=appScores[a.id]&&appScores[a.id].score!=null?appScores[a.id].score:-1;
+        var sb2=appScores[b.id]&&appScores[b.id].score!=null?appScores[b.id].score:-1;
+        return sb2-sa;
+      }
+      if(_apSort==='trust')return ((dpm[b.driver_id]||{}).trust_score||0)-((dpm[a.driver_id]||{}).trust_score||0);
+      if(_apSort==='newest')return new Date(b.created_at)-new Date(a.created_at);
+      if(_apSort==='trips'){
+        var ta=(parseInt((dpm[a.driver_id]||{}).uber_trips)||0)+(parseInt((dpm[a.driver_id]||{}).bolt_trips)||0)+(parseInt((dpm[a.driver_id]||{}).indrive_trips)||0);
+        var tb=(parseInt((dpm[b.driver_id]||{}).uber_trips)||0)+(parseInt((dpm[b.driver_id]||{}).bolt_trips)||0)+(parseInt((dpm[b.driver_id]||{}).indrive_trips)||0);
+        return tb-ta;
+      }
+      if(_apSort==='exp')return ((dpm[b.driver_id]||{}).years_driving||0)-((dpm[a.driver_id]||{}).years_driving||0);
+      return 0;
+    });
+
+    var hasAnyPrefs=Object.values(appScores).some(function(s){return s&&s.hasPrefs;});
+    var sortOpts=[['match','&#127942; Best Match'],['trust','Highest TrustScore'],['newest','Newest'],['trips','Most Trips'],['exp','Most Experienced']];
+    var sortBar='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;align-items:center">'
+      +'<span style="font-size:11px;font-weight:600;color:var(--muted);flex-shrink:0">Sort:</span>'
+      +sortOpts.map(function(s){
+        var active=_apSort===s[0];
+        return '<button class="btn btn-sm" style="'+(active?'background:var(--gm);color:#fff;border-color:var(--gm)':'background:#fff;color:var(--g)')+';font-size:11px;padding:3px 9px" onclick="window._apSort=\''+s[0]+'\';pAp()">'+s[1]+'</button>';
+      }).join('')
+      +'</div>';
+
+    el.innerHTML='<div class="shd">Applications & Matches ('+apps.length+')</div>'+sortBar+sortedApps.map(function(a){
       var dp=dpm[a.driver_id]||{};
       var pf=pfm[a.driver_id]||{};
       var car=cm[a.car_id]||null;
@@ -5079,6 +5250,11 @@ async function pAp() {
           +'<span>Documents visible once driver applies</span></div>';
       }
 
+      var _ms=appScores[a.id];
+      var mBadge=(_ms&&_ms.hasPrefs&&a.car_id&&a.driver_id)
+        ?'<div style="margin:4px 0 2px">'+msScoreBadgeHTML(_ms.score,a.car_id,a.driver_id)+'</div>'
+        :'';
+
       return '<div class="acard">'
         // Header: photo + name + score
         +'<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:8px">'
@@ -5092,6 +5268,7 @@ async function pAp() {
         +'<div class="tp '+si[0]+'" style="display:inline-flex;padding:2px 8px;align-items:center;gap:4px;margin-bottom:4px">'
         +'<span style="font-family:\'Playfair Display\',serif;font-size:13px;font-weight:800;'+si[1].replace('sc-h','color:var(--gm)').replace('sc-m','color:#7c5c00').replace('sc-o','color:#9a3412').replace('sc-l','color:#8b2020')+'">'+( dp.trust_score||0)+'</span>'
         +'<span style="font-size:10px;color:var(--muted)">TrustScore</span></div>'
+        +mBadge
         +'<div style="font-size:11px;color:var(--muted)">Platforms: '+((dp.platforms||[]).join(', ')||'-')+'</div>'
         +'</div>'
         +'</div>'
