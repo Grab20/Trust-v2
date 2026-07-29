@@ -521,6 +521,117 @@ nav div::-webkit-scrollbar{display:none}
   .adm-main{padding:0}
   .d360-wrap{padding:14px}
 }
+
+/* ══════════════════════════════════════════════════════════════
+   DESIGN UNIFICATION — Operations & Trust & Compliance
+   ══════════════════════════════════════════════════════════════ */
+
+/* Page wrapper — every Operations/T&C panel wraps in this */
+.adm-pg{padding:24px;min-height:100%}
+
+/* Modern page header */
+.pg-hdr{margin-bottom:20px}
+.pg-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--g);line-height:1.2}
+.pg-sub{font-size:12px;color:var(--muted);margin-top:4px}
+
+/* Modernize legacy .ptitle when inside .adm-pg */
+.adm-pg .ptitle{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--g);margin-bottom:4px;line-height:1.2}
+.adm-pg .psub{font-size:12px;color:var(--muted);margin-bottom:18px}
+
+/* Modern section heading (replaces old .shd) */
+.adm-pg .shd,.sec-hd{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);
+  padding-bottom:0;margin-bottom:12px;border-bottom:none;
+  display:flex;align-items:center;gap:10px}
+.adm-pg .shd::after,.sec-hd::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* Tab bar → pill filter row */
+.adm-pg .tbb-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;border-bottom:none;align-items:center}
+.adm-pg .tbb{padding:5px 13px;font-size:11px;font-weight:600;border:1.5px solid var(--border);border-radius:999px;
+  cursor:pointer;background:#fff;color:var(--muted);font-family:inherit;
+  border-bottom:1.5px solid var(--border);transition:all .12s}
+.adm-pg .tbb.on{background:var(--g);color:#fff;border-color:var(--g)}
+.adm-pg .tbb:hover:not(.on){border-color:var(--gm);color:var(--gm)}
+
+/* Modern search input */
+.adm-pg input[type=text]:not([class]),
+.srch-inp{width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;
+  font-size:13px;font-family:inherit;background:#fff;color:var(--g);outline:none;transition:border-color .15s}
+.adm-pg input[type=text]:focus,.srch-inp:focus{border-color:var(--gm);box-shadow:0 0 0 3px rgba(26,92,40,.08)}
+
+/* Upgraded record cards */
+.adm-pg .rcard{background:#fff;border:1.5px solid var(--border);border-radius:12px;margin-bottom:12px;
+  overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:box-shadow .15s}
+.adm-pg .rcard:hover{box-shadow:0 3px 12px rgba(0,0,0,.08)}
+.adm-pg .rcard-head{padding:14px 16px;border-bottom:1px solid var(--border);background:#fff}
+.adm-pg .rcard-acts{padding:10px 16px;background:var(--cream);border-top:1px solid var(--border);
+  display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.adm-pg .rcard-docs{padding:10px 16px;background:var(--sand);border-top:1px solid var(--border)}
+
+/* Upgraded KPI cards */
+.adm-pg .kcard{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:16px;
+  text-align:center;transition:all .15s;cursor:default}
+.adm-pg .kcard:hover{border-color:var(--gm);transform:translateY(-1px);box-shadow:0 4px 14px rgba(26,92,40,.1)}
+.adm-pg .kcard-n{font-size:26px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
+.adm-pg .kcard-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-top:5px}
+
+/* Upgraded legacy tables (.atbl) */
+.adm-pg .atbl{width:100%;border-collapse:collapse;font-size:12px}
+.adm-pg .atbl th{background:var(--cream);padding:10px 12px;text-align:left;font-size:10px;font-weight:700;
+  color:var(--muted);text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--border);white-space:nowrap}
+.adm-pg .atbl td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+.adm-pg .atbl tr:last-child td{border-bottom:none}
+.adm-pg .atbl tr:hover td{background:#faf9f5}
+
+/* Wrap legacy tables in a card */
+.adm-pg .tbl-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.adm-pg .tbl-card-hdr{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:700;color:var(--g);
+  display:flex;align-items:center;justify-content:space-between;background:var(--cream)}
+
+/* Upgraded status pills */
+.adm-pg .pill{display:inline-flex;align-items:center;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;border:1px solid}
+.adm-pg .p-a,.pill.p-a{background:#dcfce7;color:#15803d;border-color:#a7f3d0}
+.adm-pg .p-r,.pill.p-r{background:#fee2e2;color:#991b1b;border-color:#fca5a5}
+.adm-pg .p-p,.pill.p-p{background:#fef3c7;color:#92400e;border-color:#fde68a}
+.adm-pg .p-b,.pill.p-b{background:#dbeafe;color:#1e40af;border-color:#bfdbfe}
+
+/* Empty & loading states */
+.adm-pg .empty{text-align:center;padding:48px 20px;color:var(--muted);background:#fff;border:1.5px solid var(--border);border-radius:12px}
+.adm-pg .empty p{font-size:14px;margin:0}
+.adm-pg .loading{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;padding:24px 0}
+
+/* Form labels inside .adm-pg */
+.adm-pg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);display:block;margin-bottom:3px}
+.adm-pg input[type=number]{padding:5px 8px;border:1.5px solid var(--border);border-radius:7px;
+  font-size:12px;font-family:inherit;outline:none;transition:border-color .15s}
+.adm-pg input[type=number]:focus{border-color:var(--gm)}
+.adm-pg select{padding:5px 8px;border:1.5px solid var(--border);border-radius:7px;
+  font-size:12px;font-family:inherit;background:#fff;outline:none;transition:border-color .15s}
+.adm-pg select:focus{border-color:var(--gm)}
+.adm-pg textarea{border:1.5px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;
+  padding:7px 10px;outline:none;transition:border-color .15s}
+.adm-pg textarea:focus{border-color:var(--gm)}
+
+/* Upload drop zones */
+.adm-pg .dbox{border:2px dashed #c9dece;border-radius:10px;background:#f9fdf9;transition:all .15s}
+.adm-pg .dbox:hover{border-color:var(--gm);background:var(--gs)}
+
+/* Info/error banners */
+.info-banner{background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:10px;padding:12px 16px;
+  font-size:12px;color:#1e40af;margin-bottom:16px}
+.err-banner{background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:12px 16px;
+  font-size:12px;color:#991b1b;margin-bottom:16px}
+.warn-banner{background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:12px 16px;
+  font-size:12px;color:#92400e;margin-bottom:16px}
+
+/* Rejection reason box */
+.rej-box{background:#fff5f5;border:1.5px solid #fca5a5;border-radius:10px;padding:12px 16px;margin-bottom:0}
+
+/* Stats grid in driver card body */
+.stat-grid{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px;
+  background:var(--cream);border-radius:10px;padding:12px}
+
+/* Inline separator for pages with multiple sections */
+.pg-sep{height:1px;background:var(--border);margin:20px 0}
 </style>
 </head>
 <body>
@@ -6311,7 +6422,7 @@ async function pRv() {
         return '<div class="rev-item"><div class="rev-top" style="flex-wrap:wrap;gap:4px"><span class="rev-name">'+displayName+(rv.car_label?', <span style="font-weight:500;color:var(--muted)">'+rv.car_label+'</span>':'')+'</span>'+roleLbl+badge+starRow(rv.rating/5*100,12)+'</div><div class="rev-txt">\''+rv.comment+'\'</div>'+(rv.matched_name?'<div style="font-size:11px;color:var(--gm);margin-top:3px">Matched with '+rv.matched_name+'</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
       }).join('')
     : '<p style="font-size:13px;color:var(--muted);padding:8px 0">No reviews yet \u2014 be the first!</p>';
-  el.innerHTML='<div class="ptitle">'+(isOwner?(_rvDriverName?'Rate '+_rvDriverName+'&#39;s Performance':'Driver Reviews'):'Platform Reviews')+'</div>'
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">'+(isOwner?(_rvDriverName?'Rate '+_rvDriverName+'&#39;s Performance':'Driver Reviews'):'Platform Reviews')+'</div>'
     +(isOwner&&_rvDriverName?'<div style="background:var(--gs);border:1px solid var(--gm);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--g);line-height:1.6">Your rating updates <strong>'+_rvDriverName+'&#39;s TrustScore</strong> &#8212; their driving CV on TrustMate. It rewards drivers who pay on time, care for vehicles and build trust with future owners.</div>':'')
     +ownerHtml
     +(isOwner?'':'<div class="shd" style="margin-top:16px">TrustMate Platform Review</div>'+submitForm+'<div class="shd">What Our Users Say ('+allRevs.length+')</div>'+reviewsHtml);
@@ -7196,7 +7307,7 @@ async function adOv(){
     +'<div class="insight-list">'
     +(matchRate>0?'<div class="insight-card"><span style="font-size:18px">&#127919;</span><div class="insight-text">Current match rate is <strong>'+matchRate+'%</strong> — '+(matchRate>=30?'healthy conversion across applications':'room to improve driver-owner matching')+'.</div></div>':'')
     +(approvedDrvs>0&&activeCars>0?'<div class="insight-card"><span style="font-size:18px">&#9878;</span><div class="insight-text">Driver-to-vehicle ratio is <strong>'+approvedDrvs+' drivers</strong> to <strong>'+activeCars+' listings</strong> — '+(approvedDrvs>activeCars?'more drivers than vehicles available':'more vehicles than active drivers')+'.</div></div>':'')
-    +(lowTrust>0?'<div class="insight-card"><span style="font-size:18px">&#9888;</span><div class="insight-text"><strong>'+lowTrust+' driver'+(lowTrust!==1?'s':'')</strong>+' below TrustScore 40. Review their history and recent incidents.</div></div>':'')
+    +(lowTrust>0?'<div class="insight-card"><span style="font-size:18px">&#9888;</span><div class="insight-text"><strong>'+lowTrust+' driver'+(lowTrust!==1?'s':'')+'</strong> below TrustScore 40. Review their history and recent incidents.</div></div>':'')
     +(avgRating>0?'<div class="insight-card"><span style="font-size:18px">&#11088;</span><div class="insight-text">Platform average rating is <strong>'+avgRating+' / 5</strong> across '+revs.length+' reviews.</div></div>':'')
     +'<div class="insight-card"><span style="font-size:18px">&#128200;</span><div class="insight-text"><strong>'+totalApps+' total applications</strong> submitted. <strong>'+activeMatches+' active rentals</strong> and <strong>'+rejectedApps+' declined</strong> to date.</div></div>'
     +'</div></div>';
@@ -7286,7 +7397,7 @@ function _relTime(dt){
 // ── PENDING DOCUMENTS ───────────────────────────────
 async function adPendingDocs(){
   var el=document.getElementById('ap-pdoc');
-  el.innerHTML='<div class="ptitle">Pending Documents</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Pending Documents</div></div>'+adSpin();
   // Fetch pending drivers who are missing at least one required doc AND incomplete drivers
   // pending_docs = drivers explicitly moved here by admin from New Registrations
   var drPdoc=await sb.from('driver_profiles').select('*').eq('status','pending_docs').order('created_at',{ascending:false});
@@ -7294,13 +7405,13 @@ async function adPendingDocs(){
   var badge=document.getElementById('pdocbadge');
   if(badge){badge.textContent=allDocs.length;badge.style.display=allDocs.length>0?'inline':'none';}
   if(!allDocs.length){
-    el.innerHTML='<div class="ptitle">Pending Documents</div><div class="empty"><div class="empty-i">&#10003;</div><p>No drivers awaiting document review.</p></div>';
+    el.innerHTML='<div class="adm-pg"><div class="ptitle">Pending Documents</div><div class="empty"><div class="empty-i">&#10003;</div><p>No drivers awaiting document review.</p></div>';
     return;
   }
   var dUids=allDocs.map(function(d){return d.user_id;});
   var dPr=await sb.from('profiles').select('id,full_name,email,phone,location,created_at').in('id',dUids);
   var dpm={};(dPr.data||[]).forEach(function(p){dpm[p.id]=p;});
-  var html='<div class="ptitle">Pending Documents</div>'
+  var html='<div class="adm-pg"><div class="ptitle">Pending Documents</div>'
     +'<div style="margin-bottom:10px"><input id="adm-pdoc-q" type="text" placeholder="&#128269; Search name, email, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adPdocSearch()"/></div>'
     +'<div class="psub">'+allDocs.length+' driver'+(allDocs.length!==1?'s':'')+' awaiting document upload &amp; approval</div>';
   html+=allDocs.map(function(d){
@@ -7331,6 +7442,7 @@ async function adPendingDocs(){
       +'<button class="btn btn-out btn-sm" onclick="adPendingDocRemind(\''+d.id+'\')">&#128276; Remind</button>'
       +'</div></div>';
   }).join('');
+  html+='</div>';
   el.innerHTML=html;
 }
 async function adPendingDocRemind(dpId){
@@ -7350,16 +7462,16 @@ async function adMoveToPendingDocs(dpId){
 // ── INCOMPLETE REGISTRATIONS ─────────────────────────
 async function adInc(){
   var el=document.getElementById('ap-inc');
-  el.innerHTML='<div class="ptitle">Incomplete Registrations</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Incomplete Registrations</div></div>'+adSpin();
   var dr=await sb.from('driver_profiles').select('*').eq('status','incomplete').order('created_at',{ascending:false});
   var dps=dr.data||[];
   var badge=document.getElementById('ibadge2');
   if(badge){badge.textContent=dps.length;badge.style.display=dps.length?'inline':'none';}
-  if(!dps.length){el.innerHTML='<div class="ptitle">Incomplete Registrations</div>'+empty('&#128203;','No incomplete registrations.');return;}
+  if(!dps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">Incomplete Registrations</div>'+empty('&#128203;','No incomplete registrations.')+'</div>';return;}
   var uids=dps.map(function(d){return d.user_id;});
   var pr=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,role,doc_id_url,created_at').in('id',uids);
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
-  el.innerHTML='<div class="ptitle">Incomplete Registrations</div>'
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Incomplete Registrations</div>'
     +'<div style="margin-bottom:10px"><input id="adm-inc-q" type="text" placeholder="&#128269; Search name, email, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adIncSearch()"/></div>'
     +'<div class="psub">'+dps.length+' incomplete &mdash; edit, upload docs, then promote to pending or approve directly</div>'
     +dps.map(function(d){
@@ -7527,7 +7639,7 @@ async function incDecline(dpId){
 }
 async function adReg(){
   var el=document.getElementById('ap-reg');
-  el.innerHTML='<div class="ptitle">New Registrations</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">New Registrations</div></div>'+adSpin();
   var dr=await sb.from('driver_profiles').select('*').eq('status','pending').order('created_at',{ascending:false});
   var pDrvs=dr.data||[];
   var dUids=pDrvs.map(function(d){return d.user_id;});
@@ -7539,9 +7651,9 @@ async function adReg(){
   var or=await sb.from('profiles').select('*').in('role',['owner','both']).eq('admin_status','pending').eq('email_confirmed',true).order('created_at',{ascending:false});
   var pOwns=or.data||[];
   var total=pDrvs.length+pOwns.length;
-  if(!total){el.innerHTML='<div class="ptitle">New Registrations</div><div class="empty"><div class="empty-i">&#10003;</div><p>All caught up! No pending registrations.</p></div>';var b=document.getElementById('abadge');if(b)b.style.display='none';return;}
+  if(!total){el.innerHTML='<div class="adm-pg"><div class="ptitle">New Registrations</div><div class="empty"><div class="empty-i">&#10003;</div><p>All caught up! No pending registrations.</p></div>';var b=document.getElementById('abadge');if(b)b.style.display='none';return;}
   var badge=document.getElementById('abadge');if(badge){badge.textContent=total;badge.style.display='inline';}
-  var html='<div class="ptitle">New Registrations</div>'
+  var html='<div class="adm-pg"><div class="ptitle">New Registrations</div>'
     +'<div style="margin-bottom:10px"><input id="adm-reg-q" type="text" placeholder="&#128269; Search name, email, phone, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adRegSearch()"/></div>'
     +'<div class="psub">'+pDrvs.length+' driver'+(pDrvs.length!==1?'s':'')+' / '+pOwns.length+' owner'+(pOwns.length!==1?'s':'')+' pending</div>';
   if(pDrvs.length){
@@ -7609,6 +7721,7 @@ async function adReg(){
         +'<div class="rcard-acts"><button class="btn btn-gm btn-sm" onclick="adSetOwner(\''+o.id+'\',\'approved\')">Approve Owner</button><button class="btn btn-red btn-sm" onclick="adSetOwner(\''+o.id+'\',\'rejected\')">Decline</button><button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" onclick="adMoveIncomplete(\'own\',\''+o.id+'\')">&#9203; Move to Incomplete</button><input id="onote-'+o.id+'" placeholder="Note (for decline)..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
     }).join('');
   }
+  html+='</div>';
   el.innerHTML=html;
 }
 function adDocUploads(dpId){
@@ -7767,10 +7880,10 @@ async function ownDecline(oid){
 
 async function adDrv(){
   var el=document.getElementById('ap-drv');
-  el.innerHTML='<div class="ptitle">Manage Drivers</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Drivers</div></div>'+adSpin();
   var r=await sb.from('driver_profiles').select('*').order('created_at',{ascending:false});
   var allDps=r.data||[];
-  if(!allDps.length){el.innerHTML='<div class="ptitle">Manage Drivers</div><div class="empty"><p>No drivers yet.</p></div>';return;}
+  if(!allDps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Drivers</div><div class="empty"><p>No drivers yet.</p></div></div>';return;}
   var adDrvFilter=window._adDrvFilter||'all';
   var removedDps=allDps.filter(function(d){return d.status==='removed';});
   var nonRemovedDps=allDps.filter(function(d){return d.status!=='removed';});
@@ -7795,12 +7908,13 @@ async function adDrv(){
   var uids=allDps.map(function(d){return d.user_id;});
   var pr=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location').in('id',uids);
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
-  el.innerHTML='<div class="ptitle">Manage Drivers</div>'
-    +'<div style="margin-bottom:10px"><input id="adm-drv-q" type="text" placeholder="&#128269; Search driver name or email..." value="'+esc(window._adDrvQ||'')+'" style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adDrvSearch()"/></div>'
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Drivers</div>'
+    +'<div class="psub">Approve, verify and manage all registered drivers</div>'
+    +'<div style="margin-bottom:12px"><input id="adm-drv-q" type="text" placeholder="&#128269; Search driver name or email..." value="'+esc(window._adDrvQ||'')+'" style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;outline:none" oninput="adDrvSearch()"/></div>'
     +'<div class="tbb-row" id="drv-tabs" style="flex-wrap:wrap">'
-    +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')'],['suspended','Suspended ('+counts.suspended+')'],['high_trust','High Trust ('+counts.high_trust+')'],['low_trust','Low Trust ('+counts.low_trust+')'],['new_join','New 30d ('+counts.new_join+')'],['docs_ok','Docs Valid ('+counts.docs_ok+')'],['removed','Removed ('+counts.removed+')']].map(function(t){return '<button class="tbb'+(adDrvFilter===t[0]?' on':'')+'" onclick="window._adDrvFilter=\''+t[0]+'\';adDrv()">'+t[1]+'</button>';}).join('')
+    +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')'],['suspended','Suspended ('+counts.suspended+')'],['high_trust','High Trust &#9679; '+counts.high_trust],['low_trust','Low Trust &#9679; '+counts.low_trust],['new_join','New 30d &#9679; '+counts.new_join],['docs_ok','Docs Valid &#9679; '+counts.docs_ok],['removed','Removed ('+counts.removed+')']].map(function(t){return '<button class="tbb'+(adDrvFilter===t[0]?' on':'')+'" onclick="window._adDrvFilter=\''+t[0]+'\';adDrv()">'+t[1]+'</button>';}).join('')
     +'</div>'
-    +'<div class="psub">'+dps.length+' shown</div>'
+    +'<div class="psub" style="margin-top:-8px">'+dps.length+' driver'+(dps.length!==1?'s':'')+' shown</div>'
     +dps.map(function(d){
       var p=pm[d.user_id]||{};
       var docValid=d.doc_expires_at&&new Date(d.doc_expires_at)>new Date();
@@ -7876,7 +7990,7 @@ async function adDrv(){
         +'</div>'
         +'<div id="adrv-'+d.id+'" style="display:none"></div>'
         +'</div>';
-    }).join('');
+    }).join('')+'</div>';
   if(window._adDrvQ)adDrvSearch();
 }
 
@@ -8091,10 +8205,10 @@ async function adSaveStats(dpId,userId){
 // ── MANAGE OWNERS ──────────────────────────────────────
 async function adOwn(){
   var el=document.getElementById('ap-own');
-  el.innerHTML='<div class="ptitle">Manage Owners</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Owners</div></div>'+adSpin();
   var r=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,admin_status,admin_note,created_at,admin_reviewed_at,doc_id_url,photo_headshot_url,photo_holding_id_url,is_suspended,suspension_reason,applications_paused,is_removed').in('role',['owner','both']).order('created_at',{ascending:false});
   var owners=r.data||[];
-  if(!owners.length){el.innerHTML='<div class="ptitle">Manage Owners</div>'+empty('&#127968;','No owners registered yet.');return;}
+  if(!owners.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Owners</div>'+empty('&#127968;','No owners registered yet.')+'</div>';return;}
   var oids=owners.map(function(o){return o.id;});
   var carR=await sb.from('cars').select('id,owner_id,make,model,year,admin_status,photo_front_url,price_per_week,location,transmission,deposit,insurance,fuel_policy').in('owner_id',oids);
   var carMap={};(carR.data||[]).forEach(function(c){if(!carMap[c.owner_id])carMap[c.owner_id]=[];carMap[c.owner_id].push(c);});
@@ -8110,14 +8224,15 @@ async function adOwn(){
     return true;
   });
 
-  el.innerHTML='<div class="ptitle">Manage Owners</div>'
-    +'<div style="margin-bottom:8px"><input id="adm-own-q" type="text" placeholder="&#128269; Search owner name, email or location..." value="'+esc(adOwnQ)+'" style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adOwnSearch()"/></div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Owners</div>'
+    +'<div class="psub">Approve and manage vehicle owners and their listings</div>'
+    +'<div style="margin-bottom:12px"><input id="adm-own-q" type="text" placeholder="&#128269; Search owner name, email or location..." value="'+esc(adOwnQ)+'" style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;outline:none" oninput="adOwnSearch()"/></div>'
+    +'<div class="tbb-row">'
     +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')']].map(function(t){
       return '<button class="tbb'+(adOwnSt===t[0]?' on':'')+'" onclick="window._adOwnSt=\''+t[0]+'\';adOwn()">'+t[1]+'</button>';
     }).join('')
     +'</div>'
-    +'<div class="psub">'+filteredOwners.length+' of '+owners.length+' owner'+(owners.length!==1?'s':'')+'</div>'
+    +'<div class="psub" style="margin-top:-8px">'+filteredOwners.length+' of '+owners.length+' owner'+(owners.length!==1?'s':'')+'</div>'
     +filteredOwners.map(function(o){
       var oCars=carMap[o.id]||[];
       var isInc=o.admin_status==='incomplete'||!o.admin_status||o.admin_status==='pending';
@@ -8230,7 +8345,7 @@ async function adOwn(){
         +'</div>'
         +'</div>'
         +'</div>';
-    }).join('');
+    }).join('')+'</div>';
 }
 function ownToggleAddCar(oid){
   var f=eid('add-car-own-'+oid);
@@ -8340,10 +8455,10 @@ async function adApproveOwnerAndCars(oid){
 // ── MANAGE CARS ────────────────────────────────────────
 async function adCar(){
   var el=document.getElementById('ap-car');
-  el.innerHTML='<div class="ptitle">Manage Cars</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Vehicles</div></div>'+adSpin();
   var r=await sb.from('cars').select('*').order('created_at',{ascending:false});
   var allCarsA=r.data||[];
-  if(!allCarsA.length){el.innerHTML='<div class="ptitle">Manage Cars</div><div class="empty"><p>No cars yet.</p></div>';return;}
+  if(!allCarsA.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Vehicles</div><div class="empty"><p>No vehicles yet.</p></div></div>';return;}
   var adCarFilter=window._adCarFilter||'all';
   var activeCarsA=allCarsA.filter(function(c){return c.status!=='removed';});
   var removedCarsA=allCarsA.filter(function(c){return c.status==='removed';});
@@ -8352,12 +8467,13 @@ async function adCar(){
   var pr=oIds.length?await sb.from('profiles').select('id,full_name,phone,email').in('id',oIds):{data:[]};
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
   var ccounts={all:activeCarsA.length,pending:activeCarsA.filter(function(c){return (c.admin_status||'pending')==='pending';}).length,approved:activeCarsA.filter(function(c){return c.admin_status==='approved';}).length,rejected:activeCarsA.filter(function(c){return c.admin_status==='rejected';}).length,removed:removedCarsA.length};
-  el.innerHTML='<div class="ptitle">Manage Cars</div>'
-    +'<div style="margin-bottom:10px"><input id="adm-car-q" type="text" placeholder="&#128269; Search make, model, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adCarSearch()"/></div>'
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Vehicles</div>'
+    +'<div class="psub">Review and approve all listed vehicles</div>'
+    +'<div style="margin-bottom:12px"><input id="adm-car-q" type="text" placeholder="&#128269; Search make, model, location..." style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;outline:none" oninput="adCarSearch()"/></div>'
     +'<div class="tbb-row">'
     +[['all','All ('+ccounts.all+')'],['pending','Pending ('+ccounts.pending+')'],['approved','Approved ('+ccounts.approved+')'],['rejected','Rejected ('+ccounts.rejected+')'],['removed','Removed ('+ccounts.removed+')']].map(function(t){return '<button class="tbb'+(adCarFilter===t[0]?' on':'')+'" onclick="window._adCarFilter=\''+t[0]+'\';adCar()">'+t[1]+'</button>';}).join('')
     +'</div>'
-    +'<div class="psub">'+cars.length+' shown</div>'
+    +'<div class="psub" style="margin-top:-8px">'+cars.length+' vehicle'+(cars.length!==1?'s':'')+' shown</div>'
     +(adCarFilter==='removed'
       ?'<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Removed</th><th>Car</th><th>Owner</th><th>Location</th><th>By</th><th>Reason</th></tr></thead><tbody>'
         +cars.map(function(c){
@@ -8423,7 +8539,7 @@ async function adCar(){
         +'<button class="btn btn-gm btn-sm" data-cid="'+c.id+'" onclick="adSaveCar(this.dataset.cid)">Save Changes</button>'
         +'<button class="btn btn-out btn-sm" data-cid="'+c.id+'" onclick="adToggleCarEdit(this.dataset.cid)">Cancel</button>'
         +'</div></div></div>';
-    }).join(''));
+    }).join('')+'</div>');
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function parseShotUrls(val){if(!val)return[];try{var a=JSON.parse(val);return Array.isArray(a)?a:[val];}catch(e){return [val];}}
@@ -8495,14 +8611,14 @@ async function adSetCar(cid,status){
 // ── MATCH HISTORY ───────────────────────────────────
 async function adHist(){
   var el=document.getElementById('ap-hist');
-  el.innerHTML='<div class="ptitle">Match History</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Rental History</div></div>'+adSpin();
 
   var r=await sb.from('applications')
     .select('id,status,created_at,matched_at,unmatched_at,unmatched_by,unmatch_reason,initiated_by,driver_id,owner_id,car_id')
     .order('created_at',{ascending:false});
   var apps=r.data||[];
 
-  if(!apps.length){el.innerHTML='<div class="ptitle">Match History</div><div class="empty"><p>No history yet.</p></div>';return;}
+  if(!apps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">Rental History</div><div class="empty"><p>No history yet.</p></div></div>';return;}
 
   var allIds=Array.from(new Set(apps.reduce(function(acc,a){if(a.driver_id)acc.push(a.driver_id);if(a.owner_id)acc.push(a.owner_id);return acc;},[]) ));
   var carIds=Array.from(new Set(apps.map(function(a){return a.car_id;}).filter(Boolean)));
@@ -8548,17 +8664,19 @@ async function adHist(){
   }
 
   var unmatchedCount=apps.filter(function(a){return a.status==='approved'&&!!a.unmatched_at;}).length;
-  var html='<div class="ptitle">Match History</div>'
-    +'<div style="margin-bottom:10px"><input id="adm-hist-q" type="text" placeholder="&#128269; Search driver, owner, car..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adHistSearch()"/></div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'
-    +'<button class="btn btn-gm btn-sm" onclick="adHistFilter(\'all\')">All ('+apps.length+')</button>'
-    +'<button class="btn btn-out btn-sm" onclick="adHistFilter(\'active\')">&#128994; Active ('+activeCount+')</button>'
-    +'<button class="btn btn-out btn-sm" onclick="adHistFilter(\'unmatched\')">&#128683; Unmatched ('+unmatchedCount+')</button>'
-    +'<button class="btn btn-out btn-sm" onclick="adHistFilter(\'completed\')">&#128309; Completed ('+completedCount+')</button>'
-    +'<button class="btn btn-out btn-sm" onclick="adHistFilter(\'pending\')">&#128993; Pending ('+pendingCount+')</button>'
-    +'<button class="btn btn-out btn-sm" onclick="adHistFilter(\'declined\')">&#128308; Declined ('+declinedCount+')</button>'
+  var html='<div class="adm-pg"><div class="ptitle">Rental History</div>'
+    +'<div class="psub">Full application and rental timeline</div>'
+    +'<div style="margin-bottom:12px"><input id="adm-hist-q" type="text" placeholder="&#128269; Search driver, owner, car..." style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;outline:none" oninput="adHistSearch()"/></div>'
+    +'<div class="tbb-row" style="margin-bottom:14px">'
+    +'<button class="tbb on" onclick="adHistFilter(\'all\')">All ('+apps.length+')</button>'
+    +'<button class="tbb" onclick="adHistFilter(\'active\')">Active ('+activeCount+')</button>'
+    +'<button class="tbb" onclick="adHistFilter(\'unmatched\')">Unmatched ('+unmatchedCount+')</button>'
+    +'<button class="tbb" onclick="adHistFilter(\'completed\')">Completed ('+completedCount+')</button>'
+    +'<button class="tbb" onclick="adHistFilter(\'pending\')">Pending ('+pendingCount+')</button>'
+    +'<button class="tbb" onclick="adHistFilter(\'declined\')">Declined ('+declinedCount+')</button>'
     +'</div>'
-    +'<div id="hist-table">'+renderHistTable(null)+'</div>';
+    +'<div class="tbl-card"><div style="overflow-x:auto" id="hist-table">'+renderHistTable(null)+'</div></div>'
+    +'</div>';
 
   el.innerHTML=html;
 
@@ -8626,12 +8744,11 @@ async function adShowContact(uid, role) {
 // ── PROFILE EDIT REQUESTS (ADMIN) ────────────────────
 async function adProfileEdits(){
   var el=eid('ap-edits');
-  el.innerHTML='<div class="ptitle">Profile Edit Requests</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Profile Edit Requests</div></div>'+adSpin();
   var r=await sb.from('profile_change_requests').select('*').order('created_at',{ascending:false});
   if(r.error){
-    el.innerHTML='<div class="ptitle">Profile Edit Requests</div>'
-      +'<div style="background:#fff1f2;border:1px solid #fecdd3;padding:12px;border-radius:8px;font-size:12px;color:#dc2626">'
-      +'<strong>Error loading requests:</strong> '+esc(r.error.message)+'</div>';
+    el.innerHTML='<div class="adm-pg"><div class="ptitle">Profile Edit Requests</div>'
+      +'<div class="err-banner"><strong>Error loading requests:</strong> '+esc(r.error.message)+'</div></div>';
     return;
   }
   var all=r.data||[];
@@ -8671,11 +8788,13 @@ async function adProfileEdits(){
         :(req.admin_note?'<div style="font-size:11px;color:var(--muted);font-style:italic">Note: '+esc(req.admin_note)+'</div>':''))
       +'</div>';
   }
-  el.innerHTML='<div class="ptitle">Profile Edit Requests</div>'
-    +(pending.length?'<div class="shd" style="color:#dc2626;margin-bottom:10px">&#128276; Pending ('+pending.length+')</div>'+pending.map(function(r){return renderCard(r,true);}).join('')
-      :'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">No pending edit requests.</div>')
-    +'<div class="shd" style="margin-top:8px">Reviewed</div>'
-    +(done.length?done.slice(0,20).map(function(r){return renderCard(r,false);}).join(''):'<p style="font-size:13px;color:var(--muted)">None yet.</p>');
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Profile Edit Requests</div>'
+    +'<div class="psub">Review and approve driver and owner profile changes</div>'
+    +(pending.length?'<div class="occ-sh">Pending ('+pending.length+')</div>'+pending.map(function(r){return renderCard(r,true);}).join('')
+      :'<div class="psub">No pending edit requests.</div>')
+    +'<div class="occ-sh" style="margin-top:8px">Reviewed</div>'
+    +(done.length?done.slice(0,20).map(function(r){return renderCard(r,false);}).join(''):'<p style="font-size:13px;color:var(--muted)">None yet.</p>')
+    +'</div>';
 }
 async function adEditAction(reqId,approve){
   var note=(eid('edit-note-'+reqId)||{}).value||'';
@@ -8704,7 +8823,7 @@ async function adEditAction(reqId,approve){
 // ── PLATFORM REVIEWS (ADMIN) ─────────────────────────
 async function adPrvReviews(){
   var el=eid('ap-prvr');
-  el.innerHTML='<div class="ptitle">Platform Reviews</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Platform Reviews</div></div>'+adSpin();
   var r=await sb.from('platform_reviews').select('*').order('created_at',{ascending:false});
   var all=r.data||[];
   var uids=Array.from(new Set(all.map(function(x){return x.user_id;}).filter(Boolean)));
@@ -8740,10 +8859,12 @@ async function adPrvReviews(){
       +'<button class="btn btn-red btn-sm" onclick="adPrvAction(\''+rv.id+'\',false)">&#10006; '+(isPending?'Reject':'Remove')+'</button>'
       +'</div></div></div>';
   }
-  el.innerHTML='<div class="ptitle">Platform Reviews</div>'
-    +(pending.length?'<div class="shd" style="color:#E8A520;margin-bottom:10px">&#128993; Pending Approval ('+pending.length+')</div>'+pending.map(function(rv){return revCard(rv,true);}).join(''):'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">No pending reviews.</div>')
-    +'<div class="shd" style="margin-top:4px">&#9989; Approved ('+approved.length+')</div>'
-    +(approved.length?approved.map(function(rv){return revCard(rv,false);}).join(''):'<p style="font-size:13px;color:var(--muted)">None yet.</p>');
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Platform Reviews</div>'
+    +'<div class="psub">Moderate and approve public reviews</div>'
+    +(pending.length?'<div class="occ-sh" style="color:#E8A520">Pending Approval ('+pending.length+')</div>'+pending.map(function(rv){return revCard(rv,true);}).join(''):'<div class="psub">No pending reviews.</div>')
+    +'<div class="occ-sh" style="margin-top:4px">Approved ('+approved.length+')</div>'
+    +(approved.length?approved.map(function(rv){return revCard(rv,false);}).join(''):'<p style="font-size:13px;color:var(--muted)">None yet.</p>')
+    +'</div>';
 }
 async function adPrvAction(id,approve){
   if(!approve&&!confirm('Remove this review?'))return;
@@ -8756,7 +8877,7 @@ async function adPrvAction(id,approve){
 // ── MATCHED CARS ─────────────────────────────────────
 async function adMatch(){
   var el=document.getElementById('ap-match');
-  el.innerHTML='<div class="ptitle">Active Rentals</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Active Rentals</div></div>'+adSpin();
   // Fetch all active approved matches with terms fields
   var r=await sb.from('applications').select('id,car_id,driver_id,owner_id,created_at,matched_at,terms_proposed,terms_proposed_by,driver_agreed_terms,owner_agreed_terms,terms_agreed_at').eq('status','approved').is('unmatched_at',null).order('matched_at',{ascending:false});
   // Fetch message counts per application
@@ -8767,7 +8888,7 @@ async function adMatch(){
     if(!lastMsgMap[m.application_id])lastMsgMap[m.application_id]=m.created_at;
   });
   var apps=r.data||[];
-  if(!apps.length){el.innerHTML='<div class="ptitle">Active Rentals</div><div class="empty"><p>No active matches.</p></div>';return;}
+  if(!apps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">Active Rentals</div><div class="empty"><p>No active rentals.</p></div></div>';return;}
   var carIds=apps.map(function(a){return a.car_id;}).filter(Boolean);
   var drvIds=apps.map(function(a){return a.driver_id;}).filter(Boolean);
   var ownIds=apps.map(function(a){return a.owner_id;}).filter(Boolean);
@@ -8780,13 +8901,13 @@ async function adMatch(){
   var termsAgreedCount=apps.filter(function(a){return a.driver_agreed_terms&&a.owner_agreed_terms;}).length;
   var pendingTermsCount=apps.length-termsAgreedCount;
 
-  el.innerHTML='<div class="ptitle">Active Rentals</div>'
-    +'<div style="margin-bottom:10px"><input id="adm-match-q" type="text" placeholder="&#128269; Search driver, owner, car..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adMatchSearch()"/></div>'
-    +'<div class="psub">'+apps.length+' active match'+(apps.length!==1?'es':'')+' &middot; <span style="color:var(--gm);font-weight:700">&#10003; '+termsAgreedCount+' contact revealed</span>'+(pendingTermsCount?' &middot; <span style="color:#E8A520;font-weight:700">&#9201; '+pendingTermsCount+' terms pending</span>':'')+'</div>'
-    +'<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">'
-    +'<button class="btn btn-sm '+(window._adMatchFilter==='all'||!window._adMatchFilter?'btn-gm':'btn-out')+'" onclick="adMatchFilter(\'all\')">All</button>'
-    +'<button class="btn btn-sm '+(window._adMatchFilter==='agreed'?'btn-gm':'btn-out')+'" onclick="adMatchFilter(\'agreed\')">&#10003; Contact Revealed</button>'
-    +'<button class="btn btn-sm '+(window._adMatchFilter==='pending'?'btn-gm':'btn-out')+'" onclick="adMatchFilter(\'pending\')">&#9201; Terms Pending</button>'
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Active Rentals</div>'
+    +'<div class="psub">'+apps.length+' active rental'+(apps.length!==1?'s':'')+' &middot; <span style="color:var(--gm);font-weight:700">'+termsAgreedCount+' contact revealed</span>'+(pendingTermsCount?' &middot; <span style="color:#E8A520;font-weight:700">'+pendingTermsCount+' terms pending</span>':'')+'</div>'
+    +'<div style="margin-bottom:12px"><input id="adm-match-q" type="text" placeholder="&#128269; Search driver, owner, car..." style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;outline:none" oninput="adMatchSearch()"/></div>'
+    +'<div class="tbb-row" style="margin-bottom:16px">'
+    +'<button class="tbb'+((!window._adMatchFilter||window._adMatchFilter==='all')?' on':'')+'" onclick="adMatchFilter(\'all\')">All ('+apps.length+')</button>'
+    +'<button class="tbb'+(window._adMatchFilter==='agreed'?' on':'')+'" onclick="adMatchFilter(\'agreed\')">Contact Revealed ('+termsAgreedCount+')</button>'
+    +'<button class="tbb'+(window._adMatchFilter==='pending'?' on':'')+'" onclick="adMatchFilter(\'pending\')">Terms Pending ('+pendingTermsCount+')</button>'
     +'</div>'
     +'<div id="ad-match-list">'
     +apps.map(function(a){
@@ -8863,7 +8984,7 @@ async function adMatch(){
         +'</div>'
         +'</div></div></div>';
     }).join('')
-    +'</div>';
+    +'</div></div>';
 }
 
 function adMatchFilter(type){
@@ -9738,10 +9859,10 @@ async function adStats(){
 
 async function adApp(){
   var el=document.getElementById('ap-app');
-  el.innerHTML='<div class="ptitle">All Applications</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">All Applications</div></div>'+adSpin();
   var r=await sb.from('applications').select('*').order('created_at',{ascending:false});
   var apps=r.data||[];
-  if(!apps.length){el.innerHTML='<div class="ptitle">All Applications</div><div class="empty"><p>No applications yet.</p></div>';return;}
+  if(!apps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">All Applications</div><div class="empty"><p>No applications yet.</p></div>';return;}
   var allIds=Array.from(new Set(apps.map(function(a){return a.driver_id;}).concat(apps.map(function(a){return a.owner_id;}).filter(Boolean))));
   var pr=await sb.from('profiles').select('id,full_name,phone,email,email_confirmed').in('id',allIds);
   // Only show applications where the driver has confirmed their email
@@ -9757,7 +9878,7 @@ async function adApp(){
   var tam={};(tar.data||[]).forEach(function(t){if(t.application_id){if(!tam[t.application_id])tam[t.application_id]=[];tam[t.application_id].push(t);}});
   var pend=apps.filter(function(a){return a.status==='pending';}).length;
   var appr=apps.filter(function(a){return a.status==='approved';}).length;
-  el.innerHTML='<div class="ptitle">All Applications</div>'
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">All Applications</div>'
     +'<div style="margin-bottom:10px"><input id="adm-app-q" type="text" placeholder="&#128269; Search driver, owner, car..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adAppSearch()"/></div>'
     +'<div class="psub">'+apps.length+' total / '+pend+' pending / <strong style="color:var(--gm)">'+appr+' matched</strong></div>'
     +'<div class="kgrid" style="margin-bottom:16px">'
@@ -9786,7 +9907,7 @@ async function adApp(){
         +'<td>'+tasHtml+'</td>'
         +'</tr>';
     }).join('')
-    +'</tbody></table></div>';
+    +'</tbody></table></div></div>';
 }
 
 </script>
@@ -9818,7 +9939,7 @@ async function adApp(){
 // ── ADMIN SETTINGS ──────────────────────────────────────────
 async function adSet(){
   var el=document.getElementById('ap-set');
-  el.innerHTML='<div class="ptitle">Settings</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">Settings</div></div>'+adSpin();
   var plats=['uber','bolt','indrive'];
   var keys=[];
   plats.forEach(function(p){for(var i=1;i<=3;i++)keys.push('example-'+p+'-'+i);});
@@ -9827,7 +9948,7 @@ async function adSet(){
   var sr=await sb.from('app_settings').select('key,value').in('key',keys);
   var sm={};(sr.data||[]).forEach(function(r){if(r.value)sm[r.key]=r.value;});
 
-  var html='<div class="ptitle">Settings</div><div class="psub">Upload example screenshots shown to drivers during registration. Add up to 3 examples per platform.</div>';
+  var html='<div class="adm-pg"><div class="ptitle">Settings</div><div class="psub">Upload example screenshots shown to drivers during registration. Add up to 3 examples per platform.</div>';
 
   plats.forEach(function(plat){
     var label=plat.charAt(0).toUpperCase()+plat.slice(1);
@@ -9857,6 +9978,7 @@ async function adSet(){
     }
     html+='</div></div>';
   });
+  html+='</div>';
 
   el.innerHTML=html;
 }
@@ -9885,12 +10007,12 @@ async function adDeleteExample(key){
 // ── T&C SIGNATURES ──────────────────────────────────────────
 async function adTcSigs(){
   var el=document.getElementById('ap-tc');
-  el.innerHTML='<div class="ptitle">T&amp;C Signatures</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">T&amp;C Signatures</div></div>'+adSpin();
   var r=await sb.from('profiles').select('id,full_name,email,phone,role,tc_accepted_at,tc_version,created_at').order('tc_accepted_at',{ascending:false,nullsFirst:false});
   var users=r.data||[];
   var signed=users.filter(function(u){return !!u.tc_accepted_at;});
   var unsigned=users.filter(function(u){return !u.tc_accepted_at;});
-  var html='<div class="ptitle">T&amp;C Signatures</div>'
+  var html='<div class="adm-pg"><div class="ptitle">T&amp;C Signatures</div>'
     +'<div class="psub">'+signed.length+' signed &middot; '+unsigned.length+' not yet recorded</div>'
     +'<div class="kgrid" style="margin-bottom:16px">'
     +'<div class="kcard"><div class="kcard-n g">'+signed.length+'</div><div class="kcard-l">Signed</div></div>'
@@ -9927,13 +10049,13 @@ async function adTcSigs(){
           +'</tr>';
       }).join('');
   }
-  html+='</tbody></table></div>';
+  html+='</tbody></table></div></div>';
   el.innerHTML=html;
 }
 
 async function adDecl(){
   var el=document.getElementById('ap-decl');
-  el.innerHTML='<div class="ptitle">&#10060; Decline &amp; Rejection Reasons</div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">&#10060; Decline &amp; Rejection Reasons</div></div>'+adSpin();
 
   var [drvR,appR]=await Promise.all([
     // Admin-declined driver applications (rejection_reason on driver_profiles)
@@ -9953,7 +10075,7 @@ async function adDecl(){
   var profR=allIds.length?await sb.from('profiles').select('id,full_name,email,role').in('id',allIds):{data:[]};
   var pm={};(profR.data||[]).forEach(function(p){pm[p.id]=p;});
 
-  var html='<div class="ptitle">&#10060; Decline &amp; Rejection Reasons</div>';
+  var html='<div class="adm-pg"><div class="ptitle">&#10060; Decline &amp; Rejection Reasons</div>';
 
   // ── SECTION 1: Admin-Declined Drivers ──
   html+='<div class="shd" style="margin-bottom:8px">&#128100; Admin-Declined Drivers ('+declinedDrvs.length+')</div>';
@@ -10007,7 +10129,8 @@ async function adDecl(){
     +'<div style="overflow-x:auto;margin-bottom:24px"><table class="atbl">'+appTableHead+'<tbody>'+appRows(ownDeclinedDriver)+'</tbody></table></div>';
 
   html+='<div class="shd" style="margin-bottom:8px">&#128279; Unmatches with Reason ('+unmatches.length+')</div>'
-    +'<div style="overflow-x:auto;margin-bottom:24px"><table class="atbl">'+appTableHead+'<tbody>'+appRows(unmatches)+'</tbody></table></div>';
+    +'<div style="overflow-x:auto;margin-bottom:24px"><table class="atbl">'+appTableHead+'<tbody>'+appRows(unmatches)+'</tbody></table></div>'
+    +'</div>';
 
   el.innerHTML=html;
 }
