@@ -3204,6 +3204,26 @@ function setRole(r) {
   if(s3)s3.style.display=r==='owner'?'none':'';
   if(s3line&&s3line.classList.contains('sbi-line'))s3line.style.display=r==='owner'?'none':'';
 }
+var OTP_FN_URL='https://qyyflivkmnwikagnvstv.supabase.co/functions/v1/send-registration-otp';
+async function _sendRegOtp(email){
+  var res=await fetch(OTP_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,action:'send'})});
+  var d=await res.json();
+  if(!res.ok){
+    if(d.error==='rate_limit')return{error:'Too many attempts. Please wait 5 minutes before requesting a new code.'};
+    return{error:d.error||'Failed to send code. Please try again.'};
+  }
+  return{ok:true};
+}
+async function _verifyRegOtp(email,code){
+  var res=await fetch(OTP_FN_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,action:'verify',code:code})});
+  var d=await res.json();
+  if(!res.ok){
+    if(d.error==='expired')return{error:'Code has expired. Please request a new one.'};
+    if(d.error==='invalid')return{error:'Incorrect code. Please check your email and try again.'};
+    return{error:d.error||'Verification failed. Please try again.'};
+  }
+  return{ok:true};
+}
 async function reg1() {
   clearErr('reg-err');
   if(!eid('reg-tc').checked){showErr('reg-err','Please accept the Terms and Conditions.');return;}
@@ -3215,17 +3235,12 @@ async function reg1() {
   if(p.length<6){showErr('reg-err','Password must be at least 6 characters.');return;}
   if(p!==p2){showErr('reg-err','Passwords do not match.');return;}
   rName=n;rEmail=e;rPhone=ph;rPass=p;rUid=null;
-  // Populate hidden phone fields in S2
   if(eid('d-ph'))eid('d-ph').value=ph;
   if(eid('o-ph'))eid('o-ph').value=ph;
   var btn=eid('reg1-btn');btn.textContent='Sending code…';btn.disabled=true;
-  var r=await sb.auth.signInWithOtp({email:rEmail,options:{shouldCreateUser:true}});
+  var r=await _sendRegOtp(rEmail);
   btn.textContent='Continue';btn.disabled=false;
-  if(r.error){
-    var msg=r.error.message;
-    if(/rate.limit|too.many/i.test(msg))msg='Too many attempts for this email. Please wait a few minutes and try again.';
-    showErr('reg-err',msg);return;
-  }
+  if(r.error){showErr('reg-err',r.error);return;}
   eid('otp-email-display').textContent=rEmail;
   eid('reg-s1').style.display='none';
   eid('reg-s1-otp').style.display='block';
@@ -3237,20 +3252,9 @@ async function regVerifyOtp() {
   var code=(eid('reg-otp').value||'').trim().replace(/\s/g,'');
   if(!code||code.length<6){showErr('reg-err','Please enter the 6-digit code from your email.');return;}
   var btn=eid('otp-verify-btn');btn.textContent='Verifying…';btn.disabled=true;
-  var r=await sb.auth.verifyOtp({email:rEmail,token:code,type:'email'});
+  var r=await _verifyRegOtp(rEmail,code);
   btn.textContent='Verify & Continue';btn.disabled=false;
-  if(r.error){
-    var msg=r.error.message;
-    if(/expired|invalid/i.test(msg))msg='Invalid or expired code. Check the code in your email or request a new one.';
-    showErr('reg-err',msg);return;
-  }
-  // Email verified — capture uid and set password
-  var uid=r.data&&r.data.user?r.data.user.id:null;
-  if(uid){
-    rUid=uid;
-    // Attach password so the account can sign in with email+password
-    await sb.auth.updateUser({password:rPass});
-  }
+  if(r.error){showErr('reg-err',r.error);return;}
   clearErr('reg-err');
   eid('reg-s1-otp').style.display='none';
   eid('rs1').className='sbi done'; eid('rs2').className='sbi on';
@@ -3259,9 +3263,9 @@ async function regVerifyOtp() {
 }
 async function regResendOtp() {
   var link=eid('otp-resend-link');link.textContent='Sending…';
-  var r=await sb.auth.signInWithOtp({email:rEmail,options:{shouldCreateUser:true}});
+  var r=await _sendRegOtp(rEmail);
   link.textContent='Resend code';
-  if(r.error){showErr('reg-err',r.error.message);return;}
+  if(r.error){showErr('reg-err',r.error);return;}
   clearErr('reg-err');
   toast('New code sent to '+rEmail);
   var otpInp=eid('reg-otp');if(otpInp){otpInp.value='';otpInp.focus();}
@@ -3434,56 +3438,31 @@ async function doReg() {
   var lo=isD?eid('d-lo').value.trim():oCarData.lo;
   var wa=isD?(eid('d-wa').value.trim()||null):(oCarData.wa||null);
   var pc=isD?(eid('d-pc')?eid('d-pc').value:null):(eid('o-pc')?eid('o-pc').value:null);
-  var uid=rUid||null;
   var ownerIdUrl=null,ownerHsUrl=null;
-
-  if(!uid){
-    // Fallback: OTP verification was skipped or failed — use signUp
-    if(rRole==='owner'){
-      var safeEmail=rEmail.replace(/[^a-z0-9]/gi,'_');
-      if(docFiles.oid_f){
-        var oidComp=await _compressImage(docFiles.oid_f);
-        var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
-        var prePath='pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt;
-        var preUp=await sb.storage.from('profile-photos').upload(prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
-        if(!preUp.error)ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath).data.publicUrl;
-      }
-      if(docFiles.o_selfie){
-        var selfieBlob=docFiles.o_selfie;
-        var selfiePath='pre-reg/'+safeEmail+'-selfie-'+Date.now()+'.jpg';
-        var selfieUp=await sb.storage.from('profile-photos').upload(selfiePath,selfieBlob,{upsert:true,contentType:'image/jpeg'});
-        if(!selfieUp.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath).data.publicUrl;
-      }
+  if(rRole==='owner'){
+    var safeEmail=rEmail.replace(/[^a-z0-9]/gi,'_');
+    if(docFiles.oid_f){
+      var oidComp=await _compressImage(docFiles.oid_f);
+      var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
+      var prePath='pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt;
+      var preUp=await sb.storage.from('profile-photos').upload(prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
+      if(!preUp.error)ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath).data.publicUrl;
     }
-    var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl}}});
-    if(r.error){
-      var msg=r.error.message;
-      if(/rate.limit|too.many/i.test(msg))msg='Too many signup attempts for this email. Please wait 1 hour and try again, or use a different email address.';
-      showErr('reg-err',msg);return;
-    }
-    uid=r.data&&r.data.user?r.data.user.id:null;
-    if(!uid){showErr('reg-err','Signup failed. Please try again.');return;}
-  } else {
-    // OTP-verified path: upload owner photos now (uid is already known)
-    if(rRole==='owner'){
-      var safeEmail2=rEmail.replace(/[^a-z0-9]/gi,'_');
-      if(docFiles.oid_f){
-        var oidComp2=await _compressImage(docFiles.oid_f);
-        var preExt2=oidComp2!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
-        var prePath2='pre-reg/'+safeEmail2+'-id-'+Date.now()+'.'+preExt2;
-        var preUp2=await sb.storage.from('profile-photos').upload(prePath2,oidComp2,{upsert:true,contentType:oidComp2.type||docFiles.oid_f.type});
-        if(!preUp2.error)ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath2).data.publicUrl;
-      }
-      if(docFiles.o_selfie){
-        var selfieBlob2=docFiles.o_selfie;
-        var selfiePath2='pre-reg/'+safeEmail2+'-selfie-'+Date.now()+'.jpg';
-        var selfieUp2=await sb.storage.from('profile-photos').upload(selfiePath2,selfieBlob2,{upsert:true,contentType:'image/jpeg'});
-        if(!selfieUp2.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath2).data.publicUrl;
-      }
-      // Update profile metadata with owner photo urls
-      await sb.auth.updateUser({data:{doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl}});
+    if(docFiles.o_selfie){
+      var selfieBlob=docFiles.o_selfie;
+      var selfiePath='pre-reg/'+safeEmail+'-selfie-'+Date.now()+'.jpg';
+      var selfieUp=await sb.storage.from('profile-photos').upload(selfiePath,selfieBlob,{upsert:true,contentType:'image/jpeg'});
+      if(!selfieUp.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath).data.publicUrl;
     }
   }
+  var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{emailRedirectTo:null,data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl,email_verified:true}}});
+  if(r.error){
+    var msg=r.error.message;
+    if(/rate.limit|too.many/i.test(msg))msg='Too many signup attempts for this email. Please wait 1 hour and try again, or use a different email address.';
+    showErr('reg-err',msg);return;
+  }
+  var uid=r.data&&r.data.user?r.data.user.id:null;
+  if(!uid){showErr('reg-err','Signup failed. Please try again.');return;}
 
   var now=new Date().toISOString();
   await sb.from('profiles').upsert({id:uid,email:rEmail,full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',terms_accepted:true,popia_accepted:true,terms_accepted_at:now,popia_accepted_at:now,terms_version:'1.0',tc_accepted_at:now,tc_version:'July 2026'},{onConflict:'id'});
@@ -3568,23 +3547,9 @@ async function doReg() {
   if (typeof gtag === 'function') {
     gtag('event', 'sign_up', { method: rRole === 'driver' ? 'driver_registration' : 'owner_registration' });
   }
-  // If OTP was verified, email is already confirmed — go straight to login
-  if(rUid){
-    rUid=null;rPhone='';
-    toast('Account created! Awaiting admin approval before going live.');
-    go('login');
-  } else {
-    var needsVerify = !(r&&r.data&&r.data.session);
-    if (needsVerify) {
-      eid('verify-email-addr').textContent = rEmail;
-      eid('verify-err').classList.remove('on');
-      eid('verify-ok').style.display='none';
-      go('verify');
-    } else {
-      toast('Account created! Awaiting admin approval before going live.');
-      go('login');
-    }
-  }
+  rPhone='';
+  toast('Account created! Awaiting admin approval before going live.');
+  go('login');
 }
 
 async function resendVerification() {
