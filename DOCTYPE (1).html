@@ -5183,13 +5183,17 @@ async function pAp() {
       return 0;
     });
 
-    var hasAnyPrefs=Object.values(appScores).some(function(s){return s&&s.hasPrefs;});
-    var sortOpts=[['match','&#127942; Best Match'],['trust','Highest TrustScore'],['newest','Newest'],['trips','Most Trips'],['exp','Most Experienced']];
-    var sortBar='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;align-items:center">'
+    var hasAnyPrefs=false;
+    var _apScoreVals=appScores;
+    try{hasAnyPrefs=Object.keys(_apScoreVals).some(function(k){return _apScoreVals[k]&&_apScoreVals[k].hasPrefs;});}catch(e){}
+    var sortOpts=[['trust','&#11088; TrustScore'],['newest','&#128337; Newest'],['trips','&#128663; Most Trips'],['exp','&#129381; Experienced']];
+    if(hasAnyPrefs) sortOpts.unshift(['match','&#127942; Best Match']);
+    if(!hasAnyPrefs&&_apSort==='match') window._apSort=_apSort='trust';
+    var sortBar='<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;align-items:center;padding:8px 0">'
       +'<span style="font-size:11px;font-weight:600;color:var(--muted);flex-shrink:0">Sort:</span>'
       +sortOpts.map(function(s){
         var active=_apSort===s[0];
-        return '<button class="btn btn-sm" style="'+(active?'background:var(--gm);color:#fff;border-color:var(--gm)':'background:#fff;color:var(--g)')+';font-size:11px;padding:3px 9px" onclick="window._apSort=\''+s[0]+'\';pAp()">'+s[1]+'</button>';
+        return '<button class="btn btn-sm" style="'+(active?'background:var(--gm);color:#fff;border-color:var(--gm)':'background:#fff;color:var(--g);border-color:var(--border)')+';font-size:11px;padding:4px 10px;border-radius:999px" onclick="window._apSort=\''+s[0]+'\';pAp()">'+s[1]+'</button>';
       }).join('')
       +'</div>';
 
@@ -5459,6 +5463,29 @@ async function drvResp(btn){
   if(r.error){toast('Error: '+r.error.message);return;}
   if(s==='approved'){sendNotifEmail('match_approved_owner_only', id);sendNotifEmail('owner_rate_driver', id);_carCache=null;_drvCache=null;autoSendMatchedTerms(id);showMatchPopup();}
   else toast('Request declined.');
+  pAp();
+}
+async function ownerResp(id,status,btn){
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  if(status==='approved'){
+    var chk=await sb.from('applications').select('driver_id,owner_id').eq('id',id).maybeSingle();
+    if(chk.data){
+      var drvMatch=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',chk.data.driver_id).eq('status','approved').is('unmatched_at',null);
+      if((drvMatch.count||0)>0){toast('This driver is already matched. They must unmatch first.');if(btn){btn.disabled=false;btn.textContent='Accept';}return;}
+      var ownMatch=await sb.from('applications').select('id',{count:'exact',head:true}).eq('owner_id',chk.data.owner_id).eq('status','approved').is('unmatched_at',null);
+      if((ownMatch.count||0)>0){toast('You are already matched with a driver. Unmatch first.');if(btn){btn.disabled=false;btn.textContent='Accept';}return;}
+    }
+  }
+  var update={status:status};
+  if(status==='approved') update.matched_at=new Date().toISOString();
+  if(status==='rejected'&&btn){
+    var notes=prompt('Optional: add a decline reason (shown to driver)');
+    if(notes!==null) update.owner_notes=notes.trim()||null;
+  }
+  var r=await sb.from('applications').update(update).eq('id',id);
+  if(r.error){toast('Error: '+r.error.message);if(btn){btn.disabled=false;btn.textContent=status==='approved'?'Accept':'Decline';}return;}
+  if(status==='approved'){sendNotifEmail('match_approved_owner_only',id);_carCache=null;_drvCache=null;autoSendMatchedTerms(id);showMatchPopup();}
+  else toast('Application declined.');
   pAp();
 }
 async function drvResubmit(){
