@@ -716,19 +716,12 @@ nav div::-webkit-scrollbar{display:none}
   <div id="filter-sheet-panel">
     <h4>Filters <button onclick="closeFilterSheet()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);line-height:1">&#x2715;</button></h4>
     <div class="fg"><label>Location</label>
-      <select id="hs-city" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">
-        <option value="">All locations</option>
-        <option value="johannesburg">Johannesburg</option>
-        <option value="pretoria">Pretoria</option>
-        <option value="cape town">Cape Town</option>
-        <option value="durban">Durban</option>
-        <option value="ekurhuleni">Ekurhuleni</option>
-        <option value="soweto">Soweto</option>
-        <option value="sandton">Sandton</option>
-        <option value="midrand">Midrand</option>
-        <option value="centurion">Centurion</option>
-        <option value="port elizabeth">Gqeberha / PE</option>
-      </select>
+      <div style="position:relative">
+        <input id="hs-city" type="text" placeholder="Type city or area..." autocomplete="off"
+          style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;box-sizing:border-box"
+          oninput="_hsCityInput()" onfocus="_hsCitySuggest()" onblur="setTimeout(function(){var d=eid('hs-city-drop');if(d)d.style.display='none';},200)"/>
+        <div id="hs-city-drop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:999;max-height:200px;overflow-y:auto"></div>
+      </div>
     </div>
     <div class="fg" id="fs-trans-row"><label>Transmission</label>
       <select id="hs-trans" style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit">
@@ -2686,18 +2679,41 @@ function openFilterSheet(){
     Array.from(sortSel.options).forEach(function(o){if(o.value===cur)o.selected=true;});
   }
   // Restore city
-  var citySel=eid('hs-city');
-  if(citySel)citySel.value=_homeFilters.city||'';
+  var cityInp=eid('hs-city');
+  if(cityInp)cityInp.value=_homeFilters.city||'';
   var transSel=eid('hs-trans');
   if(transSel&&!isDrivers)transSel.value=_homeFilters.trans||'';
 }
 function closeFilterSheet(){var s=eid('filter-sheet');if(s)s.classList.remove('on');}
 function applyHomeFilters(){
-  _homeFilters.city=(eid('hs-city')||{}).value||'';
+  _homeFilters.city=((eid('hs-city')||{}).value||'').trim().toLowerCase();
   _homeFilters.trans=(_homeCat==='drivers')?'':(eid('hs-trans')||{}).value||'';
   _homeFilters.sort=(eid('hs-sort')||{}).value||'newest';
   closeFilterSheet();
   _renderHomeGrid();
+}
+function _hsCityInput(){
+  _homeFilters.city=((eid('hs-city')||{}).value||'').trim().toLowerCase();
+  _hsCitySuggest();
+  _renderHomeGrid();
+}
+function _hsCitySuggest(){
+  var inp=eid('hs-city'),drop=eid('hs-city-drop');
+  if(!inp||!drop)return;
+  var q=inp.value.trim().toLowerCase();
+  // Build unique suburb/city list from loaded cars + drivers
+  var locs=new Set();
+  (_homeCarsCache||[]).forEach(function(c){if(c.location)locs.add(locCity(c.location));});
+  (_homeDrvsCache||[]).forEach(function(d){var l=(d.profile&&d.profile.location)||d.location||'';if(l)locs.add(locCity(l));});
+  var sorted=Array.from(locs).filter(function(l){return l&&l!=='Unknown'&&(!q||l.toLowerCase().indexOf(q)>=0);}).sort();
+  if(!sorted.length){drop.style.display='none';return;}
+  drop.innerHTML='<div style="padding:6px 10px;font-size:11px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border)">Locations in system</div>'
+    +sorted.slice(0,20).map(function(l){
+      return '<div style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f5f5f5" '
+        +'onmousedown="eid(\'hs-city\').value=\''+l.replace(/'/g,'&#39;')+'\';_homeFilters.city=\''+l.toLowerCase().replace(/'/g,'&#39;')+'\';eid(\'hs-city-drop\').style.display=\'none\';_renderHomeGrid();">'
+        +l+'</div>';
+    }).join('');
+  drop.style.display='block';
 }
 
 // ── Home category toggle ──
@@ -8617,6 +8633,19 @@ async function adCar(){
     }).join('')+'</div>');
 }
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function locCity(loc){
+  // Extracts suburb/city from full address
+  // Driver format: "14 Main St, Alberton, Gauteng" → "Alberton"
+  // Owner format: "Midrand, Johannesburg" → "Midrand"
+  if(!loc)return 'Unknown';
+  var parts=loc.split(',').map(function(p){return p.trim();}).filter(Boolean);
+  if(!parts.length)return 'Unknown';
+  // If first part starts with a digit or contains a street keyword, skip it
+  if(/^\d/.test(parts[0])||parts.length>2){
+    return parts[1]||parts[0];
+  }
+  return parts[0];
+}
 function parseShotUrls(val){if(!val)return[];try{var a=JSON.parse(val);return Array.isArray(a)?a:[val];}catch(e){return [val];}}
 function adToggleCarEdit(cid){
   var box=document.getElementById('car-edit-'+cid);
@@ -9352,7 +9381,7 @@ async function adMarketplace(){
 
   // Location breakdown
   var locMap={};
-  cars.filter(function(c){return c.location;}).forEach(function(c){var loc=c.location.split(',')[0].trim();locMap[loc]=(locMap[loc]||0)+1;});
+  cars.filter(function(c){return c.location;}).forEach(function(c){var loc=locCity(c.location);locMap[loc]=(locMap[loc]||0)+1;});
   var locEntries=Object.entries(locMap).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
   if(locEntries.length){
     html+='<div class="occ-sh">&#128205; Vehicle Locations</div>'
@@ -10292,20 +10321,20 @@ async function adStats(){
     // Build city data
     var cityData={};
     cars.filter(function(c){return c.admin_status==='approved'&&c.location;}).forEach(function(c){
-      var city=(c.location||'Unknown').split(',')[0].trim();
+      var city=locCity(c.location);
       if(!cityData[city])cityData[city]={cars:[],drivers:[],apps:0,matches:0};
       cityData[city].cars.push(c);
     });
     dps.filter(function(d){return d.status==='approved';}).forEach(function(d){
       var p=pm[d.user_id]||{};
-      var city=((p.location||'')||(d.location||'')||'Unknown').split(',')[0].trim()||'Unknown';
+      var city=locCity((p.location||''))||(locCity(d.location||''))||'Unknown';
       if(!cityData[city])cityData[city]={cars:[],drivers:[],apps:0,matches:0};
       cityData[city].drivers.push(d);
     });
     apps.forEach(function(a){
       var car=carMap2[a.car_id]||{};
       if(car.location){
-        var city=car.location.split(',')[0].trim();
+        var city=locCity(car.location);
         if(cityData[city]){cityData[city].apps++;if(a.status==='approved')cityData[city].matches++;}
       }
     });
