@@ -1211,7 +1211,30 @@ nav div::-webkit-scrollbar{display:none}
     <!-- S2 Driver -->
     <div id="reg-s2-d" style="display:none">
       <input type="hidden" id="d-ph"/>
-      <div class="fg"><label>Age *</label><input id="d-ag" type="number" min="18" placeholder="25"/></div>
+      <div class="fg"><label>Date of Birth *</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <select id="d-dobdd"><option value="">Day</option></select>
+          <select id="d-dobmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
+          <select id="d-dobyy"><option value="">Year</option></select>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Used to verify your age for owner matching</div>
+      </div>
+      <div class="fg"><label>Gender *</label>
+        <select id="d-gender">
+          <option value="">Select gender</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other / Prefer not to say</option>
+        </select>
+      </div>
+      <div class="fg"><label>Citizenship / Residency Status *</label>
+        <select id="d-citizen">
+          <option value="">Select status</option>
+          <option value="sa">South African Citizen</option>
+          <option value="permit">Valid Work / Asylum Permit</option>
+        </select>
+      </div>
+      <input type="hidden" id="d-ag"/>
       <div class="fg"><label>Full Address *</label>
         <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;margin-bottom:6px">
           <input id="d-street-no" type="text" placeholder="No. *" maxlength="10"/>
@@ -1236,8 +1259,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="fg"><label>WhatsApp *</label><input id="d-wa" type="tel" placeholder="+27..." required/></div>
       <div class="fg"><label>Preferred contact method</label>
         <select id="d-pc"><option value="whatsapp">WhatsApp</option><option value="phone">Phone call</option><option value="email">Email</option><option value="any">Any</option></select></div>
-      <div class="fg"><label>Years driving *</label>
-        <select id="d-yr"><option value="0">Under 1 year</option><option value="1">1-2 years</option><option value="2">2-3 years</option><option value="3">3-5 years</option><option value="5">5-7 years</option><option value="7">7+ years</option></select></div>
+      <input type="hidden" id="d-yr"/>
       <div class="fg"><label>Safe parking?</label>
         <select id="d-pk"><option value="false">No</option><option value="true">Yes</option></select></div>
       <div class="fg"><label>Platforms *</label>
@@ -2006,9 +2028,11 @@ document.addEventListener('change',function(e){
   function fillDays(el){if(!el)return;for(var i=1;i<=31;i++){var o=document.createElement('option');o.value=String(i).padStart(2,'0');o.textContent=i;el.appendChild(o);}}
   function fillYearsPast(el,from,to){if(!el)return;for(var y=from;y>=to;y--){var o=document.createElement('option');o.value=y;o.textContent=y;el.appendChild(o);}}
   function fillYearsFuture(el,from,to){if(!el)return;for(var y=from;y<=to;y++){var o=document.createElement('option');o.value=y;o.textContent=y;el.appendChild(o);}}
+  var dobdd=document.getElementById('d-dobdd'),dobyy=document.getElementById('d-dobyy');
   fillDays(dd); fillYearsPast(yy,curYr,1960);
   fillDays(expdd); fillYearsFuture(expyy,curYr,curYr+20);
   fillDays(pdpdd); fillYearsFuture(pdpyy,curYr,curYr+10);
+  fillDays(dobdd); fillYearsPast(dobyy,curYr-18,curYr-80);
 })();
 function mPlatShot(plat,idx,inp){
   if(!inp.files||!inp.files[0])return;
@@ -3300,14 +3324,22 @@ function backS1(){
 }
 function reg2d() {
   clearErr('reg-err');
-  var ph=rPhone||(eid('d-ph')?eid('d-ph').value.trim():''),ag=eid('d-ag').value;
+  var ph=rPhone||(eid('d-ph')?eid('d-ph').value.trim():'');
+  var dobdd=eid('d-dobdd').value,dobmm=eid('d-dobmm').value,dobyy=eid('d-dobyy').value;
+  var gender=eid('d-gender').value,citizen=eid('d-citizen').value;
   var streetNo=eid('d-street-no').value.trim(),streetName=eid('d-street-name').value.trim();
   var suburb=eid('d-suburb').value.trim(),province=eid('d-province').value.trim();
   var wa=eid('d-wa').value.trim(),idNo=eid('d-id').value.trim(),lic=eid('d-lic').value.trim();
   var plats=Array.from(document.querySelectorAll('.dpc:checked'));
   if(!ph){showErr('reg-err','Phone number is required.');return;}
   if(!wa){showErr('reg-err','WhatsApp number is required.');return;}
-  if(!ag){showErr('reg-err','Age is required.');return;}
+  if(!dobdd||!dobmm||!dobyy){showErr('reg-err','Date of birth (day, month and year) is required.');return;}
+  // Calculate age from DOB and set hidden field
+  var dobAge=Math.floor((Date.now()-new Date(dobyy+'-'+dobmm+'-'+dobdd).getTime())/(1000*60*60*24*365.25));
+  if(dobAge<18){showErr('reg-err','You must be at least 18 years old to register.');return;}
+  eid('d-ag').value=dobAge;
+  if(!gender){showErr('reg-err','Please select your gender.');return;}
+  if(!citizen){showErr('reg-err','Please select your citizenship / residency status.');return;}
   if(!streetNo){showErr('reg-err','Street number is required for your full address.');return;}
   if(!streetName){showErr('reg-err','Street name is required for your full address.');return;}
   if(!suburb){showErr('reg-err','Suburb is required for your full address.');return;}
@@ -3318,6 +3350,9 @@ function reg2d() {
   if(!lic){showErr('reg-err','Licence Number is required.');return;}
   var licdd=eid('d-licdd').value,licmm=eid('d-licmm').value,licyy=eid('d-licyy').value;
   if(!licdd||!licmm||!licyy){showErr('reg-err','Licence obtained date (day, month and year) is required.');return;}
+  // Auto-calculate years driving from licence obtained date
+  var yrsLicensed=Math.floor((Date.now()-new Date(licyy+'-'+licmm+'-'+licdd).getTime())/(1000*60*60*24*365.25));
+  eid('d-yr').value=Math.max(0,yrsLicensed);
   var licexpdd=eid('d-licexpdd').value,licexpmm=eid('d-licexpmm').value,licexpyy=eid('d-licexpyy').value;
   if(!licexpdd||!licexpmm||!licexpyy){showErr('reg-err','Licence expiry date (day, month and year) is required.');return;}
   var wci=eid('d-wci').value.trim();
@@ -3515,6 +3550,10 @@ async function doReg() {
     }
     var depType=eid('d-dep-type')?eid('d-dep-type').value:'none';
     var depAmt=depType==='amount'?parseInt(eid('d-dep').value||0)||null:null;
+    var dobdd2=eid('d-dobdd').value,dobmm2=eid('d-dobmm').value,dobyy2=eid('d-dobyy').value;
+    var dobDate=(dobdd2&&dobmm2&&dobyy2)?(dobyy2+'-'+dobmm2+'-'+dobdd2):null;
+    var genderVal=eid('d-gender').value||null;
+    var citizenVal=eid('d-citizen').value||null;
     var licdd2=eid('d-licdd').value,licmm2=eid('d-licmm').value,licyy2=eid('d-licyy').value;
     var licDate=(licdd2&&licmm2&&licyy2)?(licdd2+'/'+licmm2+'/'+licyy2):null;
     var licexpdd2=eid('d-licexpdd').value,licexpmm2=eid('d-licexpmm').value,licexpyy2=eid('d-licexpyy').value;
@@ -3535,7 +3574,7 @@ async function doReg() {
     var selfBoltRating=parseFloat((eid('d-bolt-rating')||{}).value||0)||null;
     var selfIndriveTrips=parseInt((eid('d-indrive-trips')||{}).value||0)||null;
     var selfIndriveRating=parseFloat((eid('d-indrive-rating')||{}).value||0)||null;
-    var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,license_date:licDate,license_expiry_date:licExpDate,pdp_expiry_date:pdpExpDate,weekly_checkin_amount:parseInt(eid('d-wci').value||0)||null,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:isNonePlat2?null:shotUrls.uber,screenshot_bolt_url:isNonePlat2?null:shotUrls.bolt,screenshot_indrive_url:isNonePlat2?null:shotUrls.indrive,has_pdp:hasPdp,pdp_url:pdpDocUrl,has_1yr_experience:has1yr,self_uber_trips:selfUberTrips,self_uber_rating:selfUberRating,self_bolt_trips:selfBoltTrips,self_bolt_rating:selfBoltRating,self_indrive_trips:selfIndriveTrips,self_indrive_rating:selfIndriveRating},u);
+    var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,date_of_birth:dobDate,gender:genderVal,citizenship:citizenVal,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,license_date:licDate,license_expiry_date:licExpDate,pdp_expiry_date:pdpExpDate,weekly_checkin_amount:parseInt(eid('d-wci').value||0)||null,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:isNonePlat2?null:shotUrls.uber,screenshot_bolt_url:isNonePlat2?null:shotUrls.bolt,screenshot_indrive_url:isNonePlat2?null:shotUrls.indrive,has_pdp:hasPdp,pdp_url:pdpDocUrl,has_1yr_experience:has1yr,self_uber_trips:selfUberTrips,self_uber_rating:selfUberRating,self_bolt_trips:selfBoltTrips,self_bolt_rating:selfBoltRating,self_indrive_trips:selfIndriveTrips,self_indrive_rating:selfIndriveRating},u);
     // Use SECURITY DEFINER RPC to bypass RLS (anon users can't update via direct query)
     var dpR=await sb.rpc('complete_driver_registration',{payload:dpPayload});
     if(dpR.error){
