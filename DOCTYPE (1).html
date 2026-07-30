@@ -2377,7 +2377,7 @@ async function _execDriversQuery(offset){
       // Reuse the shared driver cache if available; otherwise fetch a reasonable cap
       var srcData=(_drvCache&&_drvCache.length)?_drvCache:null;
       if(!srcData){
-        var all=await sb.from('v_driver_listing').select('*').order('trust_score',{ascending:false}).limit(500);
+        var all=await sb.from('v_driver_listing').select('*').order('trust_score',{ascending:false}).limit(2000);
         if(all.error){console.error('drivers nearest error',all.error);toast('Could not load drivers: '+all.error.message);return {data:[],hasMore:false,total:0};}
         if(!all.data) return {data:[],hasMore:false,total:0};
         var seen=new Set();
@@ -3593,10 +3593,11 @@ async function doReg() {
     var carInsert=await sb.from('cars').insert(carData);
     if(carInsert.error){
       console.error('Car insert error:',carInsert.error);
-      // Save to localStorage so admin/retry can recover it
       try{localStorage.setItem('tm_pending_car',JSON.stringify({uid:uid,carData:carData}));}catch(e){}
-      // Show a recoverable warning — account was created, car listing failed
       showErr('reg-err','Your account was created but your car listing could not be saved ('+carInsert.error.message+'). Please contact support@trustmatesa.co.za with your email address and we will add your car.');
+    } else {
+      // Car saved — clear any stale pending-car localStorage entry
+      try{localStorage.removeItem('tm_pending_car');}catch(e){}
     }
   }
   docFiles={};
@@ -4158,7 +4159,7 @@ function loadDrvCarRec(drvLoc){
   (async function(){
     try{
       var [carsR, matchedOwnerR]=await Promise.all([
-        sb.from('cars').select('id,owner_id,make,model,year,color,transmission,price_per_week,deposit,insurance,photo_front_url,location,admin_status,status').eq('admin_status','approved').eq('status','available').limit(200),
+        sb.from('cars').select('id,owner_id,make,model,year,color,transmission,price_per_week,deposit,insurance,photo_front_url,location,admin_status,status').eq('admin_status','approved').eq('status','available').limit(2000),
         sb.from('applications').select('owner_id').eq('status','approved').is('unmatched_at',null)
       ]);
       var allCars=(carsR.data||[]);
@@ -7290,10 +7291,10 @@ async function adOv(){
 
   // ── Fetch all data in parallel ──
   var [usersR,dpsR,carsR,appsR,revsR,trustR,msgR,logR,pvR]=await Promise.all([
-    sb.from('profiles').select('id,full_name,email,role,admin_status,created_at,email_confirmed'),
-    sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended,license_expiry_date,pdp_expiry_date,applications_paused,created_at'),
-    sb.from('cars').select('id,status,admin_status,owner_id,make,model,year,created_at'),
-    sb.from('applications').select('id,driver_id,owner_id,status,created_at,matched_at,unmatched_at'),
+    sb.from('profiles').select('id,full_name,email,role,admin_status,created_at,email_confirmed').limit(2000),
+    sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended,license_expiry_date,pdp_expiry_date,applications_paused,created_at').limit(2000),
+    sb.from('cars').select('id,status,admin_status,owner_id,make,model,year,created_at').limit(2000),
+    sb.from('applications').select('id,driver_id,owner_id,status,created_at,matched_at,unmatched_at').limit(2000),
     sb.from('reviews').select('id,rating,created_at'),
     sb.from('trust_actions').select('id,user_id,points,action_type,created_at').order('created_at',{ascending:false}).limit(50),
     sb.from('messages').select('id,application_id,created_at').order('created_at',{ascending:false}).limit(200),
@@ -9213,10 +9214,10 @@ async function adNotifs(){
   el.innerHTML='<div style="padding:24px">'+adSpin()+'</div>';
 
   var [usersR,dpsR,carsR,appsR,revsR]=await Promise.all([
-    sb.from('profiles').select('id,full_name,email,role,admin_status,email_confirmed,created_at').order('created_at',{ascending:false}).limit(100),
-    sb.from('driver_profiles').select('id,user_id,status,trust_score,license_expiry_date,pdp_expiry_date,created_at').order('created_at',{ascending:false}).limit(200),
-    sb.from('cars').select('id,admin_status,make,model,year,owner_id,created_at').order('created_at',{ascending:false}).limit(100),
-    sb.from('applications').select('id,driver_id,owner_id,status,created_at,matched_at,unmatched_at').order('created_at',{ascending:false}).limit(100),
+    sb.from('profiles').select('id,full_name,email,role,admin_status,email_confirmed,created_at').order('created_at',{ascending:false}).limit(2000),
+    sb.from('driver_profiles').select('id,user_id,status,trust_score,license_expiry_date,pdp_expiry_date,created_at').order('created_at',{ascending:false}).limit(2000),
+    sb.from('cars').select('id,admin_status,make,model,year,owner_id,created_at').order('created_at',{ascending:false}).limit(2000),
+    sb.from('applications').select('id,driver_id,owner_id,status,created_at,matched_at,unmatched_at').order('created_at',{ascending:false}).limit(2000),
     sb.from('reviews').select('id,rating,comment,created_at').order('created_at',{ascending:false}).limit(50)
   ]);
 
@@ -9317,11 +9318,11 @@ async function adMarketplace(){
   el.innerHTML='<div style="padding:24px">'+adSpin()+'</div>';
 
   var [usersR,dpsR,carsR,appsR,revsR]=await Promise.all([
-    sb.from('profiles').select('id,role,admin_status,created_at,email_confirmed'),
-    sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended,rentals_completed,applications_paused'),
-    sb.from('cars').select('id,owner_id,admin_status,status,price_per_week,location'),
-    sb.from('applications').select('id,driver_id,owner_id,car_id,status,created_at,matched_at,unmatched_at'),
-    sb.from('reviews').select('id,rating,created_at')
+    sb.from('profiles').select('id,role,admin_status,created_at,email_confirmed').limit(2000),
+    sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended,rentals_completed,applications_paused').limit(2000),
+    sb.from('cars').select('id,owner_id,admin_status,status,price_per_week,location').limit(2000),
+    sb.from('applications').select('id,driver_id,owner_id,car_id,status,created_at,matched_at,unmatched_at').limit(2000),
+    sb.from('reviews').select('id,rating,created_at').limit(2000)
   ]);
 
   var users=usersR.data||[], dps=dpsR.data||[], cars=carsR.data||[], apps=appsR.data||[], revs=revsR.data||[];
