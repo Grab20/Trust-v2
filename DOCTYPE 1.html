@@ -9901,37 +9901,50 @@ async function adStats(){
 
   var activeTab=window._adStatsTab||'overview';
 
-  var [logR,viewR,profR,dpsR,carsR,revsR,taR,
-       sCntTotal,sCntApproved,sCntActive,sCntRejected,sCntPending,sCntUnmatched,
-       appR]=await Promise.all([
-    sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false}),
-    sb.from('application_views').select('id,owner_id,created_at').order('created_at',{ascending:false}),
+  // ── Core data needed by all tabs ──
+  var [profR,dpsR,carsR,revsR]=await Promise.all([
     sb.from('profiles').select('id,full_name,email,role,admin_status,created_at'),
     sb.from('driver_profiles').select('id,user_id,status,trust_score,rentals_completed,years_driving,created_at,suspended'),
     sb.from('cars').select('id,owner_id,status,admin_status,price_per_week,location,make,model,year,created_at'),
-    sb.from('reviews').select('id,driver_id,reviewer_id,rating,comment,communication_rating,payment_status,created_at,application_id').order('created_at',{ascending:false}),
-    sb.from('trust_actions').select('id,user_id,points,action_type,created_at').order('created_at',{ascending:false}).limit(500),
-    // Server-side counts for accurate KPIs (bypasses 1,000-row PostgREST cap)
-    sb.from('applications').select('*',{count:'exact',head:true}),
-    sb.from('applications').select('*',{count:'exact',head:true}).eq('status','approved'),
-    sb.from('applications').select('*',{count:'exact',head:true}).eq('status','approved').is('unmatched_at',null),
-    sb.from('applications').select('*',{count:'exact',head:true}).eq('status','rejected'),
-    sb.from('applications').select('*',{count:'exact',head:true}).eq('status','pending'),
-    sb.from('applications').select('*',{count:'exact',head:true}).not('unmatched_at','is',null),
-    // Recent rows for table display and per-user drill-down (capped at 500 newest)
-    sb.from('applications').select('id,driver_id,owner_id,car_id,status,created_at,matched_at,unmatched_at,initiated_by,counter_price,owner_notes').order('created_at',{ascending:false}).limit(500)
+    sb.from('reviews').select('id,driver_id,reviewer_id,rating,comment,communication_rating,payment_status,created_at,application_id').order('created_at',{ascending:false}).limit(1000)
   ]);
+  var profs=profR.data||[], dps=dpsR.data||[], cars=carsR.data||[], revs=revsR.data||[];
 
-  var logins=logR.data||[], views=viewR.data||[], apps=appR.data||[];
-  var profs=profR.data||[], dps=dpsR.data||[], cars=carsR.data||[];
-  var revs=revsR.data||[], tas=taR.data||[];
-  // True server-side counts — use these for all KPI metrics
-  var _sTotalApps=sCntTotal.count||0;
-  var _sApprovedApps=sCntApproved.count||0;
-  var _sActiveRentals=sCntActive.count||0;
-  var _sRejectedApps=sCntRejected.count||0;
-  var _sPendingApps=sCntPending.count||0;
-  var _sUnmatchedApps=sCntUnmatched.count||0;
+  // ── Tab-specific data loaded on demand ──
+  var logins=[],views=[],apps=[],tas=[];
+  var _sTotalApps=0,_sApprovedApps=0,_sActiveRentals=0,_sRejectedApps=0,_sPendingApps=0,_sUnmatchedApps=0;
+
+  if(activeTab==='overview'||activeTab==='funnel'||activeTab==='drivers'||activeTab==='owners'){
+    var [sCntTotal,sCntApproved,sCntActive,sCntRejected,sCntPending,sCntUnmatched,appR,logR2]=await Promise.all([
+      sb.from('applications').select('*',{count:'exact',head:true}),
+      sb.from('applications').select('*',{count:'exact',head:true}).eq('status','approved'),
+      sb.from('applications').select('*',{count:'exact',head:true}).eq('status','approved').is('unmatched_at',null),
+      sb.from('applications').select('*',{count:'exact',head:true}).eq('status','rejected'),
+      sb.from('applications').select('*',{count:'exact',head:true}).eq('status','pending'),
+      sb.from('applications').select('*',{count:'exact',head:true}).not('unmatched_at','is',null),
+      sb.from('applications').select('id,driver_id,owner_id,car_id,status,created_at,matched_at,unmatched_at,initiated_by,counter_price,owner_notes').order('created_at',{ascending:false}).limit(500),
+      sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false}).limit(1000)
+    ]);
+    apps=appR.data||[]; logins=logR2.data||[];
+    _sTotalApps=sCntTotal.count||0; _sApprovedApps=sCntApproved.count||0;
+    _sActiveRentals=sCntActive.count||0; _sRejectedApps=sCntRejected.count||0;
+    _sPendingApps=sCntPending.count||0; _sUnmatchedApps=sCntUnmatched.count||0;
+  }
+  if(activeTab==='trust'){
+    var taR=await sb.from('trust_actions').select('id,user_id,points,action_type,created_at').order('created_at',{ascending:false}).limit(500);
+    tas=taR.data||[];
+  }
+  if(activeTab==='activity'){
+    var [logR3,viewR3]=await Promise.all([
+      sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false}).limit(1000),
+      sb.from('application_views').select('id,owner_id,created_at').order('created_at',{ascending:false}).limit(500)
+    ]);
+    logins=logR3.data||[]; views=viewR3.data||[];
+  }
+  if(activeTab==='useract'){
+    var logR4=await sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false}).limit(1000);
+    logins=logR4.data||[];
+  }
 
   var pm={};profs.forEach(function(p){pm[p.id]=p;});
   var dpm2={};dps.forEach(function(d){dpm2[d.user_id]=d;});
