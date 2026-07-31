@@ -9940,7 +9940,7 @@ async function adStats(){
   var d30=new Date(now-30*864e5).toISOString();
 
   // Tab bar
-  var tabs=[['overview','&#127968; Marketplace'],['funnel','&#129378; Funnel'],['drivers','&#128100; Drivers'],['owners','&#127968; Owners'],['trust','&#9989; Trust'],['ratings','&#11088; Ratings'],['location','&#128205; Location'],['activity','&#128336; Activity']];
+  var tabs=[['overview','&#127968; Marketplace'],['funnel','&#129378; Funnel'],['drivers','&#128100; Drivers'],['owners','&#127968; Owners'],['useract','&#128200; User Activity'],['trust','&#9989; Trust'],['ratings','&#11088; Ratings'],['location','&#128205; Location'],['activity','&#128336; Activity']];
   var html='<div style="padding:24px">'
     +'<div class="occ-sh">&#128202; Analytics Dashboard</div>'
     +'<div class="an-tabs" style="flex-wrap:wrap">'
@@ -10485,6 +10485,153 @@ async function adStats(){
     html+='<script>window._anCityData='+JSON.stringify(cityData)+';<\/script>';
 
   // ── ACTIVITY LOG ──────────────────────────────────────────────────────────
+  // ── USER ACTIVITY ─────────────────────────────────────────────────────────
+  }else if(activeTab==='useract'){
+    // Load last-login-per-user from view (517 rows, under cap)
+    var uaR=await sb.from('v_user_last_login').select('user_id,full_name,email,role,admin_status,registered_at,last_login_at,login_count');
+    var ua=uaR.data||[];
+    var uaChartFilter=window._uaChartFilter||'combined';
+    var nowMs=Date.now();
+    var d7=new Date(nowMs-7*864e5), d30=new Date(nowMs-30*864e5), d90=new Date(nowMs-90*864e5);
+
+    // Segment: drivers only (role='driver') and owners (role='owner' OR 'both')
+    var uaDrv=ua.filter(function(u){return u.role==='driver';});
+    var uaOwn=ua.filter(function(u){return u.role==='owner'||u.role==='both';});
+
+    function uaSeg(arr,label,color,nav){
+      var approved=arr.filter(function(u){return u.admin_status==='approved';});
+      var act7=arr.filter(function(u){return u.last_login_at&&new Date(u.last_login_at)>=d7;});
+      var act30=arr.filter(function(u){return u.last_login_at&&new Date(u.last_login_at)>=d30;});
+      var dormant=arr.filter(function(u){return u.last_login_at&&new Date(u.last_login_at)<d30&&new Date(u.last_login_at)>=d90;});
+      var inactive=arr.filter(function(u){return u.last_login_at&&new Date(u.last_login_at)<d90;});
+      var neverRet=arr.filter(function(u){return !u.last_login_at;});
+      var drillCols=['Name','Email','Role','Status','Registered','Last Login','Logins'];
+      function rows(list){return JSON.stringify(list.map(function(u){return[esc(u.full_name||'—'),esc(u.email||'—'),u.role,u.admin_status,fmtD(u.registered_at),u.last_login_at?fmtD(u.last_login_at):'Never',u.login_count||0];}));}
+      return {label:label,color:color,nav:nav,total:arr.length,approved:approved.length,act7:act7.length,act30:act30.length,dormant:dormant.length,inactive:inactive.length,neverRet:neverRet.length,dormantRows:dormant,inactiveRows:inactive,neverRows:neverRet,allRows:arr,
+        drill:{total:rows(arr),approved:rows(approved),act7:rows(act7),act30:rows(act30),dormant:rows(dormant),inactive:rows(inactive),neverRet:rows(neverRet)}};
+    }
+
+    var segs=[uaSeg(uaDrv,'Driver Activity','#1a5c28',"adNav('drv')"),uaSeg(uaOwn,'Owner Activity','#0369a1',"adNav('own')")];
+    var dc='[\"Name\",\"Email\",\"Role\",\"Status\",\"Registered\",\"Last Login\",\"Logins\"]';
+
+    segs.forEach(function(s){
+      html+='<div class="occ-sh" style="margin-top:20px">&#128100; '+s.label+'</div>';
+      html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px">';
+      var kpis=[
+        {v:s.total,l:'Total Accounts',c:s.color,k:'total'},
+        {v:s.approved,l:'Approved',c:'#15803d',k:'approved'},
+        {v:s.act7,l:'Active (7 days)',c:'#1a5c28',k:'act7'},
+        {v:s.act30,l:'Active (30 days)',c:'#0369a1',k:'act30'},
+        {v:s.dormant,l:'Dormant (30–90d)',c:'#d97706',k:'dormant'},
+        {v:s.inactive,l:'Inactive (90d+)',c:'#dc2626',k:'inactive'},
+        {v:s.neverRet,l:'Never Logged In',c:'#6b7280',k:'neverRet'}
+      ];
+      kpis.forEach(function(k){
+        html+='<div class="d360-card an-kpi" onclick="anDrill(\''+s.label+' — '+k.l+'\','+s.drill[k.k]+','+dc+')" style="cursor:pointer">'
+          +'<div class="d360-card-body" style="text-align:center;padding:14px">'
+          +'<div style="font-size:28px;font-weight:900;color:'+k.c+'">'+k.v+'</div>'
+          +'<div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:4px">'+k.l+'</div>'
+          +'<div style="font-size:9px;color:var(--muted);margin-top:3px">&#128269; Click to view</div>'
+          +'</div></div>';
+      });
+      html+='</div>';
+    });
+
+    // ── Dormant users table ──
+    var uaDormSort=window._uaDormSort||'last_login';
+    html+='<div class="occ-sh" style="margin-top:24px">&#128308; Dormant Users (No login 30–90 days)</div>';
+    html+=anTableControls('ua-dorm-tbl','Dormant_Users');
+    var dormSortBtns=[['last_login','Last Login'],['name','Name'],['role','Role'],['registered','Registered']];
+    html+='<div class="tbb-row" style="margin-bottom:10px">';
+    dormSortBtns.forEach(function(b){html+='<button class="tbb'+(uaDormSort===b[0]?' on':'')+'" onclick="window._uaDormSort=\''+b[0]+'\';adStats()">'+b[1]+'</button>';});
+    html+='</div>';
+    var dormRows=segs[0].dormantRows.concat(segs[1].dormantRows);
+    if(uaDormSort==='name')dormRows.sort(function(a,b){return (a.full_name||'').localeCompare(b.full_name||'');});
+    else if(uaDormSort==='role')dormRows.sort(function(a,b){return (a.role||'').localeCompare(b.role||'');});
+    else if(uaDormSort==='registered')dormRows.sort(function(a,b){return (b.registered_at||'').localeCompare(a.registered_at||'');});
+    else dormRows.sort(function(a,b){return (b.last_login_at||'').localeCompare(a.last_login_at||'');});
+    html+='<div class="adm-tbl-wrap"><table class="adm-tbl" id="ua-dorm-tbl"><thead><tr>'
+      +'<th onclick="anSortTable(\'ua-dorm-tbl\',0)" style="cursor:pointer">Name &#8597;</th>'
+      +'<th onclick="anSortTable(\'ua-dorm-tbl\',1)" style="cursor:pointer">Email &#8597;</th>'
+      +'<th onclick="anSortTable(\'ua-dorm-tbl\',2)" style="cursor:pointer">Role &#8597;</th>'
+      +'<th onclick="anSortTable(\'ua-dorm-tbl\',3)" style="cursor:pointer">Status &#8597;</th>'
+      +'<th onclick="anSortTable(\'ua-dorm-tbl\',4)" style="cursor:pointer">Registered &#8597;</th>'
+      +'<th onclick="anSortTable(\'ua-dorm-tbl\',5)" style="cursor:pointer">Last Login &#8597;</th>'
+      +'<th onclick="anSortTable(\'ua-dorm-tbl\',6)" style="cursor:pointer">Logins &#8597;</th>'
+      +'</tr></thead><tbody>';
+    if(dormRows.length){
+      dormRows.forEach(function(u){
+        var daysSince=u.last_login_at?Math.floor((nowMs-new Date(u.last_login_at).getTime())/864e5):null;
+        var daysLabel=daysSince!==null?daysSince+'d ago':'Never';
+        var daysColor=daysSince>=90?'#dc2626':daysSince>=30?'#d97706':'inherit';
+        html+='<tr>'
+          +'<td style="font-weight:600">'+(u.full_name||'—')+'</td>'
+          +'<td style="font-size:11px;color:var(--muted)">'+(u.email||'—')+'</td>'
+          +'<td><span class="sb '+(u.role==='owner'||u.role==='both'?'sb-b':'sb-g')+'">'+(u.role||'—')+'</span></td>'
+          +'<td>'+adPill(u.admin_status)+'</td>'
+          +'<td style="font-size:11px">'+fmtD(u.registered_at)+'</td>'
+          +'<td style="font-size:11px;font-weight:700;color:'+daysColor+'">'+fmtD(u.last_login_at)+' <span style="color:var(--muted);font-weight:400">('+daysLabel+')</span></td>'
+          +'<td style="font-weight:700">'+(u.login_count||0)+'</td>'
+          +'</tr>';
+      });
+    }else{
+      html+='<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No dormant users in the 30–90 day range.</td></tr>';
+    }
+    html+='</tbody></table></div>';
+
+    // ── Login activity chart ──
+    html+='<div class="occ-sh" style="margin-top:28px">&#128202; Daily Unique Logins — Last 60 Days</div>';
+    html+='<div style="display:flex;gap:8px;margin-bottom:12px">';
+    ['combined','driver','owner'].forEach(function(f){
+      html+='<button class="tbb'+(uaChartFilter===f?' on':'')+'" onclick="window._uaChartFilter=\''+f+'\';adStats()">'+f.charAt(0).toUpperCase()+f.slice(1)+'</button>';
+    });
+    html+='</div>';
+
+    // Build daily buckets from logins (loaded ordered DESC, most recent 1,000 — sufficient for 60-day chart)
+    var chartDays={};
+    var cutoff60=new Date(nowMs-60*864e5);
+    logins.forEach(function(l){
+      if(!l.created_at)return;
+      var dt=new Date(l.created_at);
+      if(dt<cutoff60)return;
+      var filterRole=l.role||'';
+      if(uaChartFilter==='driver'&&filterRole!=='driver')return;
+      if(uaChartFilter==='owner'&&filterRole!=='owner'&&filterRole!=='both')return;
+      var day=l.created_at.slice(0,10);
+      if(!chartDays[day])chartDays[day]={users:new Set()};
+      chartDays[day].users.add(l.user_id);
+    });
+    // Fill all 60 days
+    var chartLabels=[],chartVals=[];
+    for(var ci=59;ci>=0;ci--){
+      var cd=new Date(nowMs-ci*864e5);
+      var cdStr=cd.toISOString().slice(0,10);
+      chartLabels.push(cdStr.slice(5)); // MM-DD
+      chartVals.push(chartDays[cdStr]?chartDays[cdStr].users.size:0);
+    }
+    var maxVal=Math.max.apply(null,chartVals)||1;
+    var barW=Math.max(4,Math.floor(760/60)-1);
+    var chartH=120;
+    html+='<div style="overflow-x:auto"><svg width="'+(barW+1)*60+'" height="'+(chartH+36)+'" style="display:block">';
+    chartVals.forEach(function(v,i){
+      var barH=Math.round((v/maxVal)*chartH);
+      var x=i*(barW+1);
+      var y=chartH-barH;
+      var barColor=uaChartFilter==='driver'?'#1a5c28':uaChartFilter==='owner'?'#0369a1':'#15803d';
+      html+='<rect x="'+x+'" y="'+y+'" width="'+barW+'" height="'+barH+'" fill="'+barColor+'" rx="2" opacity="0.85">'
+        +'<title>'+chartLabels[i]+': '+v+' unique users</title>'
+        +'</rect>';
+      // X-axis labels — every 7 days
+      if(i%7===0){
+        html+='<text x="'+(x+barW/2)+'" y="'+(chartH+14)+'" font-size="9" text-anchor="middle" fill="currentColor" opacity="0.55">'+chartLabels[i]+'</text>';
+      }
+    });
+    // Y-axis max label
+    html+='<text x="2" y="10" font-size="9" fill="currentColor" opacity="0.55">'+maxVal+'</text>';
+    html+='<text x="2" y="'+(chartH+1)+'" font-size="9" fill="currentColor" opacity="0.55">0</text>';
+    html+='</svg></div>';
+    html+='<div style="font-size:11px;color:var(--muted);margin-top:6px">Chart shows unique users per day. Data from login_events (most recent 1,000 records, covering approx. last 30–60 days). Use dormant/inactive KPIs above for complete historical reach.</div>';
+
   }else if(activeTab==='activity'){
     html+='<div class="occ-sh">&#128100; Login History</div>';
     html+=anTableControls('st-log-tbl','Login_History');
