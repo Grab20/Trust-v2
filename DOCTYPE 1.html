@@ -3769,6 +3769,9 @@ async function pOv() {
           +(dOwner.phone?'<div style="font-size:13px;margin-bottom:4px">&#128222; <a href="tel:'+esc(dOwner.phone)+'" style="color:var(--g);font-weight:600">'+esc(dOwner.phone)+'</a></div>':'')
           +(dOwner.whatsapp?'<div style="font-size:13px"><a href="https://wa.me/'+esc((dOwner.whatsapp||'').replace(/[^0-9]/g,''))+'" target="_blank" style="color:#25D366;font-weight:700">&#128241; WhatsApp</a></div>':'')
           +'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:6px">'
+        +'<button class="btn btn-out btn-sm btn-w" data-aid="'+dm.id+'" onclick="driverUnmatch(this.dataset.aid)">Unmatch</button>'
+        +'</div>'
         +'</div>';
     }
     if(DP.status==='pending')html+='<div class="warn-box"><strong>&#9203; Pending Admin Approval</strong><p style="font-size:13px;margin-top:4px">Your profile is under review. You will go live once admin approves. This typically takes 1–2 business days.</p></div>';
