@@ -1466,22 +1466,22 @@ nav div::-webkit-scrollbar{display:none}
   <div class="auth-wrap"><div class="auth-box" style="text-align:center">
     <div style="font-size:40px;margin-bottom:10px">&#128231;</div>
     <h2>Check your email</h2>
-    <p class="sub">We sent a 6-digit verification code to <strong id="verify-email-addr"></strong>.</p>
+    <p class="sub">We sent a confirmation link to <strong id="verify-email-addr"></strong>.</p>
     <div style="background:#f0faf2;border:1px solid var(--gm);border-radius:8px;padding:12px 14px;margin:12px 0;text-align:left;font-size:13px">
       <div style="font-weight:700;margin-bottom:6px">&#9989; What to do next:</div>
       <div style="line-height:1.8;color:#333">
         1. Open your email inbox (check spam/junk too)<br>
-        2. Find the email from TrustMate with your 6-digit code<br>
-        3. Go back to the registration page and enter the code<br>
-        4. Once verified, continue to complete your registration
+        2. Find the email from TrustMate with the subject "Confirm your email"<br>
+        3. Click the <strong>Confirm your email</strong> button or link in that email<br>
+        4. You'll be brought back to TrustMate automatically — then log in
       </div>
     </div>
-    <p style="font-size:12px;color:var(--muted);margin-top:8px">The code expires after 1 hour. If it expired, request a new one below.</p>
-    <p style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px 12px;background:var(--cream);border-radius:8px">&#9432; If you don't see the email, check your spam folder. Wait a minute before requesting a new code.</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px">The link expires after 1 hour. If it expired, request a new one below.</p>
+    <p style="font-size:12px;color:var(--muted);margin-top:8px;padding:8px 12px;background:var(--cream);border-radius:8px">&#9432; If you don't see the email, check your spam folder. Wait a minute before requesting a new link.</p>
     <div class="ferr" id="verify-err"></div>
-    <div id="verify-ok" style="display:none;background:var(--gs);color:var(--gm);padding:9px 12px;border-radius:8px;font-size:13px;margin-bottom:10px;font-weight:600">&#9989; New code sent to <span id="verify-ok-email"></span></div>
+    <div id="verify-ok" style="display:none;background:var(--gs);color:var(--gm);padding:9px 12px;border-radius:8px;font-size:13px;margin-bottom:10px;font-weight:600">&#9989; New confirmation link sent to <span id="verify-ok-email"></span></div>
     <button class="btn btn-g btn-w" onclick="go('register')">Back to Registration</button>
-    <div class="afoot">Didn't get the code? <a onclick="resendVerification()" id="resend-link">Resend code</a></div>
+    <div class="afoot">Didn't get the email? <a onclick="resendVerification()" id="resend-link">Resend confirmation link</a></div>
   </div></div>
 </div>
 
@@ -3507,7 +3507,7 @@ async function doReg() {
       if(!selfieUp.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath).data.publicUrl;
     }
   }
-  var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{emailRedirectTo:null,data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl,email_verified:true}}});
+  var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{emailRedirectTo:window.location.origin+window.location.pathname,data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl,email_verified:true}}});
   if(r.error){
     var msg=r.error.message;
     if(/rate.limit|too.many/i.test(msg))msg='Too many signup attempts for this email. Please wait 1 hour and try again, or use a different email address.';
@@ -3605,19 +3605,23 @@ async function doReg() {
     gtag('event', 'sign_up', { method: rRole === 'driver' ? 'driver_registration' : 'owner_registration' });
   }
   rPhone='';
-  toast('Account created! Awaiting admin approval before going live.');
-  go('login');
+  // Direct to verify page so users confirm email before trying to log in
+  var veAddr=eid('verify-email-addr'); if(veAddr)veAddr.textContent=rEmail;
+  var veErr=eid('verify-err'); if(veErr)veErr.classList.remove('on');
+  var veOk=eid('verify-ok'); if(veOk)veOk.style.display='none';
+  toast('Account created! Please check your email to confirm your address.');
+  go('verify');
 }
 
 async function resendVerification() {
   var link = eid('resend-link');
   link.textContent = 'Sending...';
-  var r = await sb.auth.signInWithOtp({email: rEmail, options: {shouldCreateUser: true}});
-  link.textContent = 'Resend code';
+  var r = await sb.auth.resend({type:'signup', email:rEmail, options:{emailRedirectTo:window.location.origin+window.location.pathname}});
+  link.textContent = 'Resend confirmation link';
   if (r.error) { showErr('verify-err', r.error.message); return; }
   eid('verify-err').classList.remove('on');
   var okEl=eid('verify-ok'); if(okEl){var em=eid('verify-ok-email');if(em)em.textContent=rEmail;okEl.style.display='block';}
-  toast('New code sent to ' + rEmail);
+  toast('New confirmation link sent to ' + rEmail);
 }
 
 // ── TERMS / POPIA ──────────────────────────────────────
@@ -7303,7 +7307,7 @@ async function adOv(){
     sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended,license_expiry_date,pdp_expiry_date,applications_paused,created_at').limit(2000),
     sb.from('cars').select('id,status,admin_status,owner_id,make,model,year,created_at').limit(2000),
     sb.from('reviews').select('id,rating,created_at'),
-    sb.from('trust_actions').select('id,user_id,points,action_type,created_at').order('created_at',{ascending:false}).limit(50),
+    sb.from('trust_actions').select('id,driver_id,owner_id,points,action_type,created_at').order('created_at',{ascending:false}).limit(50),
     sb.from('messages').select('id,application_id,created_at').order('created_at',{ascending:false}).limit(200),
     sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false}).limit(100),
     sb.from('page_views').select('id,page,visitor_id,created_at').order('created_at',{ascending:false}).limit(100),
@@ -9480,7 +9484,7 @@ async function adDriver360(dpId,userId){
     sb.from('driver_profiles').select('*').eq('id',dpId).maybeSingle(),
     sb.from('applications').select('*,cars(make,model,year)').eq('driver_id',userId).order('created_at',{ascending:false}),
     sb.from('reviews').select('*,reviewer:reviewer_id(full_name)').eq('driver_id',dpId).order('created_at',{ascending:false}),
-    sb.from('trust_actions').select('*').eq('user_id',userId).order('created_at',{ascending:false}).limit(30),
+    sb.from('trust_actions').select('*').eq('driver_id',dpId).order('created_at',{ascending:false}).limit(30),
     sb.from('cars').select('id,make,model,year,owner_id').limit(100)
   ]);
 
@@ -9931,7 +9935,7 @@ async function adStats(){
     _sPendingApps=sCntPending.count||0; _sUnmatchedApps=sCntUnmatched.count||0;
   }
   if(activeTab==='trust'){
-    var taR=await sb.from('trust_actions').select('id,user_id,points,action_type,created_at').order('created_at',{ascending:false}).limit(500);
+    var taR=await sb.from('trust_actions').select('id,driver_id,owner_id,points,action_type,created_at').order('created_at',{ascending:false}).limit(500);
     tas=taR.data||[];
   }
   if(activeTab==='activity'){
@@ -10315,15 +10319,17 @@ async function adStats(){
 
     html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px">';
     html+=anKpi(tas.length,'Total Actions','#1a5c28',null);
-    html+=anKpi(posTA,'Positive','#15803d','anDrill("Positive Trust Actions",'+JSON.stringify(tas.filter(function(t){return t.points>0;}).slice(0,200).map(function(t){var u=pm[t.user_id]||{};return [esc(u.full_name||t.user_id.slice(0,8)),t.action_type.replace(/_/g,' '),'+'+t.points,fmtD(t.created_at)];}))+',[\"User\",\"Action\",\"Points\",\"Date\"])');
-    html+=anKpi(negTA,'Negative','#dc2626','anDrill("Negative Trust Actions",'+JSON.stringify(tas.filter(function(t){return t.points<0;}).slice(0,200).map(function(t){var u=pm[t.user_id]||{};return [esc(u.full_name||t.user_id.slice(0,8)),t.action_type.replace(/_/g,' '),''+t.points,fmtD(t.created_at)];}))+',[\"User\",\"Action\",\"Points\",\"Date\"])');
+    // Helper: resolve trust_action actor — driver_id or owner_id
+    function taUser(t){var uid=t.driver_id||t.owner_id||'';return pm[uid]||{_uid:uid};}
+    html+=anKpi(posTA,'Positive','#15803d','anDrill("Positive Trust Actions",'+JSON.stringify(tas.filter(function(t){return t.points>0;}).slice(0,200).map(function(t){var u=taUser(t);return [esc(u.full_name||(u._uid||'').slice(0,8)),t.action_type.replace(/_/g,' '),'+'+t.points,fmtD(t.created_at)];}))+',[\"User\",\"Action\",\"Points\",\"Date\"])');
+    html+=anKpi(negTA,'Negative','#dc2626','anDrill("Negative Trust Actions",'+JSON.stringify(tas.filter(function(t){return t.points<0;}).slice(0,200).map(function(t){var u=taUser(t);return [esc(u.full_name||(u._uid||'').slice(0,8)),t.action_type.replace(/_/g,' '),''+t.points,fmtD(t.created_at)];}))+',[\"User\",\"Action\",\"Points\",\"Date\"])');
     html+=anKpi((totalPts>0?'+':'')+totalPts,'Net Points',totalPts>=0?'#15803d':'#dc2626',null);
     html+='</div>';
 
     html+='<div class="occ-sh">&#128202; Action Type Breakdown</div>'
       +'<div class="adm-tbl-wrap"><table class="adm-tbl"><thead><tr><th>Action Type</th><th onclick="anSortTable(\'st-acttype\',1)" style="cursor:pointer">Count &#8597;</th></tr></thead><tbody id="st-acttype">';
     Object.entries(actionCounts).sort(function(a,b){return b[1]-a[1];}).forEach(function(e){
-      html+='<tr style="cursor:pointer" onclick="anDrill(\'Action: '+e[0].replace(/_/g,' ')+'\','+JSON.stringify(tas.filter(function(t){return t.action_type===e[0];}).slice(0,200).map(function(t){var u=pm[t.user_id]||{};return [esc(u.full_name||'—'),(t.points>0?'+':'')+t.points,fmtD(t.created_at)];}))+',[\'User\',\'Points\',\'Date\'])">'
+      html+='<tr style="cursor:pointer" onclick="anDrill(\'Action: '+e[0].replace(/_/g,' ')+'\','+JSON.stringify(tas.filter(function(t){return t.action_type===e[0];}).slice(0,200).map(function(t){var u=taUser(t);return [esc(u.full_name||'—'),(t.points>0?'+':'')+t.points,fmtD(t.created_at)];}))+',[\'User\',\'Points\',\'Date\'])">'
         +'<td style="font-weight:600;text-transform:capitalize">'+esc(e[0].replace(/_/g,' '))+'</td><td style="font-weight:800;color:var(--gm)">'+e[1]+'</td></tr>';
     });
     html+='</tbody></table></div>';
@@ -10337,10 +10343,11 @@ async function adStats(){
       +'<th onclick="anSortTable(\'st-ta-tbl\',3)" style="cursor:pointer">Points &#8597;</th>'
       +'</tr></thead><tbody>';
     tas.slice(0,100).forEach(function(ta){
-      var u=pm[ta.user_id]||{};
+      var u=taUser(ta);
+      var uid=ta.driver_id||ta.owner_id||'';
       html+='<tr>'
         +'<td style="font-size:11px;white-space:nowrap">'+fmtDT(ta.created_at)+'</td>'
-        +'<td style="font-weight:600">'+(u.full_name||ta.user_id.slice(0,8)+'…')+'</td>'
+        +'<td style="font-weight:600">'+(u.full_name||uid.slice(0,8)+'…')+'</td>'
         +'<td style="font-size:11px;text-transform:capitalize">'+esc(ta.action_type.replace(/_/g,' '))+'</td>'
         +'<td style="font-weight:800;color:'+(ta.points>0?'var(--gm)':'#dc2626')+'">'+(ta.points>0?'+':'')+ta.points+'</td>'
         +'</tr>';
