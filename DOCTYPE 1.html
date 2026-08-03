@@ -2327,6 +2327,7 @@ window.addEventListener('hashchange', function() {
     }, 3000);
   } else {
     if(pg && document.getElementById('page-'+pg)) go(pg, arg||null, true);
+    else go('home', null, true);
   }
 })();
 function trackView(page) {
