@@ -3118,9 +3118,8 @@ async function loadProfPage(dpId) {
     +'<div class="av" style="width:86px;height:86px;font-size:26px;flex-shrink:0">'+av+'</div>'
     +'<div style="flex:1"><h2 style="font-family:\'Playfair Display\',serif;font-size:20px;margin-bottom:4px">'+name+'</h2>'
     +'<p style="font-size:12px;color:var(--muted);margin-bottom:'+(isMatchedWithDriver?'4':'10')+'px">&#128205; '+(p.location||'Not set')+'</p>'
-    +(termsAgreed&&(p.phone||p.whatsapp||p.email)?'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(p.phone?'&#128222; '+p.phone+' ':'')+( p.whatsapp?'&nbsp;&middot; &#128241; '+p.whatsapp+' ':'')+( p.email?'&nbsp;&middot; &#9993; '+p.email:'')+'</p>':''
-    )+(U&&isMatchedWithDriver&&!termsAgreed?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after both parties agree on rental terms in chat</p>':''
-    )+(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after both parties agree on rental terms</p>':'')
+    +(isMatchedWithDriver&&(p.phone||p.whatsapp||p.email)?'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(p.phone?'&#128222; '+p.phone+' ':'')+( p.whatsapp?'&nbsp;&middot; &#128241; '+p.whatsapp+' ':'')+( p.email?'&nbsp;&middot; &#9993; '+p.email:'')+'</p>':''
+    )+(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after matching</p>':'')
     +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+btns+'</div></div></div>'
     +(isMatchedWithDriver&&(d.doc_id_url||d.doc_license_url||d.photo_headshot_url||d.photo_fullbody_url||d.photo_holding_id_url)
@@ -3639,19 +3638,16 @@ function rebuildDashTabs(isOwner,isDriver,isMatched,unread,pending){
   var bar=eid('dash-tabs-bar'); if(!bar)return;
   var t='<button class="dtab" id="dtab-ov" onclick="dpanel(\'ov\')">&#128202; Overview</button>';
   if(isOwner&&!isDriver){
-    if(isMatched)t+='<button class="dtab" id="dtab-ch" onclick="dpanel(\'ch\')">&#128172; Chat'+_tabBadge(unread,'#dc2626')+'</button>';
-    else t+='<button class="dtab" id="dtab-ap" onclick="dpanel(\'ap\')">&#129309; Requests'+_tabBadge(pending,'#E8A520')+'</button>';
+    if(!isMatched)t+='<button class="dtab" id="dtab-ap" onclick="dpanel(\'ap\')">&#129309; Requests'+_tabBadge(pending,'#E8A520')+'</button>';
     t+='<button class="dtab" id="dtab-rv" onclick="dpanel(\'rv\')">&#11088; Reviews</button>';
     t+='<button class="dtab" id="dtab-lc" onclick="dpanel(\'lc\')">&#128663; My Cars</button>';
     t+='<button class="dtab" id="dtab-pr" onclick="dpanel(\'pr\')">&#128100; Profile</button>';
   } else if(isDriver&&!isOwner){
-    if(isMatched)t+='<button class="dtab" id="dtab-ch" onclick="dpanel(\'ch\')">&#128172; Chat'+_tabBadge(unread,'#dc2626')+'</button>';
     t+='<button class="dtab" id="dtab-ap" onclick="dpanel(\'ap\')">&#128203; My Requests'+_tabBadge(pending,'#E8A520')+'</button>';
     t+='<button class="dtab" id="dtab-rv" onclick="dpanel(\'rv\')">&#11088; Reviews</button>';
     t+='<button class="dtab" id="dtab-dc" onclick="dpanel(\'dc\')">&#128196; Docs</button>';
     t+='<button class="dtab" id="dtab-pr" onclick="dpanel(\'pr\')">&#128100; Profile</button>';
   } else {
-    if(isMatched)t+='<button class="dtab" id="dtab-ch" onclick="dpanel(\'ch\')">&#128172; Chat'+_tabBadge(unread,'#dc2626')+'</button>';
     t+='<button class="dtab" id="dtab-ap" onclick="dpanel(\'ap\')">Applications'+_tabBadge(pending,'#E8A520')+'</button>';
     t+='<button class="dtab" id="dtab-rv" onclick="dpanel(\'rv\')">&#11088; Reviews</button>';
     if(isDriver)t+='<button class="dtab" id="dtab-dc" onclick="dpanel(\'dc\')">&#128196; Docs</button>';
@@ -3768,21 +3764,11 @@ async function pOv() {
           +(dCar.insurance?'<div><span style="color:var(--muted)">Insurance</span><br><strong>'+esc(dCar.insurance)+'</strong></div>':'')
           +(dCar.fuel_policy?'<div><span style="color:var(--muted)">Fuel Policy</span><br><strong>'+esc(dCar.fuel_policy)+'</strong></div>':'')
           +'</div></div></div>':'')
-        +(dm.driver_agreed_terms&&dm.owner_agreed_terms
-          ?'<div style="background:#f0faf2;border:1px solid #a5d6a7;border-radius:8px;padding:10px 12px;margin-bottom:12px">'
-            +'<div style="font-size:11px;font-weight:700;color:var(--gm);margin-bottom:6px">&#10003; CONTACT REVEALED</div>'
-            +(dOwner.phone?'<div style="font-size:13px;margin-bottom:4px">&#128222; <a href="tel:'+esc(dOwner.phone)+'" style="color:var(--g);font-weight:600">'+esc(dOwner.phone)+'</a></div>':'')
-            +(dOwner.whatsapp?'<div style="font-size:13px"><a href="https://wa.me/'+esc((dOwner.whatsapp||'').replace(/[^0-9]/g,''))+'" target="_blank" style="color:#25D366;font-weight:700">&#128241; WhatsApp</a></div>':'')
-            +'</div>'
-          :'<div style="background:#fff8e1;border:1px solid #E8A520;border-radius:8px;padding:10px 12px;margin-bottom:12px">'
-            +'<div style="font-size:11px;font-weight:700;color:#7a5200;margin-bottom:4px">&#128274; Contact Hidden</div>'
-            +'<div style="font-size:12px;color:#7a5200;margin-bottom:8px">Contact details are revealed once both parties agree to rental terms in Chat.</div>'
-            +'<button class="btn btn-gm btn-sm btn-w" onclick="dpanel(\'ch\')">&#128172; Go to Chat &amp; Negotiate Terms</button>'
-            +'</div>')
-        +'<div style="display:flex;gap:8px;margin-top:6px">'
-        +'<button class="btn btn-gm btn-sm" style="flex:1" onclick="dpanel(\'ch\')">&#128172; Open Chat</button>'
-        +'<button class="btn btn-out btn-sm" data-aid="'+dm.id+'" onclick="driverUnmatch(this.dataset.aid)">Unmatch</button>'
-        +'</div>'
+        +'<div style="background:#f0faf2;border:1px solid #a5d6a7;border-radius:8px;padding:10px 12px;margin-bottom:12px">'
+          +'<div style="font-size:11px;font-weight:700;color:var(--gm);margin-bottom:6px">&#10003; CONTACT DETAILS</div>'
+          +(dOwner.phone?'<div style="font-size:13px;margin-bottom:4px">&#128222; <a href="tel:'+esc(dOwner.phone)+'" style="color:var(--g);font-weight:600">'+esc(dOwner.phone)+'</a></div>':'')
+          +(dOwner.whatsapp?'<div style="font-size:13px"><a href="https://wa.me/'+esc((dOwner.whatsapp||'').replace(/[^0-9]/g,''))+'" target="_blank" style="color:#25D366;font-weight:700">&#128241; WhatsApp</a></div>':'')
+          +'</div>'
         +'</div>';
     }
     if(DP.status==='pending')html+='<div class="warn-box"><strong>&#9203; Pending Admin Approval</strong><p style="font-size:13px;margin-top:4px">Your profile is under review. You will go live once admin approves. This typically takes 1–2 business days.</p></div>';
@@ -3942,27 +3928,18 @@ async function pOv() {
           +'<span style="font-family:Playfair Display,serif;font-size:14px;font-weight:800;color:var(--gm)">'+(dp.trust_score||0)+'</span>'
           +'<span style="font-size:10px;color:var(--muted)">TrustScore</span></div>'
           +'</div></div>'
-          // Contact — hidden until terms agreed
-          +(a.driver_agreed_terms&&a.owner_agreed_terms
-            ?'<div style="background:#f0faf2;border:1px solid #a5d6a7;border-radius:8px;padding:10px 12px;margin-bottom:12px">'
-              +'<div style="font-size:11px;font-weight:700;color:var(--gm);margin-bottom:6px">&#10003; CONTACT REVEALED</div>'
-              +(pf.phone?'<div style="font-size:13px;margin-bottom:4px">&#128222; <a href="tel:'+esc(pf.phone)+'" style="color:var(--g);font-weight:600">'+esc(pf.phone)+'</a></div>':'')
-              +(pf.whatsapp?'<div style="font-size:13px"><a href="https://wa.me/'+esc((pf.whatsapp||'').replace(/[^0-9]/g,''))+'" target="_blank" style="color:#25D366;font-weight:700">&#128241; WhatsApp</a></div>':'')
-              +'</div>'
-            :'<div style="background:#fff8e1;border:1px solid #E8A520;border-radius:8px;padding:10px 12px;margin-bottom:12px">'
-              +'<div style="font-size:11px;font-weight:700;color:#7a5200;margin-bottom:4px">&#128274; Contact Hidden</div>'
-              +'<div style="font-size:12px;color:#7a5200;margin-bottom:8px">Contact details revealed once both parties agree to rental terms in Chat.</div>'
-              +'<button class="btn btn-gm btn-sm btn-w" onclick="dpanel(\'ch\')">&#128172; Go to Chat &amp; Negotiate Terms</button>'
-              +'</div>')
+          // Contact — released on match
+          +'<div style="background:#f0faf2;border:1px solid #a5d6a7;border-radius:8px;padding:10px 12px;margin-bottom:12px">'
+            +'<div style="font-size:11px;font-weight:700;color:var(--gm);margin-bottom:6px">&#10003; CONTACT DETAILS</div>'
+            +(pf.phone?'<div style="font-size:13px;margin-bottom:4px">&#128222; <a href="tel:'+esc(pf.phone)+'" style="color:var(--g);font-weight:600">'+esc(pf.phone)+'</a></div>':'')
+            +(pf.whatsapp?'<div style="font-size:13px"><a href="https://wa.me/'+esc((pf.whatsapp||'').replace(/[^0-9]/g,''))+'" target="_blank" style="color:#25D366;font-weight:700">&#128241; WhatsApp</a></div>':'')
+            +'</div>'
           // Rate button
           +(alreadyRated
             ?'<div style="padding:10px 14px;background:var(--gs);border-radius:8px;font-size:13px;font-weight:700;color:var(--gm);text-align:center;margin-bottom:8px">&#10003; You have rated this driver</div>'
-            :(a.driver_agreed_terms&&a.owner_agreed_terms
-              ?'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:800;margin-bottom:8px" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openWeeklyUpdate(this.dataset.dpid,this.dataset.aid,this.dataset.dn)">&#128197; Weekly TrustScore Update</button>'
-              :'<div style="font-size:11px;color:var(--muted);margin-bottom:8px;padding:8px 10px;background:var(--cream);border-radius:7px">&#11088; Rating available once both parties agree to rental terms in Chat.</div>'))
+            :'<button class="btn btn-gm btn-w" style="padding:13px;font-size:15px;font-weight:800;margin-bottom:8px" data-dpid="'+esc(dp.id||'')+'" data-aid="'+a.id+'" data-dn="'+esc(pf.full_name||'Driver')+'" onclick="openWeeklyUpdate(this.dataset.dpid,this.dataset.aid,this.dataset.dn)">&#128197; Weekly TrustScore Update</button>')
           +'<div style="display:flex;gap:8px;margin-top:6px">'
-          +'<button class="btn btn-gm btn-sm" style="flex:1" onclick="dpanel(\'ch\')">&#128172; Open Chat</button>'
-          +'<button class="btn btn-out btn-sm" data-aid="'+a.id+'" onclick="ownerUnmatch(this.dataset.aid)">Unmatch</button>'
+          +'<button class="btn btn-out btn-sm btn-w" data-aid="'+a.id+'" onclick="ownerUnmatch(this.dataset.aid)">Unmatch</button>'
           +'</div>'
           +'</div>';
       }).join('');
