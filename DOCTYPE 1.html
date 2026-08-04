@@ -7283,10 +7283,10 @@ async function adOv(){
 
   var [usersR,dpsR,carsR,revsR,trustR,msgR,logR,pvR,
        cntTotalR,cntActiveR,cntApprovedR,cntRejectedR,cntTodayAppR,cntTodayMatchR,
-       recentAppsR]=await Promise.all([
+       recentAppsR,cntDrvInitR,cntOwnInitR,activePricedCarsR]=await Promise.all([
     sb.from('profiles').select('id,full_name,email,role,admin_status,created_at,email_confirmed').limit(2000),
     sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended,license_expiry_date,pdp_expiry_date,applications_paused,created_at').limit(2000),
-    sb.from('cars').select('id,status,admin_status,owner_id,make,model,year,created_at').limit(2000),
+    sb.from('cars').select('id,status,admin_status,owner_id,make,model,year,price_per_week,created_at').limit(2000),
     sb.from('reviews').select('id,rating,created_at'),
     sb.from('trust_actions').select('id,driver_id,owner_id,points,action_type,created_at').order('created_at',{ascending:false}).limit(50),
     sb.from('messages').select('id,application_id,created_at').order('created_at',{ascending:false}).limit(200),
@@ -7300,7 +7300,12 @@ async function adOv(){
     sb.from('applications').select('*',{count:'exact',head:true}).gte('created_at',today+'T00:00:00'),
     sb.from('applications').select('*',{count:'exact',head:true}).gte('matched_at',today+'T00:00:00'),
     // Small recent slice for activity feed only
-    sb.from('applications').select('id,driver_id,owner_id,status,created_at,matched_at,unmatched_at').order('created_at',{ascending:false}).limit(50)
+    sb.from('applications').select('id,driver_id,owner_id,status,created_at,matched_at,unmatched_at').order('created_at',{ascending:false}).limit(50),
+    // Analytics: application counts by initiator role
+    sb.from('applications').select('*',{count:'exact',head:true}).eq('initiated_by','driver'),
+    sb.from('applications').select('*',{count:'exact',head:true}).eq('initiated_by','owner'),
+    // Revenue: active matched cars with price
+    sb.from('applications').select('car_id,owner_id').eq('status','approved').is('unmatched_at',null).limit(200)
   ]);
 
   var users=usersR.data||[], dps=dpsR.data||[], cars=carsR.data||[];
@@ -7316,6 +7321,24 @@ async function adOv(){
   var matchRate=totalApps>0?Math.round(totalApproved*100/totalApps):0;
   // Recent rows used only for the activity feed
   var apps=recentAppsR.data||[];
+  var drvInitCount=cntDrvInitR.count||0;
+  var ownInitCount=cntOwnInitR.count||0;
+  // Revenue: sum weekly prices of active matches via cars already fetched
+  var activePricedCars=activePricedCarsR.data||[];
+  var carsById={};
+  // cars fetched without price_per_week, so build a separate map after we fetch with price
+  // We'll compute revenue inline using a quick lookup from cars data (which has no price yet in this query)
+  // Use activePricedCars to look up owner_id -> car price fallback
+  var carsByIdOv={}, carsByOwnerOv={};
+  (carsR.data||[]).forEach(function(c){carsByIdOv[c.id]=c; if(!carsByOwnerOv[c.owner_id]&&c.price_per_week)carsByOwnerOv[c.owner_id]=c;});
+  var weeklyRevenue=0, monthlyRevenue=0, revenueMatchCount=0;
+  activePricedCars.forEach(function(a){
+    var car=carsByIdOv[a.car_id]||carsByOwnerOv[a.owner_id];
+    var pw=car?parseFloat(car.price_per_week)||0:0;
+    if(pw>0){weeklyRevenue+=pw;revenueMatchCount++;}
+  });
+  monthlyRevenue=Math.round(weeklyRevenue*4.33);
+  var avgWeeklyRental=revenueMatchCount>0?Math.round(weeklyRevenue/revenueMatchCount):0;
 
   var confirmedIds=new Set(users.filter(function(u){return u.email_confirmed;}).map(function(u){return u.id;}));
 
@@ -7414,6 +7437,19 @@ async function adOv(){
   html+=occKpi(avgRating>0?avgRating+' ★':'—','Avg Rating','#d97706',"adNav('prvr')",'&#11088;');
   html+=occKpi(totalApps,'Total Applications','#6b7280',"adNav('app')",'&#128203;');
   html+='</div>'; // end kpis
+
+  // ── ANALYTICS: Application Split + Revenue ──
+  html+='<div class="occ-sh">&#128202; Application & Revenue Analytics</div>';
+  html+='<div class="occ-kpis">';
+  html+=occKpi(drvInitCount,'Driver-Sent Apps','#1a5c28',"adNav('app')",'&#128100;');
+  html+=occKpi(ownInitCount,'Owner-Sent Apps','#0369a1',"adNav('app')",'&#127968;');
+  if(weeklyRevenue>0){
+    html+=occKpi('R'+weeklyRevenue.toLocaleString('en-ZA'),'Weekly Rental Pool','#15803d',"adNav('mkt')",'&#128664;');
+    html+=occKpi('R'+monthlyRevenue.toLocaleString('en-ZA'),'Monthly Rental Pool','#7c3aed',"adNav('mkt')",'&#128200;');
+    html+=occKpi('R'+avgWeeklyRental.toLocaleString('en-ZA'),'Avg Weekly Rental','#d97706',"adNav('mkt')",'&#128181;');
+    html+=occKpi(revenueMatchCount,'Priced Matches','#0284c7',"adNav('match')",'&#10003;');
+  }
+  html+='</div>';
 
   // ── 2-COL: QUICK ACTIONS + ACTIVITY FEED ──
   html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">';
@@ -9319,10 +9355,10 @@ async function adMarketplace(){
 
   var [usersR,dpsR,carsR,revsR,
        mCntTotal,mCntActive,mCntApproved,mCntApps30,mCntMatch30,
-       mAppsRecentR]=await Promise.all([
-    sb.from('profiles').select('id,role,admin_status,created_at,email_confirmed').limit(2000),
+       mAppsRecentR,mCntDrvInit,mCntOwnInit,mActiveMatchesR,mRatingsR]=await Promise.all([
+    sb.from('profiles').select('id,full_name,role,admin_status,created_at,email_confirmed').limit(2000),
     sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended,rentals_completed,applications_paused').limit(2000),
-    sb.from('cars').select('id,owner_id,admin_status,status,price_per_week,location').limit(2000),
+    sb.from('cars').select('id,owner_id,admin_status,status,price_per_week,location,make,model,year').limit(2000),
     sb.from('reviews').select('id,rating,created_at').limit(2000),
     // Server-side counts for applications (table exceeds 1,000-row PostgREST cap)
     sb.from('applications').select('*',{count:'exact',head:true}),
@@ -9330,12 +9366,37 @@ async function adMarketplace(){
     sb.from('applications').select('*',{count:'exact',head:true}).eq('status','approved'),
     sb.from('applications').select('*',{count:'exact',head:true}).gte('created_at',new Date(Date.now()-30*864e5).toISOString()),
     sb.from('applications').select('*',{count:'exact',head:true}).gte('matched_at',new Date(Date.now()-30*864e5).toISOString()),
-    sb.from('applications').select('id,driver_id,owner_id,car_id,status,created_at,matched_at,unmatched_at').order('created_at',{ascending:false}).limit(50)
+    sb.from('applications').select('id,driver_id,owner_id,car_id,status,created_at,matched_at,unmatched_at').order('created_at',{ascending:false}).limit(50),
+    // Analytics: application split by initiator role
+    sb.from('applications').select('*',{count:'exact',head:true}).eq('initiated_by','driver'),
+    sb.from('applications').select('*',{count:'exact',head:true}).eq('initiated_by','owner'),
+    // Active matches for revenue
+    sb.from('applications').select('car_id,owner_id,driver_id').eq('status','approved').is('unmatched_at',null).limit(200),
+    // Owner ratings of drivers
+    sb.from('reviews').select('id,rating,created_at,reviewer_id,reviewee_id,comment').order('created_at',{ascending:false}).limit(200)
   ]);
 
   var users=usersR.data||[], dps=dpsR.data||[], cars=carsR.data||[], revs=revsR.data||[];
   var apps=mAppsRecentR.data||[];
   var confirmedIds=new Set(users.filter(function(u){return u.email_confirmed;}).map(function(u){return u.id;}));
+  // Analytics extras
+  var mDrvInit=mCntDrvInit.count||0, mOwnInit=mCntOwnInit.count||0;
+  var mActiveMatches=mActiveMatchesR.data||[];
+  var mRatings=mRatingsR.data||[];
+  var mCarsById={}, mCarsByOwner={};
+  cars.forEach(function(c){mCarsById[c.id]=c; if(!mCarsByOwner[c.owner_id]&&c.price_per_week)mCarsByOwner[c.owner_id]=c;});
+  var mUsersById={};
+  users.forEach(function(u){mUsersById[u.id]=u;});
+  var mWeeklyRevenue=0, mMonthlyRevenue=0, mPricedCount=0;
+  var mMatchRevRows=[];
+  mActiveMatches.forEach(function(a){
+    var car=mCarsById[a.car_id]||mCarsByOwner[a.owner_id];
+    var pw=car?parseFloat(car.price_per_week)||0:0;
+    if(pw>0){mWeeklyRevenue+=pw;mPricedCount++;}
+    mMatchRevRows.push({car:car,pw:pw,owner_id:a.owner_id,driver_id:a.driver_id});
+  });
+  mMonthlyRevenue=Math.round(mWeeklyRevenue*4.33);
+  var mAvgWeekly=mPricedCount>0?Math.round(mWeeklyRevenue/mPricedCount):0;
 
   var approvedDrvs=dps.filter(function(d){return d.status==='approved'&&!d.suspended;}).length;
   var approvedOwns=users.filter(function(u){return(u.role==='owner'||u.role==='both')&&u.admin_status==='approved';}).length;
@@ -9438,6 +9499,79 @@ async function adMarketplace(){
       +'<table class="adm-tbl"><thead><tr><th>Location</th><th>Vehicles</th></tr></thead><tbody>';
     locEntries.forEach(function(e){
       html+='<tr><td style="font-weight:600">'+esc(e[0])+'</td><td><span style="font-weight:800;color:var(--gm)">'+e[1]+'</span></td></tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+
+  // ── ANALYTICS: Application Split by Role ──
+  html+='<div class="occ-sh" style="margin-top:24px">&#128101; Applications by Initiator</div>';
+  html+='<div class="occ-kpis">';
+  [{v:mDrvInit,l:'Driver-Sent',c:'#1a5c28'},{v:mOwnInit,l:'Owner-Sent',c:'#0369a1'},
+   {v:mDrvInit+mOwnInit>0?Math.round(mDrvInit/(mDrvInit+mOwnInit)*100)+'%':'—',l:'Driver Send Rate',c:'#7c3aed'},
+   {v:mDrvInit+mOwnInit>0?Math.round(mOwnInit/(mDrvInit+mOwnInit)*100)+'%':'—',l:'Owner Send Rate',c:'#d97706'}
+  ].forEach(function(k){
+    html+='<div class="occ-kpi" style="padding:14px">'
+      +'<div class="occ-kpi-val" style="color:'+k.c+';font-size:22px">'+k.v+'</div>'
+      +'<div class="occ-kpi-lbl">'+k.l+'</div>'
+      +'<div class="occ-kpi-stripe" style="background:'+k.c+'"></div>'
+      +'</div>';
+  });
+  html+='</div>';
+
+  // ── ANALYTICS: Revenue ──
+  if(mWeeklyRevenue>0){
+    html+='<div class="occ-sh">&#128664; Rental Revenue Pool</div>';
+    html+='<div class="occ-kpis" style="margin-bottom:16px">';
+    [{v:'R'+mWeeklyRevenue.toLocaleString('en-ZA'),l:'Weekly Pool',c:'#15803d'},
+     {v:'R'+mMonthlyRevenue.toLocaleString('en-ZA'),l:'Monthly Pool',c:'#0369a1'},
+     {v:'R'+mAvgWeekly.toLocaleString('en-ZA'),l:'Avg Weekly Rental',c:'#7c3aed'},
+     {v:mPricedCount,l:'Priced Matches',c:'#d97706'}
+    ].forEach(function(k){
+      html+='<div class="occ-kpi" style="padding:14px">'
+        +'<div class="occ-kpi-val" style="color:'+k.c+';font-size:22px">'+k.v+'</div>'
+        +'<div class="occ-kpi-lbl">'+k.l+'</div>'
+        +'<div class="occ-kpi-stripe" style="background:'+k.c+'"></div>'
+        +'</div>';
+    });
+    html+='</div>';
+    // Per-match revenue breakdown table
+    var pricedRows=mMatchRevRows.filter(function(r){return r.pw>0;}).sort(function(a,b){return b.pw-a.pw;});
+    if(pricedRows.length){
+      html+='<div class="adm-tbl-wrap" style="margin-bottom:24px">'
+        +'<table class="adm-tbl"><thead><tr><th>Vehicle</th><th>Year</th><th>Weekly</th><th>Monthly</th></tr></thead><tbody>';
+      pricedRows.forEach(function(r){
+        var make=r.car?(r.car.make||'—'):'—', model=r.car?(r.car.model||''):'', yr=r.car?(r.car.year||''):'';
+        html+='<tr>'
+          +'<td style="font-weight:600">'+esc(make+(model?' '+model:''))+'</td>'
+          +'<td>'+yr+'</td>'
+          +'<td style="font-weight:700;color:#1a5c28">R'+r.pw.toLocaleString('en-ZA')+'</td>'
+          +'<td style="color:var(--muted)">R'+Math.round(r.pw*4.33).toLocaleString('en-ZA')+'</td>'
+          +'</tr>';
+      });
+      html+='<tr style="font-weight:800;border-top:2px solid var(--border)">'
+        +'<td colspan="2">TOTAL</td>'
+        +'<td style="color:#1a5c28">R'+mWeeklyRevenue.toLocaleString('en-ZA')+'</td>'
+        +'<td>R'+mMonthlyRevenue.toLocaleString('en-ZA')+'</td>'
+        +'</tr>';
+      html+='</tbody></table></div>';
+    }
+  }
+
+  // ── ANALYTICS: Owner Ratings of Drivers ──
+  if(mRatings.length){
+    html+='<div class="occ-sh">&#11088; Owner Ratings of Drivers</div>';
+    html+='<div class="adm-tbl-wrap" style="margin-bottom:24px">'
+      +'<table class="adm-tbl"><thead><tr><th>Reviewer (Owner)</th><th>Driver</th><th>Rating</th><th>Date</th></tr></thead><tbody>';
+    mRatings.slice(0,30).forEach(function(r){
+      var reviewer=mUsersById[r.reviewer_id], reviewee=mUsersById[r.reviewee_id];
+      var stars='';
+      for(var si=1;si<=5;si++)stars+='<span style="color:'+(si<=r.rating?'#f59e0b':'#d1d5db')+'">&#9733;</span>';
+      html+='<tr>'
+        +'<td style="font-weight:600">'+esc(reviewer?reviewer.full_name||reviewer.email||r.reviewer_id:'Unknown')+'</td>'
+        +'<td>'+esc(reviewee?reviewee.full_name||reviewee.email||r.reviewee_id:'Unknown')+'</td>'
+        +'<td>'+stars+' <span style="font-weight:700">'+r.rating+'</span></td>'
+        +'<td style="color:var(--muted)">'+new Date(r.created_at).toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'2-digit'})+'</td>'
+        +'</tr>';
     });
     html+='</tbody></table></div>';
   }
