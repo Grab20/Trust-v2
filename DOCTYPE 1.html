@@ -5807,7 +5807,13 @@ function renderIdpForm(pfx,prefs){
   h+='<div style="'+sh+'">&#128205; Location</div>';
   h+='<div style="'+gr+'">';
   h+='<div style="'+fl+'"><label style="'+lb+'">Max Distance From Vehicle</label>'+_idpSelHTML(pid('max_distance_km'),distOpts,p.max_distance_km!=null?p.max_distance_km:'')+'</div>';
-  h+='<div style="'+fl+'"><label style="'+lb+'">Preferred Area</label><input id="'+pid('preferred_area')+'" type="text" value="'+(p.preferred_area?p.preferred_area.replace(/"/g,'&quot;'):'')+'" placeholder="e.g. Sandton, Johannesburg" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:#fff;color:var(--g)"></div>';
+  h+='<div style="'+fl+'"><label style="'+lb+'">Preferred Areas <span style="font-weight:400;text-transform:none;font-size:10px">(add up to 5, press Enter or comma)</span></label>'
+    +'<div id="'+pid('preferred_area_wrap')+'" onclick="document.getElementById(\''+pid('preferred_area_inp')+'\').focus()" style="min-height:40px;padding:4px 8px;border:1.5px solid var(--border);border-radius:7px;background:#fff;cursor:text;display:flex;flex-wrap:wrap;gap:4px;align-items:center">'
+    +(p.preferred_area?p.preferred_area.split(',').map(function(a){a=a.trim();return a?'<span class="area-chip" style="background:var(--gs);border:1px solid var(--gm);color:var(--gm);font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap">'+a+'<button type="button" onclick="idpRemoveArea(this,\''+pid('preferred_area')+'\')" style="background:none;border:none;cursor:pointer;color:var(--gm);font-size:14px;line-height:1;padding:0">×</button></span>':'';}).join(''):'')
+    +'<input id="'+pid('preferred_area_inp')+'" type="text" placeholder="Type area + Enter" style="border:none;outline:none;font-size:12px;font-family:inherit;min-width:120px;flex:1;padding:4px 2px;background:transparent;color:var(--g)" onkeydown="idpAreaKey(event,\''+pid('preferred_area')+'\',\''+pid('preferred_area_inp')+'\',\''+pid('preferred_area_wrap')+'\')">'
+    +'</div>'
+    +'<input type="hidden" id="'+pid('preferred_area')+'" value="'+(p.preferred_area||'').replace(/"/g,'&quot;')+'">'
+    +'</div>';
   h+='</div></div>';
   return h;
 }
@@ -5835,6 +5841,38 @@ function readIdpPrefs(pfx){
   };
 }
 
+function idpAreaKey(e,hiddenId,inpId,wrapId){
+  if(e.key==='Enter'||e.key===','){
+    e.preventDefault();
+    var inp=document.getElementById(inpId);
+    var hidden=document.getElementById(hiddenId);
+    var wrap=document.getElementById(wrapId);
+    if(!inp||!hidden||!wrap)return;
+    var val=inp.value.replace(/,/g,'').trim();
+    if(!val)return;
+    var existing=(hidden.value||'').split(',').map(function(a){return a.trim();}).filter(Boolean);
+    if(existing.length>=5){toast('Maximum 5 areas allowed.');return;}
+    if(existing.some(function(a){return a.toLowerCase()===val.toLowerCase();}))return;
+    existing.push(val);
+    hidden.value=existing.join(',');
+    var chip=document.createElement('span');
+    chip.className='area-chip';
+    chip.style.cssText='background:var(--gs);border:1px solid var(--gm);color:var(--gm);font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap';
+    chip.innerHTML=val+'<button type="button" onclick="idpRemoveArea(this,\''+hiddenId+'\')" style="background:none;border:none;cursor:pointer;color:var(--gm);font-size:14px;line-height:1;padding:0">×</button>';
+    wrap.insertBefore(chip,inp);
+    inp.value='';
+  }
+}
+function idpRemoveArea(btn,hiddenId){
+  var chip=btn.parentElement;
+  var label=chip.childNodes[0].nodeValue||chip.textContent.replace('×','').trim();
+  var hidden=document.getElementById(hiddenId);
+  if(hidden){
+    var existing=(hidden.value||'').split(',').map(function(a){return a.trim();}).filter(function(a){return a&&a!==label;});
+    hidden.value=existing.join(',');
+  }
+  chip.remove();
+}
 function idpSummaryHTML(prefs){
   var p=prefs||{};
   var citMap={sa:'SA Citizen',permit:'Work Permit',either:'Either'};
@@ -5848,7 +5886,7 @@ function idpSummaryHTML(prefs){
     ['E-hailing Trips',p.min_trips!=null?p.min_trips.toLocaleString()+'+':'No Preference'],
     ['TrustScore',p.min_trust_score!=null?p.min_trust_score+'+':'No Preference'],
     ['Distance',p.max_distance_km!=null?p.max_distance_km+' km':'Anywhere'],
-    ['Area',p.preferred_area||'Any area']
+    ['Areas',p.preferred_area?p.preferred_area.split(',').map(function(a){return a.trim();}).filter(Boolean).join(' · '):'Any area']
   ];
   var h='<div style="background:var(--gs);border:1.5px solid var(--gm);border-radius:10px;padding:14px 16px">';
   h+='<div style="font-size:11px;font-weight:800;color:var(--gm);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">&#128100; Your Ideal Driver</div>';
@@ -11309,7 +11347,12 @@ function dcpCheck(){
   // Check if key fields are already filled
   var missing=!DP.date_of_birth||!DP.gender||!DP.citizenship||!DP.license_date||!DP.license_expiry_date;
   if(!missing)return;
-  // Don't show more than once per hour (localStorage snooze)
+  // Track login count — show on every login except the very first (give them a moment to orient)
+  var cntKey='tm_dcp_visits_'+U.id;
+  var visits=parseInt(localStorage.getItem(cntKey)||'0')+1;
+  localStorage.setItem(cntKey,String(visits));
+  if(visits===1)return; // Skip first login, show from 2nd login onwards
+  // Respect a per-session snooze (set when they click "Remind me later" this session)
   var snoozeKey='tm_dcp_snooze_'+U.id;
   var snoozed=localStorage.getItem(snoozeKey);
   if(snoozed&&Date.now()<parseInt(snoozed))return;
@@ -11340,8 +11383,8 @@ function dcpCheck(){
   setTimeout(function(){openModal('driver-complete-modal');},600);
 }
 function dcpSkip(){
-  // Snooze for 24 hours
-  if(U)localStorage.setItem('tm_dcp_snooze_'+U.id,String(Date.now()+86400000));
+  // Snooze until end of this browser session only (cleared on next visit count increment)
+  if(U)localStorage.setItem('tm_dcp_snooze_'+U.id,String(Date.now()+3600000));
   closeModal('driver-complete-modal');
 }
 async function dcpSave(){
@@ -11390,8 +11433,8 @@ async function dcpSave(){
   }
   // Update local DP cache
   Object.assign(DP,payload);
-  // Clear snooze since they completed it
-  if(U)localStorage.removeItem('tm_dcp_snooze_'+U.id);
+  // Clear reminder tracking since they completed it
+  if(U){localStorage.removeItem('tm_dcp_snooze_'+U.id);localStorage.removeItem('tm_dcp_visits_'+U.id);}
   closeModal('driver-complete-modal');
   toast('Profile updated! ✓');
 }
