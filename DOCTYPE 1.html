@@ -1944,6 +1944,23 @@ nav div::-webkit-scrollbar{display:none}
   </div>
 </div>
 
+<!-- ── TRUSTSCORE BREAKDOWN MODAL ─────────────────────────────── -->
+<div class="overlay" id="ts-breakdown-modal">
+  <div class="modal" style="max-width:480px;padding:0;border-radius:16px;overflow:hidden;max-height:88vh;display:flex;flex-direction:column">
+    <div style="background:linear-gradient(135deg,#1a2e1a,#1a5c28);padding:20px 24px 16px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:#fff;font-family:'Playfair Display',serif;margin-bottom:4px">&#127775; TrustScore Breakdown</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.7)">How this driver's score is calculated</div>
+      </div>
+      <button onclick="closeModal('ts-breakdown-modal')" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:18px;width:32px;height:32px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">&times;</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:0" id="ts-breakdown-body"></div>
+    <div style="padding:16px 24px;border-top:1px solid var(--border);text-align:center">
+      <button onclick="closeModal('ts-breakdown-modal')" style="background:#1a5c28;color:#fff;border:none;border-radius:8px;padding:10px 28px;font-size:14px;font-weight:700;cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── DRIVER PROFILE COMPLETION POPUP ───────────────────────── -->
 <div class="overlay" id="driver-complete-modal">
   <div class="modal" style="max-width:520px;padding:0;border-radius:16px;overflow:hidden;max-height:92vh;display:flex;flex-direction:column">
@@ -3259,6 +3276,23 @@ async function loadProfPage(dpId) {
   var isOwn=P&&(P.role==='owner'||P.role==='both')&&U&&U.id!==d.user_id;
   var btns=isOwn?'<button class="btn btn-gm btn-sm" data-dpid="'+d.id+'" data-dn="'+name+'" onclick="ownerMatchBtn(this)">Request Match</button> ':'';
   if(!U) btns='<button class="btn btn-g btn-sm" onclick="go(\'login\')">Login to connect</button>';
+
+  // ── computed helpers ──
+  // Years licensed from license_date (dd/mm/yyyy)
+  var yrsLic=null;
+  if(d.license_date){try{var lp=d.license_date.split('/');if(lp.length===3){yrsLic=Math.floor((Date.now()-new Date(lp[2]+'-'+lp[1]+'-'+lp[0]).getTime())/(365.25*864e5));if(yrsLic<0)yrsLic=null;}}catch(e){}}
+  // Platform trip/rating aggregates
+  var platDefs=[{n:'Uber',k:'uber',col:'#1a1a18',bg:'#f5f5f5'},{n:'Bolt',k:'bolt',col:'#1cc64e',bg:'#f0faf2'},{n:'inDrive',k:'indrive',col:'#e05c00',bg:'#fff7f0'}];
+  var totalTrips=0,ratingSum=0,ratingCnt=0;
+  platDefs.forEach(function(pl){
+    var t=parseInt(d[pl.k+'_trips'])||0; totalTrips+=t;
+    var r=parseFloat(d[pl.k+'_rating'])||0; if(r>0){ratingSum+=r;ratingCnt++;}
+  });
+  var avgPlatRating=ratingCnt>0?(ratingSum/ratingCnt).toFixed(2):null;
+
+  // Store driver data globally for TrustScore breakdown modal
+  window._profDp=d;
+
   // Fetch reviewer names for verified match badges on public card
   var revwerIds2=revs.map(function(rv){return rv.reviewer_id;}).filter(Boolean);
   var revwerMap2={};
@@ -3266,19 +3300,90 @@ async function loadProfPage(dpId) {
   // Fetch all approved apps for this driver to know which reviewers are verified matches
   var drvAppMap2={};
   if(revs.length){var dAppR=await sb.from('applications').select('owner_id,matched_at').eq('driver_id',d.user_id).eq('status','approved');(dAppR.data||[]).forEach(function(a){drvAppMap2[a.owner_id]=true;});}
-  var revHTML=revs.length?revs.map(function(rv){
+
+  // ── Reviews HTML (enhanced) ──
+  var tmRevHTML=revs.length?revs.map(function(rv){
     var rname=rv.reviewer_name_override||(revwerMap2[rv.reviewer_id]||'Owner');
     var badge=rv.reviewer_id&&drvAppMap2[rv.reviewer_id]?'<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 7px;margin-left:7px">&#9989; Verified Match</span>':'';
     return '<div class="rev-item"><div class="rev-top"><span class="rev-name">'+rname+'</span>'+badge+starRow(rv.rating/5*100,12)+'</div>'+(rv.comment?'<div class="rev-txt">"'+rv.comment+'"</div>':'')+'<div class="rev-date">'+fmtD(rv.created_at)+'</div></div>';
-  }).join(''):'<p style="font-size:13px;color:var(--muted)">No reviews yet.</p>';
-  elb.innerHTML='<div style="display:flex;gap:18px;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap">'
+  }).join(''):null;
+  var platRatingsHTML=(function(){
+    var cards=platDefs.filter(function(pl){return parseFloat(d[pl.k+'_rating'])>0;}).map(function(pl){
+      var r=parseFloat(d[pl.k+'_rating']);
+      var stars='';for(var si2=1;si2<=5;si2++)stars+='<span style="color:'+(si2<=Math.round(r)?'#f59e0b':'#d1d5db')+'">&#9733;</span>';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-radius:9px;border:1px solid var(--border);background:#fafafa">'
+        +'<span style="font-size:13px;font-weight:700;color:var(--g)">'+pl.n+'</span>'
+        +'<span style="display:flex;align-items:center;gap:6px">'+stars+'<span style="font-size:13px;font-weight:700;color:#1a1a18">'+r.toFixed(2)+'</span></span>'
+        +'</div>';
+    });
+    return cards.length?'<div style="margin-top:14px"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px">&#10003; Verified Platform Ratings</div><div style="display:flex;flex-direction:column;gap:6px">'+cards.join('')+'</div></div>':'';
+  })();
+  var revHTML=(tmRevHTML||'')
+    +(!tmRevHTML?'<p style="font-size:13px;color:var(--muted);margin-bottom:0">This driver has not yet completed a TrustMate rental.</p>':'')
+    +platRatingsHTML;
+
+  // ── Driver Summary Card ──
+  var summaryItems=[];
+  if(yrsLic!==null) summaryItems.push('&#10003; '+yrsLic+' Year'+(yrsLic!==1?'s':'')+' Licensed');
+  if(totalTrips>0) summaryItems.push('&#10003; '+totalTrips.toLocaleString()+' Verified Trips');
+  if(avgPlatRating) summaryItems.push('&#10003; '+avgPlatRating+' Average Platform Rating');
+  if(d.safe_parking) summaryItems.push('&#10003; Safe Parking');
+  if(d.status==='approved') summaryItems.push('&#10003; TrustMate Verified');
+  var summaryHTML=summaryItems.length?'<div style="background:var(--gs);border:1.5px solid var(--gm);border-radius:12px;padding:14px 18px;margin-bottom:18px">'
+    +'<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--gm);margin-bottom:10px">&#9889; Driver Summary</div>'
+    +'<div style="display:flex;flex-direction:column;gap:6px">'
+    +summaryItems.map(function(i){return '<div style="font-size:13px;font-weight:600;color:var(--g)">'+i+'</div>';}).join('')
+    +'</div></div>':'';
+
+  // ── TrustScore breakdown link ──
+  var tsBreakLink='<button onclick="showTsBreakdown()" style="background:none;border:none;cursor:pointer;font-size:11px;font-weight:700;color:var(--gm);text-decoration:underline;padding:0;margin-top:4px;display:block">Why this TrustScore? &#9432;</button>';
+
+  // ── Platform cards (enhanced) ──
+  var platCardsHTML=(function(){
+    var cards=platDefs.filter(function(pl){return d[pl.k+'_trips']||d[pl.k+'_rating'];}).map(function(pl){
+      var trips=d[pl.k+'_trips']?parseInt(d[pl.k+'_trips']):null;
+      var rating=d[pl.k+'_rating']?parseFloat(d[pl.k+'_rating']):null;
+      var sinceYr=null;
+      if(pl.k==='uber'&&d.e_hailing_registration_date){try{sinceYr=new Date(d.e_hailing_registration_date).getFullYear();if(isNaN(sinceYr))sinceYr=null;}catch(e){}}
+      return '<div style="display:flex;align-items:stretch;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'
+        +'<div style="background:'+pl.bg+';padding:12px 16px;min-width:88px;text-align:center;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">'
+        +'<div style="font-size:14px;font-weight:800;color:'+pl.col+'">'+pl.n+'</div>'
+        +'<div style="font-size:9px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 6px">&#10003; Verified</div>'
+        +'</div>'
+        +'<div style="padding:12px 16px;flex:1;display:flex;flex-direction:column;gap:5px;justify-content:center">'
+        +(rating!==null?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">&#11088;</span><span style="font-size:13px;font-weight:700;color:#1a1a18">'+rating.toFixed(2)+'</span><span style="font-size:11px;color:var(--muted)">avg rating</span></div>':'')
+        +(trips!==null?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">&#128663;</span><span style="font-size:13px;font-weight:700;color:#1a1a18">'+trips.toLocaleString()+'</span><span style="font-size:11px;color:var(--muted)">verified trips</span></div>':'')
+        +(sinceYr?'<div style="font-size:11px;color:var(--muted);margin-top:2px">Since '+sinceYr+'</div>':'')
+        +'</div>'
+        +'</div>';
+    });
+    return cards.length?cards.join(''):'<p style="font-size:13px;color:var(--muted)">No verified platform history yet.</p>';
+  })();
+
+  // ── TrustMate History (replaces Track Record) ──
+  var joinedDate=d.created_at?new Date(d.created_at).toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'}):null;
+  var rentals=d.rentals_completed||0;
+  var tmHistHTML='<div style="display:flex;flex-direction:column;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden">'
+    +(joinedDate?profHistRow('&#128197;','Joined TrustMate',joinedDate,'var(--g)'):'')
+    +profHistRow('&#128101;','Rentals Completed',rentals>0?rentals+' rental'+(rentals!==1?'s':''):'No completed TrustMate rentals yet.',rentals>0?'var(--gm)':'var(--muted)')
+    +profHistRow('&#11088;','Owner Reviews',revs.length>0?revs.length+' review'+(revs.length!==1?'s':''):'No owner reviews yet.',revs.length>0?'var(--gm)':'var(--muted)')
+    +profHistRow('&#128181;','Payment Reliability',rentals>0?(d.missed_payments||0)===0&&(d.late_payments||0)===0?'Perfect payment record':((d.late_payments||0)+' late, '+(d.missed_payments||0)+' missed'):'No payment history available.', rentals>0&&(d.missed_payments||0)===0&&(d.late_payments||0)===0?'var(--gm)':'var(--muted)')
+    +profHistRow('&#128663;','Vehicle Damage Reports',(d.damage_incidents||0)>0?d.damage_incidents+' report'+(d.damage_incidents!==1?'s':''):'No damage reports.', (d.damage_incidents||0)>0?'#dc2626':'var(--gm)')
+    +profHistRow('&#9888;&#65039;','Vehicle Incidents',(d.accidents||0)>0||( d.reckless_driving||0)>0?((d.accidents||0)+' accident'+(d.accidents!==1?'s':'')+', '+(d.reckless_driving||0)+' reckless driving'):'No vehicle incidents.', (d.accidents||0)>0||(d.reckless_driving||0)>0?'#dc2626':'var(--gm)')
+    +'</div>';
+
+  elb.innerHTML='<div style="display:flex;gap:18px;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap">'
     +'<div class="av" style="width:86px;height:86px;font-size:26px;flex-shrink:0">'+av+'</div>'
     +'<div style="flex:1"><h2 style="font-family:\'Playfair Display\',serif;font-size:20px;margin-bottom:4px">'+name+'</h2>'
     +'<p style="font-size:12px;color:var(--muted);margin-bottom:'+(isMatchedWithDriver?'4':'10')+'px">&#128205; '+(p.location||'Not set')+'</p>'
-    +(isMatchedWithDriver&&(p.phone||p.whatsapp||p.email)?'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(p.phone?'&#128222; '+p.phone+' ':'')+( p.whatsapp?'&nbsp;&middot; &#128241; '+p.whatsapp+' ':'')+( p.email?'&nbsp;&middot; &#9993; '+p.email:'')+'</p>':''
-    )+(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after matching</p>':'')
-    +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+btns+'</div></div></div>'
+    +(isMatchedWithDriver&&(p.phone||p.whatsapp||p.email)?'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(p.phone?'&#128222; '+p.phone+' ':'')+( p.whatsapp?'&nbsp;&middot; &#128241; '+p.whatsapp+' ':'')+( p.email?'&nbsp;&middot; &#9993; '+p.email:'')+'</p>':'')
+    +(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after matching</p>':'')
+    +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>'
+    +tsBreakLink
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+btns+'</div></div></div>'
+
+    +summaryHTML
+
     +(isMatchedWithDriver&&(d.doc_id_url||d.doc_license_url||d.photo_headshot_url||d.photo_fullbody_url||d.photo_holding_id_url)
       ?'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">&#128274; Verified Documents</h3>'
       +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
@@ -3289,6 +3394,7 @@ async function loadProfPage(dpId) {
       +(d.doc_license_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_license_url)+'\')"><img src="'+imgUrl(d.doc_license_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Licence</div></div>':'')
       +'</div></div>'
       :'')
+
     +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Driver Details</h3>'
     +(function(){
       var yearsOnPlat=d.created_at?Math.floor((Date.now()-new Date(d.created_at).getTime())/(365.25*864e5)):null;
@@ -3306,41 +3412,66 @@ async function loadProfPage(dpId) {
         +'</div>';
     })()+
     '</div>'
-    +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Platform History</h3>'
-    +'<div style="display:flex;flex-direction:column;gap:8px">'
-    +(function(){
-      var rows=[{name:'Uber',key:'uber',col:'#1a1a18',bg:'#f5f5f5'},{name:'Bolt',key:'bolt',col:'#1cc64e',bg:'#f0faf2'},{name:'inDrive',key:'indrive',col:'#e05c00',bg:'#fff7f0'}]
-        .filter(function(plat){return d[plat.key+'_trips']||d[plat.key+'_rating'];})
-        .map(function(plat){
-          var trips=d[plat.key+'_trips']||null;
-          var rating=d[plat.key+'_rating']||null;
-          return '<div style="display:flex;align-items:center;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'
-            +'<div style="background:'+plat.bg+';padding:12px 16px;min-width:80px;text-align:center;border-right:1px solid var(--border)">'
-            +'<div style="font-size:13px;font-weight:800;color:'+plat.col+'">'+plat.name+'</div>'
-            +'<div style="font-size:9px;font-weight:600;color:var(--gm);margin-top:2px">&#10003; Verified</div>'
-            +'</div>'
-            +'<div style="padding:10px 16px;flex:1;display:flex;flex-direction:column;gap:3px">'
-            +(rating?'<div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="font-size:16px">&#11088;</span><span style="font-weight:600;color:#1a1a18">'+rating+' rating</span></div>':'')
-            +(trips?'<div style="display:flex;align-items:center;gap:6px;font-size:13px"><span style="font-size:16px">&#128663;</span><span style="font-weight:600;color:#1a1a18">'+trips+' trips</span></div>':'')
-            +'</div>'
-            +'</div>';
-        });
-      return rows.length?rows.join(''):'<p style="font-size:13px;color:var(--muted)">No verified platform history yet.</p>';
-    })()
-    +'</div></div>'
-    +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">Track Record</h3>'
-    +'<div class="sgrid">'
-    +'<div class="scard"><div class="scard-n" style="color:var(--gm)">'+(d.rentals_completed||0)+'</div><div class="scard-l">Rentals Completed</div></div>'
-    +'<div class="scard"><div class="scard-n" style="color:var(--gm)">'+(d.ontime_payments||0)+'</div><div class="scard-l">On-Time Payments</div></div>'
-    +'<div class="scard"><div class="scard-n" style="color:'+((d.late_payments||0)>0?'#dc2626':'var(--gm)')+'">'+(d.late_payments||0)+'</div><div class="scard-l">Late Payments</div></div>'
-    +'<div class="scard"><div class="scard-n" style="color:'+((d.missed_payments||0)>0?'#dc2626':'var(--gm)')+'">'+(d.missed_payments||0)+'</div><div class="scard-l">Missed Payments</div></div>'
-    +'<div class="scard"><div class="scard-n" style="color:'+((d.accidents||0)>0?'#dc2626':'var(--gm)')+'">'+(d.accidents||0)+'</div><div class="scard-l">Accidents</div></div>'
-    +'<div class="scard"><div class="scard-n" style="color:'+((d.damage_incidents||0)>0?'#dc2626':'var(--gm)')+'">'+(d.damage_incidents||0)+'</div><div class="scard-l">Damage Incidents</div></div>'
-    +'<div class="scard"><div class="scard-n" style="color:'+((d.reckless_driving||0)>0?'#dc2626':'var(--gm)')+'">'+(d.reckless_driving||0)+'</div><div class="scard-l">Reckless Driving</div></div>'
-    +'<div class="scard"><div class="scard-n" style="color:var(--gm)">'+(d.months_with_owner||0)+'</div><div class="scard-l">Months With Owner</div></div>'
-    +'</div></div>'
+
+    +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">&#128203; Verified Driving Experience</h3>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">'+platCardsHTML+'</div></div>'
+
+    +'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:10px">&#128101; TrustMate History</h3>'
+    +tmHistHTML+'</div>'
+
     +(d.bio?'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">About</h3><p style="font-size:13px;color:#555;line-height:1.7">'+d.bio+'</p></div>':'')
+
     +'<div><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:10px">Reviews</h3>'+revHTML+'</div>';
+}
+
+// Helper: single row for TrustMate History section
+function profHistRow(icon,label,val,valColor){
+  return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border);last-child:border-bottom:none">'
+    +'<span style="font-size:16px;flex-shrink:0">'+icon+'</span>'
+    +'<span style="font-size:13px;font-weight:600;color:var(--g);flex:1">'+label+'</span>'
+    +'<span style="font-size:13px;font-weight:700;color:'+valColor+';text-align:right;max-width:55%">'+val+'</span>'
+    +'</div>';
+}
+
+// Show TrustScore breakdown modal using stored driver data
+function showTsBreakdown(){
+  var d=window._profDp;
+  if(!d){return;}
+  var row=function(ok,text,sub){
+    var filled=ok===true,pending=ok===null;
+    var stars=filled?'&#11088;&#11088;&#11088;':pending?'&#10025;&#10025;&#10025;':'&#10025;&#10025;&#10025;';
+    var c=filled?'var(--gm)':pending?'#d97706':'#6b7280';
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:13px;flex-shrink:0;margin-top:2px;letter-spacing:-1px">'+stars+'</span>'
+      +'<div><div style="font-size:13px;font-weight:600;color:'+c+'">'+text+'</div>'+(sub?'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+sub+'</div>':'')+'</div>'
+      +'</div>';
+  };
+  var totalTripsB=0,rSumB=0,rCntB=0;
+  [{k:'uber'},{k:'bolt'},{k:'indrive'}].forEach(function(pl){
+    var t=parseInt(d[pl.k+'_trips'])||0;totalTripsB+=t;
+    var r=parseFloat(d[pl.k+'_rating'])||0;if(r>0){rSumB+=r;rCntB++;}
+  });
+  var avgPlatB=rCntB>0?(rSumB/rCntB).toFixed(2):null;
+  var noPaymentIssues=(d.missed_payments||0)===0&&(d.late_payments||0)===0;
+  var noDamage=(d.damage_incidents||0)===0;
+  var hasRentals=(d.rentals_completed||0)>0;
+  var updatedDate=d.updated_at?new Date(d.updated_at).toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'}):'Today';
+  var html='<div style="padding:0 24px 20px">';
+  html+=row(!!d.id_verified,'Identity Verified',d.id_verified?null:'Pending admin review');
+  html+=row(!!(d.photo_holding_id_url&&d.id_verified),'Selfie matches ID',d.photo_holding_id_url?null:'No selfie+ID photo uploaded');
+  html+=row(!!d.license_verified,'Driver Licence Verified',d.license_verified?null:'Pending admin review');
+  html+=row(!!(d.docs_verified||d.doc_license_url),'Documents Uploaded',d.doc_license_url?null:'No documents on file');
+  html+=row(totalTripsB>0,'Verified E-hailing Trips',totalTripsB>0?totalTripsB.toLocaleString()+' verified trips across platforms':'No trip data yet');
+  html+=row(!!avgPlatB,'Platform Rating',avgPlatB?avgPlatB+' ★ average across platforms':'No platform rating data yet');
+  html+=row(hasRentals?noPaymentIssues:null,'Payment Reliability',hasRentals?(noPaymentIssues?'No missed or late payments':'See payment history below'):'Will be assessed by the owner during the rental.');
+  html+=row(hasRentals?noDamage:null,'Vehicle Damage Reports',hasRentals?(noDamage?'No damage reports':''+d.damage_incidents+' report(s) on record'):'Will be assessed by the owner during the rental.');
+  html+=row(!!d.safe_parking,'Safe Parking Available',d.safe_parking?null:'Driver does not have off-street parking');
+  html+='</div>';
+  html+='<div style="padding:12px 24px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">Last Updated: '+updatedDate+'</div>';
+  var modal=document.getElementById('ts-breakdown-modal');
+  if(!modal)return;
+  document.getElementById('ts-breakdown-body').innerHTML=html;
+  openModal('ts-breakdown-modal');
 }
 
 // ── AUTH ───────────────────────────────────────────────
