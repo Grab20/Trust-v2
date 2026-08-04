@@ -3256,6 +3256,17 @@ function drvsLoadMore(){
 }
 async function loadProfPage(dpId) {
   var elb=eid('prof-wrap'); elb.innerHTML=spin();
+  // Auth gate — guests cannot view full profiles
+  if(!U){
+    elb.innerHTML='<div style="text-align:center;padding:60px 24px">'
+      +'<div style="font-size:48px;margin-bottom:16px">&#128274;</div>'
+      +'<div style="font-size:18px;font-weight:700;margin-bottom:8px">Sign in to view profiles</div>'
+      +'<div style="font-size:14px;color:var(--muted);margin-bottom:24px">You need a TrustMate account to view driver profiles.</div>'
+      +'<button class="btn btn-gm" onclick="go(\'login\')">Sign In</button>'
+      +' <button class="btn btn-g" onclick="go(\'register\')">Create Account</button>'
+      +'</div>';
+    return;
+  }
   var r1=await sb.from('driver_profiles').select('*').eq('id',dpId).maybeSingle();
   if(!r1.data){elb.innerHTML=empty('&#128100;','Driver not found.');return;}
   var d=r1.data;
@@ -3375,7 +3386,7 @@ async function loadProfPage(dpId) {
   elb.innerHTML='<div style="display:flex;gap:18px;align-items:flex-start;margin-bottom:18px;flex-wrap:wrap">'
     +'<div class="av" style="width:86px;height:86px;font-size:26px;flex-shrink:0">'+av+'</div>'
     +'<div style="flex:1"><h2 style="font-family:\'Playfair Display\',serif;font-size:20px;margin-bottom:4px">'+name+'</h2>'
-    +'<p style="font-size:12px;color:var(--muted);margin-bottom:'+(isMatchedWithDriver?'4':'10')+'px">&#128205; '+(p.location||'Not set')+'</p>'
+    +'<p style="font-size:12px;color:var(--muted);margin-bottom:'+(isMatchedWithDriver?'4':'10')+'px">&#128205; '+(function(){var loc=p.location||'';if(!loc)return'Not set';var parts=loc.split(',').map(function(s){return s.trim();}).filter(Boolean);return parts.length>=2?parts[parts.length-2]+', '+parts[parts.length-1]:parts[parts.length-1]||'Not set';})()+'</p>'
     +(isMatchedWithDriver&&(p.phone||p.whatsapp||p.email)?'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(p.phone?'&#128222; '+p.phone+' ':'')+( p.whatsapp?'&nbsp;&middot; &#128241; '+p.whatsapp+' ':'')+( p.email?'&nbsp;&middot; &#9993; '+p.email:'')+'</p>':'')
     +(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after matching</p>':'')
     +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>'
