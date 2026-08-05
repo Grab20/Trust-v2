@@ -1944,6 +1944,32 @@ nav div::-webkit-scrollbar{display:none}
   </div>
 </div>
 
+<!-- ── SHARE MODAL ────────────────────────────────────────────── -->
+<div class="overlay" id="tm-share-modal">
+  <div class="modal" style="max-width:380px;padding:0;border-radius:16px;overflow:hidden">
+    <div style="background:linear-gradient(135deg,#1a2e1a,#1a5c28);padding:18px 20px 16px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:16px;font-weight:800;color:#fff;font-family:'Playfair Display',serif" id="tm-share-title">Share</div>
+      <button onclick="closeModal('tm-share-modal')" style="background:rgba(255,255,255,.15);border:none;color:#fff;font-size:18px;width:30px;height:30px;border-radius:50%;cursor:pointer">&times;</button>
+    </div>
+    <div style="padding:16px 18px 6px;background:var(--cream);border-bottom:1px solid var(--border)" id="tm-share-preview"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 18px">
+      <button onclick="tmShareTo('wa')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:#25D366;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        <span style="font-size:20px">💬</span>WhatsApp
+      </button>
+      <button onclick="tmShareTo('fb')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:#1877f2;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        <span style="font-size:20px">📘</span>Facebook
+      </button>
+      <button onclick="tmShareTo('tt')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:#010101;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        <span style="font-size:20px">🎵</span>TikTok
+      </button>
+      <button onclick="tmShareTo('copy')" style="display:flex;align-items:center;gap:10px;padding:13px 14px;background:var(--gs);color:var(--g);border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">
+        <span style="font-size:20px">🔗</span>Copy Link
+      </button>
+    </div>
+    <div style="padding:0 18px 18px;font-size:11px;color:var(--muted);text-align:center" id="tm-share-note"></div>
+  </div>
+</div>
+
 <!-- ── TRUSTSCORE BREAKDOWN MODAL ─────────────────────────────── -->
 <div class="overlay" id="ts-breakdown-modal">
   <div class="modal" style="max-width:480px;padding:0;border-radius:16px;overflow:hidden;max-height:88vh;display:flex;flex-direction:column">
@@ -3450,7 +3476,7 @@ function showTsBreakdown(){
   if(!d){return;}
   var row=function(ok,text,sub){
     var filled=ok===true,pending=ok===null;
-    var stars=filled?'&#11088;&#11088;&#11088;':pending?'&#10025;&#10025;&#10025;':'&#10025;&#10025;&#10025;';
+    var stars='&#11088;&#11088;&#11088;';
     var c=filled?'var(--gm)':pending?'#d97706':'#6b7280';
     return '<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">'
       +'<span style="font-size:13px;flex-shrink:0;margin-top:2px;letter-spacing:-1px">'+stars+'</span>'
@@ -4030,6 +4056,7 @@ async function pOv() {
       +(s===0?'<p style="font-size:11px;color:var(--muted);background:var(--cream);border-radius:6px;padding:6px 10px;margin-bottom:8px">Your TrustScore starts at 0 and increases as owners rate your reliability, payments and communication.</p>':'')
       +(docValid&&daysLeft<30?'<p style="font-size:12px;color:var(--amber)">&#9888; Docs expire in '+daysLeft+' days.</p>':'')
       +(docValid?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'<p style="font-size:11px;color:#dc2626">&#9888; Documents pending verification</p>')
+      +(DP.status==='approved'?'<button onclick="openTmShare(\'driver\')" style="margin-top:10px;width:100%;padding:9px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#128279; Share My Profile</button>':'')
       +'</div>';
     // ── DRIVER CURRENT MATCH (shown right after Trust Score) ──
     var dMatchR=await sb.from('applications').select('id,owner_id,car_id,created_at,unmatched_at,unmatch_reason,terms_proposed,driver_agreed_terms,owner_agreed_terms').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle();
@@ -4198,7 +4225,10 @@ async function pOv() {
     if(isMatched){
       // ════ MATCHED STATE: Current match first, stats below ════
 
-      html+='<div style="font-family:Playfair Display,serif;font-size:20px;font-weight:800;color:var(--g);margin-bottom:16px">Welcome Back, '+firstName+' &#128075;</div>';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
+        +'<div style="font-family:Playfair Display,serif;font-size:20px;font-weight:800;color:var(--g)">Welcome Back, '+firstName+' &#128075;</div>'
+        +'<button onclick="openTmShare(\'owner\')" style="flex-shrink:0;padding:8px 16px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">&#128279; Share Listing</button>'
+        +'</div>';
 
       // ── ACTIVE MATCH CARD (prominent — FIRST) ──
       var mDriverIds=matchedApps.map(function(a){return a.driver_id;}).filter(Boolean);
@@ -4294,7 +4324,10 @@ async function pOv() {
     } else {
       // ════ UNMATCHED STATE: Recommended first, then Applications ════
 
-      html+='<div style="font-family:Playfair Display,serif;font-size:20px;font-weight:800;color:var(--g);margin-bottom:4px">Welcome Back, '+firstName+' &#128075;</div>';
+      html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;flex-wrap:wrap">'
+        +'<div style="font-family:Playfair Display,serif;font-size:20px;font-weight:800;color:var(--g)">Welcome Back, '+firstName+' &#128075;</div>'
+        +'<button onclick="openTmShare(\'owner\')" style="flex-shrink:0;padding:8px 16px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">&#128279; Share Listing</button>'
+        +'</div>';
       if(!pendingCount){
         html+='<div style="font-size:13px;color:var(--muted);margin-bottom:16px">You are not currently matched. Browse recommended drivers below.</div>';
       }
@@ -11481,6 +11514,67 @@ async function loadPlatExamples(){
 }
 
 // ── DRIVER PROFILE COMPLETION POPUP ──────────────────────────
+// ── SHARE FEATURE ──────────────────────────────────────────────
+var _tmShareType=null;
+function openTmShare(type){
+  _tmShareType=type;
+  var title=eid('tm-share-title');
+  var preview=eid('tm-share-preview');
+  var note=eid('tm-share-note');
+  if(type==='driver'){
+    if(title)title.textContent='Share My Profile';
+    var s=DP?DP.trust_score||0:0;
+    var name=P?P.full_name||'Driver':'Driver';
+    var trips=0;
+    if(DP){['uber','bolt','indrive'].forEach(function(k){trips+=parseInt(DP[k+'_trips'])||0;});}
+    if(preview)preview.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:2px">'+esc(name)+'</div>'
+      +'<div style="font-size:12px;color:var(--muted)">TrustScore '+s+'/100'+(trips>0?' · '+trips.toLocaleString()+' verified trips':'')+'</div>';
+    if(note)note.textContent='Your contact details are never shared.';
+  } else {
+    if(title)title.textContent='Share My Listing';
+    if(preview)preview.innerHTML='<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:2px">&#128663; Vehicle Listing</div>'
+      +'<div style="font-size:12px;color:var(--muted)">Share your listing to attract qualified drivers on TrustMate.</div>';
+    if(note)note.textContent='Your personal contact details are never included.';
+  }
+  openModal('tm-share-modal');
+}
+function _tmShareData(){
+  var base=window.location.origin+window.location.pathname;
+  if(_tmShareType==='driver'){
+    var name=P?P.full_name||'Driver':'Driver';
+    var s=DP?DP.trust_score||0:0;
+    var trips=0;
+    if(DP){['uber','bolt','indrive'].forEach(function(k){trips+=parseInt(DP[k+'_trips'])||0;});}
+    var dpId=DP?DP.id:'';
+    var url=base+(dpId?'#profile/'+dpId:'');
+    var text='Check out my verified driver profile on TrustMate 🚗✅\n'
+      +name+' | TrustScore: '+s+'/100'+(trips>0?' | '+trips.toLocaleString()+' verified trips':'')+'\n'
+      +'Looking for a reliable vehicle to hire? View my full profile 👇\n'+url;
+    return{url:url,text:text};
+  } else {
+    var url=base;
+    var text='🚗 Vehicle available for hire on TrustMate!\nLooking for a verified, reliable driver.\nApply now 👇\n'+url;
+    return{url:url,text:text};
+  }
+}
+function tmShareTo(platform){
+  var d=_tmShareData();
+  closeModal('tm-share-modal');
+  if(platform==='wa'){
+    window.open('https://wa.me/?text='+encodeURIComponent(d.text),'_blank');
+  } else if(platform==='fb'){
+    window.open('https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(d.url)+'&quote='+encodeURIComponent(d.text),'_blank');
+  } else if(platform==='tt'){
+    navigator.clipboard.writeText(d.text).then(function(){
+      toast('Caption & link copied! Paste into your TikTok bio or video caption.');
+    }).catch(function(){toast('Copy your link: '+d.url);});
+  } else if(platform==='copy'){
+    navigator.clipboard.writeText(d.url).then(function(){
+      toast('Link copied to clipboard!');
+    }).catch(function(){toast('Your link: '+d.url);});
+  }
+}
+
 function dcpCheck(){
   // Only show for approved drivers with missing key fields
   if(!U||!P||!DP)return;
