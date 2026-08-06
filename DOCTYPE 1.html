@@ -4222,12 +4222,13 @@ async function pOv() {
 
     html+=idpReminderBannerHTML();
 
+    var _ownerShareCarId=(cars.find(function(c){return c.admin_status==='approved';})||cars[0]||{}).id||'';
     if(isMatched){
       // ════ MATCHED STATE: Current match first, stats below ════
 
       html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;flex-wrap:wrap">'
         +'<div style="font-family:Playfair Display,serif;font-size:20px;font-weight:800;color:var(--g)">Welcome Back, '+firstName+' &#128075;</div>'
-        +'<button onclick="openTmShare(\'owner\')" style="flex-shrink:0;padding:8px 16px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">&#128279; Share Listing</button>'
+        +'<button onclick="openTmShare(\'owner\',\''+_ownerShareCarId+'\')" style="flex-shrink:0;padding:8px 16px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">&#128279; Share Listing</button>'
         +'</div>';
 
       // ── ACTIVE MATCH CARD (prominent — FIRST) ──
@@ -4326,7 +4327,7 @@ async function pOv() {
 
       html+='<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;flex-wrap:wrap">'
         +'<div style="font-family:Playfair Display,serif;font-size:20px;font-weight:800;color:var(--g)">Welcome Back, '+firstName+' &#128075;</div>'
-        +'<button onclick="openTmShare(\'owner\')" style="flex-shrink:0;padding:8px 16px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">&#128279; Share Listing</button>'
+        +'<button onclick="openTmShare(\'owner\',\''+_ownerShareCarId+'\')" style="flex-shrink:0;padding:8px 16px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">&#128279; Share Listing</button>'
         +'</div>';
       if(!pendingCount){
         html+='<div style="font-size:13px;color:var(--muted);margin-bottom:16px">You are not currently matched. Browse recommended drivers below.</div>';
@@ -4343,7 +4344,7 @@ async function pOv() {
         (_pdpR.data||[]).forEach(function(d){_pdpm[d.user_id]=d;});
         (_ppfR.data||[]).forEach(function(p){_ppfm[p.id]=p;});
         html+='<div class="ov-section">';
-        html+='<div class="ov-section-title"><span>&#128276; Drivers Who Applied ('+pendingCount+')</span><a style="font-size:11px;color:var(--gm);font-weight:600;cursor:pointer" onclick="dpanel(\"ap\")">See all &#8250;</a></div>';
+        html+='<div class="ov-section-title"><span>&#128276; Drivers Who Applied ('+pendingCount+')</span><a style="font-size:11px;color:var(--gm);font-weight:600;cursor:pointer" onclick="dpanel(\'ap\')">See all &#8250;</a></div>';
         html+='<div class="hslider">'
           +pendApps.map(function(a){
             var _dp=_pdpm[a.driver_id]||{};
@@ -4376,9 +4377,9 @@ async function pOv() {
               +(_platRows?'<div style="display:flex;gap:4px">'+_platRows+'</div>':'')
               +(a.message?'<div style="font-size:11px;color:#555;padding:6px 8px;background:var(--cream);border-radius:6px;font-style:italic;overflow:hidden;max-height:40px">&ldquo;'+esc(a.message)+'&rdquo;</div>':'')
               +'<div style="display:flex;gap:6px;margin-top:auto">'
-              +'<button class="btn btn-gm btn-sm" style="flex:1;font-weight:700" data-iby="driver" onclick="ownerResp(\"'+a.id+'\",\"approved\",this)">&#10003; Accept</button>'
-              +'<button class="btn btn-red btn-sm" style="flex:1;font-weight:700" data-iby="driver" onclick="ownerResp(\"'+a.id+'\",\"rejected\",this)">&#10005; Decline</button>'
-              +'<button class="btn btn-out btn-sm" data-dpid="'+(_dp.id||'')+'" onclick="go(\"profile\",this.dataset.dpid)">&#128100;</button>'
+              +'<button class="btn btn-gm btn-sm" style="flex:1;font-weight:700" onclick="ownerResp(\''+a.id+'\',\'approved\',this)">&#10003; Accept</button>'
+              +'<button class="btn btn-red btn-sm" style="flex:1;font-weight:700" onclick="ownerResp(\''+a.id+'\',\'rejected\',this)">&#10005; Decline</button>'
+              +'<button class="btn btn-out btn-sm" data-dpid="'+(_dp.id||'')+'" onclick="go(\'profile\',this.dataset.dpid)">&#128100;</button>'
               +'</div>'
               +'</div>';
           }).join('')
@@ -11515,9 +11516,10 @@ async function loadPlatExamples(){
 
 // ── DRIVER PROFILE COMPLETION POPUP ──────────────────────────
 // ── SHARE FEATURE ──────────────────────────────────────────────
-var _tmShareType=null;
-function openTmShare(type){
+var _tmShareType=null,_tmShareCarId=null;
+function openTmShare(type,carId){
   _tmShareType=type;
+  _tmShareCarId=carId||null;
   var title=eid('tm-share-title');
   var preview=eid('tm-share-preview');
   var note=eid('tm-share-note');
@@ -11538,21 +11540,21 @@ function openTmShare(type){
   }
   openModal('tm-share-modal');
 }
+var _SHARE_BASE='https://qyyflivkmnwikagnvstv.supabase.co/functions/v1/share';
 function _tmShareData(){
-  var base=window.location.origin+window.location.pathname;
   if(_tmShareType==='driver'){
     var name=P?P.full_name||'Driver':'Driver';
     var s=DP?DP.trust_score||0:0;
     var trips=0;
     if(DP){['uber','bolt','indrive'].forEach(function(k){trips+=parseInt(DP[k+'_trips'])||0;});}
     var dpId=DP?DP.id:'';
-    var url=base+(dpId?'#profile/'+dpId:'');
+    var url=dpId?(_SHARE_BASE+'/driver/'+dpId):(window.location.origin+window.location.pathname);
     var text='Check out my verified driver profile on TrustMate 🚗✅\n'
       +name+' | TrustScore: '+s+'/100'+(trips>0?' | '+trips.toLocaleString()+' verified trips':'')+'\n'
       +'Looking for a reliable vehicle to hire? View my full profile 👇\n'+url;
     return{url:url,text:text};
   } else {
-    var url=base;
+    var url=_tmShareCarId?(_SHARE_BASE+'/listing/'+_tmShareCarId):(window.location.origin+window.location.pathname);
     var text='🚗 Vehicle available for hire on TrustMate!\nLooking for a verified, reliable driver.\nApply now 👇\n'+url;
     return{url:url,text:text};
   }
