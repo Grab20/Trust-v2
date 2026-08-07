@@ -1201,13 +1201,27 @@ nav div::-webkit-scrollbar{display:none}
         <div style="font-size:16px;font-weight:700;color:var(--g);margin-bottom:6px">Verify your email</div>
         <div style="font-size:13px;color:var(--muted);line-height:1.6">We sent a 6-digit code to<br><strong id="otp-email-display" style="color:var(--g)"></strong></div>
       </div>
-      <div class="fg">
+      <!-- Countdown bar -->
+      <div id="otp-timer-block" style="margin-bottom:14px;text-align:center">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:6px">Code expires in <strong id="otp-countdown-display" style="color:var(--g);font-variant-numeric:tabular-nums">15:00</strong></div>
+        <div style="height:4px;background:var(--border);border-radius:4px;overflow:hidden">
+          <div id="otp-progress-bar" style="height:100%;background:var(--gm);border-radius:4px;width:100%;transition:width 1s linear"></div>
+        </div>
+      </div>
+      <!-- Expired state -->
+      <div id="otp-expired-block" style="display:none;margin-bottom:14px;padding:14px 16px;background:#fff8e1;border:1.5px solid #E8A520;border-radius:10px;text-align:center">
+        <div style="font-size:22px;margin-bottom:6px">&#8987;</div>
+        <div style="font-size:14px;font-weight:700;color:var(--g);margin-bottom:4px">Your code expired</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Tap below to get a new one — it only takes a second.</div>
+        <button class="btn btn-g" style="width:100%;max-width:260px" id="otp-expired-resend-btn" onclick="regResendOtp()">Send a new code</button>
+      </div>
+      <div class="fg" id="otp-input-block">
         <label>Enter your 6-digit code *</label>
         <input id="reg-otp" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="000000" style="font-size:24px;text-align:center;letter-spacing:8px;font-weight:700;padding:12px"/>
       </div>
       <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Check your spam/junk folder if you don&apos;t see it within a minute.</div>
       <button class="btn btn-g btn-w" id="otp-verify-btn" onclick="regVerifyOtp()">Verify &amp; Continue</button>
-      <div class="afoot">Didn&apos;t receive it? <a onclick="regResendOtp()" id="otp-resend-link">Resend code</a> &middot; <a onclick="regBackToS1()">Change email</a></div>
+      <div class="afoot" id="otp-resend-row">Didn&apos;t receive it? <a onclick="regResendOtp()" id="otp-resend-link">Resend code</a> &middot; <a onclick="regBackToS1()">Change email</a></div>
     </div>
 
     <!-- S2 Driver -->
@@ -3856,6 +3870,45 @@ async function reg1() {
   eid('reg-s1-otp').style.display='block';
   clearErr('reg-err');
   var otpInp=eid('reg-otp');if(otpInp){otpInp.value='';setTimeout(function(){otpInp.focus();},100);}
+  startOtpCountdown(15*60);
+}
+var _otpCountdownInterval=null;
+var OTP_WINDOW_SECS=15*60;
+function startOtpCountdown(secs){
+  clearInterval(_otpCountdownInterval);
+  var total=secs;
+  var remaining=secs;
+  var bar=eid('otp-progress-bar');
+  var display=eid('otp-countdown-display');
+  var timerBlock=eid('otp-timer-block');
+  var expiredBlock=eid('otp-expired-block');
+  var inputBlock=eid('otp-input-block');
+  var verifyBtn=eid('otp-verify-btn');
+  var resendRow=eid('otp-resend-row');
+  // Reset to active state
+  if(timerBlock)timerBlock.style.display='block';
+  if(expiredBlock)expiredBlock.style.display='none';
+  if(inputBlock)inputBlock.style.display='block';
+  if(verifyBtn)verifyBtn.style.display='';
+  if(resendRow)resendRow.style.display='';
+  var expBtn=eid('otp-expired-resend-btn');if(expBtn)expBtn.disabled=false;
+  function tick(){
+    remaining--;
+    var m=Math.floor(remaining/60),s=remaining%60;
+    if(display)display.textContent=m+':'+(s<10?'0':'')+s;
+    if(bar)bar.style.width=Math.max(0,Math.round(remaining/total*100))+'%';
+    if(remaining<=30&&bar)bar.style.background='#f59e0b';
+    if(remaining<=0){
+      clearInterval(_otpCountdownInterval);
+      if(timerBlock)timerBlock.style.display='none';
+      if(expiredBlock)expiredBlock.style.display='block';
+      if(inputBlock)inputBlock.style.display='none';
+      if(verifyBtn)verifyBtn.style.display='none';
+      if(resendRow)resendRow.style.display='none';
+    }
+  }
+  tick();
+  _otpCountdownInterval=setInterval(tick,1000);
 }
 async function regVerifyOtp() {
   clearErr('reg-err');
@@ -3865,6 +3918,7 @@ async function regVerifyOtp() {
   var r=await _verifyRegOtp(rEmail,code);
   btn.textContent='Verify & Continue';btn.disabled=false;
   if(r.error){showErr('reg-err',r.error);return;}
+  clearInterval(_otpCountdownInterval);
   clearErr('reg-err');
   eid('reg-s1-otp').style.display='none';
   eid('rs1').className='sbi done'; eid('rs2').className='sbi on';
@@ -3872,15 +3926,20 @@ async function regVerifyOtp() {
   eid('reg-s2-o').style.display=rRole==='owner'?'block':'none';
 }
 async function regResendOtp() {
-  var link=eid('otp-resend-link');link.textContent='Sending…';
+  var link=eid('otp-resend-link');
+  var expBtn=eid('otp-expired-resend-btn');
+  if(link)link.textContent='Sending…';
+  if(expBtn){expBtn.textContent='Sending…';expBtn.disabled=true;}
   var r=await _sendRegOtp(rEmail);
-  link.textContent='Resend code';
-  if(r.error){showErr('reg-err',r.error);return;}
+  if(link)link.textContent='Resend code';
+  if(r.error){if(expBtn){expBtn.textContent='Send a new code';expBtn.disabled=false;}showErr('reg-err',r.error);return;}
   clearErr('reg-err');
   toast('New code sent to '+rEmail);
   var otpInp=eid('reg-otp');if(otpInp){otpInp.value='';otpInp.focus();}
+  startOtpCountdown(OTP_WINDOW_SECS);
 }
 function regBackToS1(){
+  clearInterval(_otpCountdownInterval);
   eid('reg-s1-otp').style.display='none';
   eid('reg-s1').style.display='block';
   clearErr('reg-err');
