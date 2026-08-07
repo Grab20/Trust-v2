@@ -847,9 +847,10 @@ nav div::-webkit-scrollbar{display:none}
           <option value="port elizabeth">&#128205; Gqeberha</option>
         </select>
         <select id="cars-sort" onchange="filterCars()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
-          <option value="newest">&#128176; Newest</option>
+          <option value="match">&#127942; Recommended</option>
           <option value="price_asc">&#128176; Price &#8593;</option>
           <option value="price_desc">&#128176; Price &#8595;</option>
+          <option value="newest">&#128197; Newest</option>
         </select>
         <select id="cars-trans" onchange="filterCars()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
           <option value="">&#9881;&#65039; All</option>
@@ -892,9 +893,10 @@ nav div::-webkit-scrollbar{display:none}
           <option value="port elizabeth">&#128205; Gqeberha</option>
         </select>
         <select id="drvs-sort" onchange="filterDrivers()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
-          <option value="score">&#11088; Score</option>
+          <option value="match">&#127942; Recommended</option>
+          <option value="score">&#11088; TrustScore</option>
           <option value="nearest">&#128205; Nearest</option>
-          <option value="rentals">&#128176; Rentals</option>
+          <option value="rentals">&#128663; Most Trips</option>
           <option value="newest">&#128197; Newest</option>
         </select>
         <select id="drvs-plat" onchange="filterDrivers()" style="flex:0 0 auto;padding:7px 10px;border:1.5px solid var(--border);border-radius:20px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;white-space:nowrap">
@@ -2563,9 +2565,9 @@ var _drvsQuery={q:'',sort:'score',plat:'',status:'',city:''};
 var _drvsOffset=0;
 var _DRVS_PAGE=20;
 var _drvsHasMore=false;
-// "nearest" sort must be done client-side (requires geo coords); cache all
-// available drivers once when user selects that sort option
+// "nearest"/"match" sort must be done client-side; cache all drivers once per load
 var _drvsNearestCache=null;
+var _drvsMatchCache=null;
 
 async function _execDriversQuery(offset){
   var q=_drvsQuery.q, sort=_drvsQuery.sort, plat=_drvsQuery.plat,
@@ -2607,6 +2609,42 @@ async function _execDriversQuery(offset){
     }
     var slice=filtered.slice(offset,offset+_DRVS_PAGE);
     return {data:slice, hasMore:(offset+_DRVS_PAGE)<filtered.length, total:filtered.length};
+  }
+
+  // "match" sort is client-side — scored against owner's ideal_driver_prefs
+  if(sort==='match'){
+    if(!_drvsMatchCache){
+      var srcData=(_drvCache&&_drvCache.length)?_drvCache:null;
+      if(!srcData){
+        var all=await sb.from('v_driver_listing').select('*').order('trust_score',{ascending:false}).limit(2000);
+        if(all.error){console.error('drivers match error',all.error);toast('Could not load drivers: '+all.error.message);return {data:[],hasMore:false,total:0};}
+        if(!all.data) return {data:[],hasMore:false,total:0};
+        var seen=new Set();
+        srcData=all.data.filter(function(d){if(seen.has(d.id))return false;seen.add(d.id);return true;})
+          .map(function(d){d.profile={full_name:d.full_name||'Driver',location:d.location||''};d.isMatched=!!d.is_matched;return d;});
+      }
+      _drvsMatchCache=srcData;
+    }
+    var filtered2=_drvsMatchCache.filter(function(d){
+      var text=((d.full_name||'')+' '+(d.location||'')).toLowerCase();
+      if(q&&text.indexOf(q)<0)return false;
+      if(plat&&(d.platforms||[]).indexOf(plat)<0)return false;
+      if(status==='matched'&&!d.isMatched)return false;
+      if(status==='available'&&d.isMatched)return false;
+      if(city&&text.indexOf(city)<0)return false;
+      return true;
+    });
+    if(_ownerMatchPrefs){
+      filtered2=filtered2.slice().sort(function(a,b){
+        var sa=getMatchScore(a,_ownerMatchPrefs,(_ownerMatchCarId||'?')+':'+(a.user_id||'?')).score;
+        var sb2=getMatchScore(b,_ownerMatchPrefs,(_ownerMatchCarId||'?')+':'+(b.user_id||'?')).score;
+        return sb2-sa;
+      });
+    } else {
+      filtered2=filtered2.slice().sort(function(a,b){return(b.trust_score||0)-(a.trust_score||0);});
+    }
+    var slice2=filtered2.slice(offset,offset+_DRVS_PAGE);
+    return {data:slice2, hasMore:(offset+_DRVS_PAGE)<filtered2.length, total:filtered2.length};
   }
 
   // All other sorts go server-side
@@ -2673,6 +2711,7 @@ var _CARS_PAGE=20;
 var _carsHasMore=false;
 // Matched-car lookup — fetched once, cached for the session
 var _matchCache=null, _matchCacheTs=0;
+var _carsMatchCache=null;
 
 async function _getMatchCache(){
   if(_matchCache&&(Date.now()-_matchCacheTs)<300000)return _matchCache;
@@ -2719,6 +2758,45 @@ async function _execCarsQuery(offset){
     }
   }
 
+  // "match" sort is client-side — scored using driver's profile vs car's ideal_driver_prefs
+  if(sort==='match'){
+    if(!_carsMatchCache){
+      var mc2=await _getMatchCache();
+      var allCarsR=await sb.from('cars')
+        .select('id,owner_id,make,model,year,color,transmission,location,deposit,insurance,platforms,price_per_week,photo_front_url,image_url,weekly_checkin_day,checkin_time,fuel_policy,admin_status,applications_paused,ideal_driver_prefs,profiles(id,full_name,location)')
+        .eq('status','available').eq('admin_status','approved').limit(2000);
+      if(allCarsR.error){console.error('cars match error',allCarsR.error);toast('Search error: '+allCarsR.error.message);return {data:[],hasMore:false,total:0};}
+      var didListM=Object.values(mc2.driverIds).filter(Boolean);
+      var dNameMapM={};
+      if(didListM.length){var dnRM=await sb.from('profiles').select('id,full_name').in('id',didListM);(dnRM.data||[]).forEach(function(p){dNameMapM[p.id]=p.full_name||'Driver';});}
+      _carsMatchCache=(allCarsR.data||[]).map(function(c){
+        c.owner=c.profiles||{};delete c.profiles;
+        c.isMatched=mc2.matchedCarIds.has(c.id)||mc2.matchedOwnerIds.has(c.owner_id);
+        var did=mc2.driverIds[c.id];c.matchedDriver=did?dNameMapM[did]||'Driver':null;
+        return c;
+      });
+    }
+    var filteredM=_carsMatchCache.filter(function(c){
+      if(q&&!(c.make+' '+c.model+' '+(c.location||'')).toLowerCase().includes(q))return false;
+      if(trans&&c.transmission!==trans)return false;
+      if(city&&!(c.location||'').toLowerCase().includes(city))return false;
+      if(status==='matched'&&!c.isMatched)return false;
+      if(status==='available'&&c.isMatched)return false;
+      return true;
+    });
+    if(_driverMatchPrefs){
+      filteredM=filteredM.slice().sort(function(a,b){
+        var sa=calculateMatchScore(_driverMatchPrefs,a.ideal_driver_prefs||{}).score;
+        var sb2=calculateMatchScore(_driverMatchPrefs,b.ideal_driver_prefs||{}).score;
+        return sb2-sa;
+      });
+    } else {
+      filteredM=filteredM.slice().sort(function(a,b){return (b.created_at||'').localeCompare(a.created_at||'');});
+    }
+    var sliceM=filteredM.slice(offset,offset+_CARS_PAGE);
+    return {data:sliceM, hasMore:(offset+_CARS_PAGE)<filteredM.length, total:filteredM.length};
+  }
+
   if(sort==='price_asc') qb=qb.order('price_per_week',{ascending:true});
   else if(sort==='price_desc') qb=qb.order('price_per_week',{ascending:false});
   else qb=qb.order('created_at',{ascending:false});
@@ -2751,12 +2829,18 @@ function carHTML(c) {
   var carMatched=!!c.isMatched;
   var isPaused=!!c.applications_paused;
   var btn=carMatched?'<span style="font-size:11px;color:#0369a1;font-weight:600">Already matched</span>':isPaused?'<span style="font-size:11px;color:#92400e;font-weight:600;background:#fef3c7;padding:3px 8px;border-radius:5px">&#9646;&#9646; Applications paused</span>':drvApproved?'<button class="btn btn-gm btn-sm" data-cid="'+c.id+'" data-oid="'+(c.owner_id||'')+'" data-cn="'+c.make+' '+c.model+'" data-price="'+(c.price_per_week||'')+'" onclick="applyForCar(this)">Apply</button>':isD?'<span style="font-size:11px;color:#dc2626;font-weight:600">Pending approval</span>':(!U?'<button class="btn btn-g btn-sm" onclick="go(\'login\')">Login</button>':'<span style="font-size:11px;color:var(--muted)">Drivers only</span>');
+  var carMatchBadge='';
+  if(_driverMatchPrefs&&isD&&!c.isMatched&&!c.applications_paused&&c.ideal_driver_prefs){
+    var _cms=calculateMatchScore(_driverMatchPrefs,c.ideal_driver_prefs);
+    if(_cms.hasPrefs){carMatchBadge='<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;padding:6px 8px;background:var(--sand);border-radius:7px">'+msScoreBadgeHTML(_cms.score,null,null)+(_cms.reasons.good.length?'<span style="font-size:10px;color:var(--muted)">'+_cms.reasons.good.slice(0,1).map(function(r){return'• '+r;}).join('')+'</span>':'')+'</div>';}
+  }
   return '<div class="card"><div class="card-img">'+img+'<span class="cstat" style="background:'+(c.isMatched?'#bfdbfe':'#d4edd8')+';color:'+(c.isMatched?'#1d4ed8':'#1a5c28')+'">'+(c.isMatched?'Matched':'Available')+'</span></div>'
     +'<div class="card-body"><div class="card-title">'+c.make+' '+c.model+'</div>'
     +'<div class="card-sub">'+c.year+(c.color?' / '+c.color:'')+(c.transmission?' / '+c.transmission:'')+'</div>'
     +'<div class="card-meta">&#128205; '+c.location+'<br>&#128176; Deposit: '+(c.deposit?'R'+c.deposit:'None')+'<br>&#128737; Insurance: '+(c.insurance?'Yes':'No')+'<br>&#128197; '+c.weekly_checkin_day+' @ '+c.checkin_time+'<br>&#9981; Fuel: '+fuel+'</div>'
     +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">'+plats+'</div>'
     +(c.isMatched&&c.matchedDriver?'<div style="font-size:11px;color:#0369a1;padding:5px 0;margin-top:2px">&#128100; Matched with '+c.matchedDriver+'</div>':'')
+    +carMatchBadge
     +'<div class="card-foot"><div class="price">R'+(c.price_per_week||0).toLocaleString()+'<span>/week</span></div>'+btn+'</div>'
     +'</div></div>';
 }
@@ -3157,19 +3241,31 @@ function _drvDist(d,ownerCoords){
   if(!dc)return 999;
   return _haversineG(ownerCoords[0],ownerCoords[1],dc[0],dc[1]);
 }
-function loadCars() {
+async function loadCars() {
   eid('cars-grid').innerHTML=skelCards(4);
-  _carsQuery={q:'',sort:'newest',trans:'',status:'',city:''};
+  var defCarsSort=U&&P&&(P.role==='driver'||P.role==='both')?'match':'newest';
+  _carsQuery={q:'',sort:defCarsSort,trans:'',status:'',city:''};
+  var cSortEl=eid('cars-sort');
+  if(cSortEl)cSortEl.value=defCarsSort;
   _carsOffset=0;
+  _carsMatchCache=null;
+  // Load driver's profile for personalised match scoring
+  _driverMatchPrefs=null;
+  if(U&&P&&(P.role==='driver'||P.role==='both')){
+    var _dpr=await sb.from('driver_profiles').select('*').eq('user_id',U.id).maybeSingle();
+    if(_dpr&&_dpr.data)_driverMatchPrefs=_dpr.data;
+  }
   _runCarsQuery(true);
 }
 function filterCars(){
   var q=(eid('cars-search')?eid('cars-search').value.trim().toLowerCase():'');
   var newStatus=eid('cars-status')?eid('cars-status').value:'';
+  var newSort=eid('cars-sort')?eid('cars-sort').value:'newest';
   if(newStatus!==_carsQuery.status) _matchCache=null; // refresh when status filter changes
+  if(newSort!==_carsQuery.sort&&(newSort==='match'||_carsQuery.sort==='match')) _carsMatchCache=null;
   _carsQuery={
     q:q,
-    sort:eid('cars-sort')?eid('cars-sort').value:'newest',
+    sort:newSort,
     trans:eid('cars-trans')?eid('cars-trans').value:'',
     status:newStatus,
     city:eid('cars-city')?eid('cars-city').value.toLowerCase():''
@@ -3210,12 +3306,13 @@ function carsLoadMore(){
 }
 async function loadDrivers() {
   eid('drvs-grid').innerHTML=skelCards(6);
-  var defSort=U?'nearest':'score';
+  var defSort=U&&P&&(P.role==='owner'||P.role==='both')?'match':(U?'nearest':'score');
   _drvsQuery={q:'',sort:defSort,plat:'',status:'',city:''};
   var sortEl=eid('drvs-sort');
   if(sortEl)sortEl.value=defSort;
   _drvsOffset=0;
   _drvsNearestCache=null;
+  _drvsMatchCache=null;
   var _drvsBanner=eid('drvs-banner');
   if(_drvsBanner)_drvsBanner.innerHTML=idpReminderBannerHTML();
   // Load owner's car prefs for personalized match scoring
@@ -3831,7 +3928,7 @@ async function doReg() {
       if(!selfieUp.error)ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath).data.publicUrl;
     }
   }
-  var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{emailRedirectTo:window.location.origin+window.location.pathname,data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl,email_verified:true}}});
+  var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl,email_verified:true}}});
   if(r.error){
     var msg=r.error.message;
     if(/rate.limit|too.many/i.test(msg))msg='Too many signup attempts for this email. Please wait 1 hour and try again, or use a different email address.';
@@ -3940,12 +4037,10 @@ async function doReg() {
 async function resendVerification() {
   var link = eid('resend-link');
   link.textContent = 'Sending...';
-  var r = await sb.auth.resend({type:'signup', email:rEmail, options:{emailRedirectTo:window.location.origin+window.location.pathname}});
+  var r = await _sendRegOtp(rEmail);
   link.textContent = 'Resend confirmation link';
-  if (r.error) { showErr('verify-err', r.error.message); return; }
-  eid('verify-err').classList.remove('on');
-  var okEl=eid('verify-ok'); if(okEl){var em=eid('verify-ok-email');if(em)em.textContent=rEmail;okEl.style.display='block';}
-  toast('New confirmation link sent to ' + rEmail);
+  if (r.error) { toast(r.error); return; }
+  toast('New code sent to ' + rEmail);
 }
 
 // ── TERMS / POPIA ──────────────────────────────────────
@@ -4468,7 +4563,10 @@ async function pOv() {
   // Load recommended drivers for owner (location + TrustScore based)
   if(P&&(P.role==='owner'||P.role==='both')) loadOwnerRec();
   // Load available cars for approved drivers (must run after el.innerHTML is set)
-  if(eid('drv-car-rec-wrap')) loadDrvCarRec(_drvCarRecLoc);
+  if(eid('drv-car-rec-wrap')){
+    if(DP&&!_driverMatchPrefs)_driverMatchPrefs=DP;
+    loadDrvCarRec(_drvCarRecLoc);
+  }
 }
 
 function loadDrvCarRec(drvLoc){
@@ -4477,7 +4575,7 @@ function loadDrvCarRec(drvLoc){
   (async function(){
     try{
       var [carsR, matchedOwnerR]=await Promise.all([
-        sb.from('cars').select('id,owner_id,make,model,year,color,transmission,price_per_week,deposit,insurance,photo_front_url,location,admin_status,status').eq('admin_status','approved').eq('status','available').limit(2000),
+        sb.from('cars').select('id,owner_id,make,model,year,color,transmission,price_per_week,deposit,insurance,photo_front_url,location,admin_status,status,ideal_driver_prefs').eq('admin_status','approved').eq('status','available').limit(2000),
         sb.from('applications').select('owner_id').eq('status','approved').is('unmatched_at',null)
       ]);
       var allCars=(carsR.data||[]);
@@ -4495,10 +4593,19 @@ function loadDrvCarRec(drvLoc){
         else if(d<=100)c._distLabel='&#128205; Within 100km';
         else c._distLabel=c.location?'&#128205; '+esc(c.location):'';
       });
-      avail.sort(function(a,b){
-        function band(c){if(c._dist<=20)return 0;if(c._dist<=40)return 1;if(c._dist<=70)return 2;if(c._dist<=100)return 3;return 4;}
-        return band(a)-band(b)||(a.price_per_week||0)-(b.price_per_week||0);
-      });
+      if(_driverMatchPrefs){
+        avail.sort(function(a,b){
+          var sa=calculateMatchScore(_driverMatchPrefs,a.ideal_driver_prefs||{}).score;
+          var sb2=calculateMatchScore(_driverMatchPrefs,b.ideal_driver_prefs||{}).score;
+          if(sa!==sb2)return sb2-sa;
+          return(a._dist||999)-(b._dist||999);
+        });
+      } else {
+        avail.sort(function(a,b){
+          function band(c){if(c._dist<=20)return 0;if(c._dist<=40)return 1;if(c._dist<=70)return 2;if(c._dist<=100)return 3;return 4;}
+          return band(a)-band(b)||(a.price_per_week||0)-(b.price_per_week||0);
+        });
+      }
       var rec=avail.slice(0,8);
       var w=eid('drv-car-rec-wrap');if(!w)return;
       if(!rec.length){w.innerHTML='<p style="font-size:13px;color:var(--muted)">No available cars found near you right now.</p>';return;}
@@ -4647,9 +4754,13 @@ function loadOwnerRec(){
 
   var ownerLoc=(P&&P.location||'').trim();
 
-  // Get owner's car locations + owner location for reference
-  sb.from('cars').select('location').eq('owner_id',U.id).then(function(cr){
+  // Get owner's car locations + ideal_driver_prefs for match scoring
+  sb.from('cars').select('location,ideal_driver_prefs').eq('owner_id',U.id).then(function(cr){
     var carLocs=(cr.data||[]).map(function(c){return (c.location||'').trim();}).filter(Boolean);
+    if(!_ownerMatchPrefs){
+      var cwp=(cr.data||[]).find(function(c){return c.ideal_driver_prefs;});
+      if(cwp)_ownerMatchPrefs=cwp.ideal_driver_prefs;
+    }
     // All reference locations: car locations first, then owner location
     var refLocs=carLocs.concat(ownerLoc?[ownerLoc]:[]);
     var refCoords=refLocs.map(resolveCoords).filter(Boolean);
@@ -4684,22 +4795,22 @@ function loadOwnerRec(){
         else d._distLabel=dLoc?'&#128205; '+esc(dLoc):'';
       });
 
-      // Sort: by distance first (20km bands), then TrustScore within same band
-      avail.sort(function(a,b){
-        // Band priority: 0-20, 21-30, 31-40, 41-50, 51-70, 71-100, 100+
-        function band(d){
-          if(d._dist<=20) return 0;
-          if(d._dist<=30) return 1;
-          if(d._dist<=40) return 2;
-          if(d._dist<=50) return 3;
-          if(d._dist<=70) return 4;
-          if(d._dist<=100) return 5;
-          return 6;
-        }
-        var ba=band(a), bb=band(b);
-        if(ba!==bb) return ba-bb;
-        return (b.trust_score||0)-(a.trust_score||0);
-      });
+      // Sort: by match score when owner has prefs, otherwise by distance then TrustScore
+      function _orBand(d){if(d._dist<=20)return 0;if(d._dist<=30)return 1;if(d._dist<=40)return 2;if(d._dist<=50)return 3;if(d._dist<=70)return 4;if(d._dist<=100)return 5;return 6;}
+      if(_ownerMatchPrefs){
+        avail.sort(function(a,b){
+          var sa=calculateMatchScore(a,_ownerMatchPrefs).score;
+          var sb2=calculateMatchScore(b,_ownerMatchPrefs).score;
+          if(sa!==sb2)return sb2-sa;
+          return _orBand(a)-_orBand(b)||(b.trust_score||0)-(a.trust_score||0);
+        });
+      } else {
+        avail.sort(function(a,b){
+          var ba=_orBand(a),bb=_orBand(b);
+          if(ba!==bb)return ba-bb;
+          return(b.trust_score||0)-(a.trust_score||0);
+        });
+      }
 
       // Filter out drivers from far provinces or > 150km away (when location is known)
       var nearby=avail.filter(function(d){
@@ -4742,17 +4853,25 @@ function loadOwnerRec(){
                 +'</div>';
             }).join('');
           // Why recommended
+          var _orms=_ownerMatchPrefs?calculateMatchScore(d,_ownerMatchPrefs):null;
           var reasons=[];
-          if(d._dist<=20) reasons.push('&#128205; Very close');
-          else if(d._dist<=50) reasons.push('&#128205; '+Math.round(d._dist)+'km away');
-          if(!(d.late_payments||0)&&!(d.missed_payments||0)) reasons.push('&#10003; No late payments');
-          if(!(d.accidents||0)&&!(d.damage_incidents||0)) reasons.push('&#10003; No incidents');
-          if((d.rentals_completed||0)>0) reasons.push('&#10003; '+d.rentals_completed+' rentals');
+          if(_orms&&_orms.hasPrefs){
+            if(_orms.reasons.good.length)_orms.reasons.good.slice(0,2).forEach(function(r){reasons.push('&#10003; '+r);});
+            if(d._dist<=20)reasons.push('&#128205; Very close');
+            else if(d._dist<=50)reasons.push('&#128205; '+Math.round(d._dist)+'km away');
+          } else {
+            if(d._dist<=20) reasons.push('&#128205; Very close');
+            else if(d._dist<=50) reasons.push('&#128205; '+Math.round(d._dist)+'km away');
+            if(!(d.late_payments||0)&&!(d.missed_payments||0)) reasons.push('&#10003; No late payments');
+            if(!(d.accidents||0)&&!(d.damage_incidents||0)) reasons.push('&#10003; No incidents');
+            if((d.rentals_completed||0)>0) reasons.push('&#10003; '+d.rentals_completed+' rentals');
+          }
           if(!reasons.length) reasons.push('&#10003; Clean record');
-          var borderColor=i===0?'var(--gm)':d._dist<=30?'#22c55e':'var(--border)';
+          var borderColor=i===0?'var(--gm)':(_orms&&_orms.score>=70)?'#22c55e':d._dist<=30?'#22c55e':'var(--border)';
           return '<div style="min-width:240px;max-width:260px;scroll-snap-align:start;flex-shrink:0;background:#fff;border:1.5px solid '+borderColor+';border-radius:12px;overflow:hidden;cursor:pointer" onclick="go(\'profile\',\''+d.id+'\')">'
             +'<div style="padding:12px">'
             +(i<3?'<div style="font-size:10px;font-weight:700;color:var(--gm);margin-bottom:6px">'+medals[i]+' '+(i===0?'Best Match':i===1?'2nd Match':'3rd Match')+'</div>':'')
+            +(_orms&&_orms.hasPrefs?'<div style="margin-bottom:6px">'+msScoreBadgeHTML(_orms.score,null,null)+'</div>':'')
             +(d._distLabel?'<div style="font-size:10px;font-weight:700;background:var(--gs);color:var(--gm);padding:2px 7px;border-radius:999px;display:inline-block;margin-bottom:8px">'+d._distLabel+'</div>':'')
             +'<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px">'
             +photo
@@ -6105,6 +6224,7 @@ function ncGoStep(n){
 var _MS_W={trust_score:.30,driving_exp:.20,years_licensed:.15,trips:.15,distance:.10,age:.05,gender:.03,citizenship:.02};
 var _msCache={};
 var _ownerMatchPrefs=null,_ownerMatchCarId=null;
+var _driverMatchPrefs=null;
 
 function _msTS(d,p){var req=p.min_trust_score,v=d.trust_score;if(req==null)return{s:1,met:null,val:v};if(v==null)return{s:.4,met:false,val:null};return{s:v>=req?1:Math.max(.1,v/req),met:v>=req,val:v};}
 // _msExp: uses e_hailing_registration_date (calculated) → falls back to years_driving
