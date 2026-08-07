@@ -1213,128 +1213,79 @@ nav div::-webkit-scrollbar{display:none}
     <!-- S2 Driver -->
     <div id="reg-s2-d" style="display:none">
       <input type="hidden" id="d-ph"/>
-      <div class="fg"><label>Date of Birth *</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-          <select id="d-dobdd"><option value="">Day</option></select>
-          <select id="d-dobmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
-          <select id="d-dobyy"><option value="">Year</option></select>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px">Used to verify your age for owner matching</div>
-      </div>
-      <div class="fg"><label>Gender *</label>
-        <select id="d-gender">
-          <option value="">Select gender</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="other">Other / Prefer not to say</option>
-        </select>
-      </div>
-      <div class="fg"><label>Citizenship / Residency Status *</label>
-        <select id="d-citizen">
-          <option value="">Select status</option>
-          <option value="sa">South African Citizen</option>
-          <option value="permit">Valid Work / Asylum Permit</option>
-        </select>
-      </div>
       <input type="hidden" id="d-ag"/>
-      <div class="fg"><label>Full Address *</label>
-        <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;margin-bottom:6px">
-          <input id="d-street-no" type="text" placeholder="No. *" maxlength="10"/>
-          <input id="d-street-name" type="text" placeholder="Street name *"/>
-        </div>
-        <input id="d-suburb" type="text" placeholder="Suburb *" style="margin-bottom:6px"/>
-        <select id="d-province" style="margin-bottom:4px">
-          <option value="">Select Province *</option>
-          <option value="Gauteng">Gauteng</option>
-          <option value="Western Cape">Western Cape</option>
-          <option value="KwaZulu-Natal">KwaZulu-Natal</option>
-          <option value="Eastern Cape">Eastern Cape</option>
-          <option value="Limpopo">Limpopo</option>
-          <option value="Mpumalanga">Mpumalanga</option>
-          <option value="North West">North West</option>
-          <option value="Free State">Free State</option>
-          <option value="Northern Cape">Northern Cape</option>
-        </select>
-        <input id="d-lo" type="hidden"/>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">&#128204; Your full address helps owners find drivers near their vehicle.</div>
-      </div>
-      <div class="fg"><label>WhatsApp *</label><input id="d-wa" type="tel" placeholder="+27..." required/></div>
-      <div class="fg"><label>Preferred contact method</label>
-        <select id="d-pc"><option value="whatsapp">WhatsApp</option><option value="phone">Phone call</option><option value="email">Email</option><option value="any">Any</option></select></div>
       <input type="hidden" id="d-yr"/>
-      <div class="fg"><label>Safe parking?</label>
-        <select id="d-pk"><option value="false">No</option><option value="true">Yes</option></select></div>
-      <div class="fg"><label>Platforms *</label>
-        <div class="checks">
-          <label class="chk"><input type="checkbox" value="Uber" class="dpc" onchange="togglePlatShot('uber',this)"> Uber</label>
-          <label class="chk"><input type="checkbox" value="Bolt" class="dpc" onchange="togglePlatShot('bolt',this)"> Bolt</label>
-          <label class="chk"><input type="checkbox" value="inDrive" class="dpc" onchange="togglePlatShot('indrive',this)"> inDrive</label>
-          <label class="chk"><input type="checkbox" value="None" id="dpc-none" onchange="togglePlatNone(this)"> None (not on any platform)</label>
-        </div></div>
-      <div id="shot-uber" style="display:none" class="fg">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:10px;background:#111;border-radius:8px">
-          <div><label style="font-size:10px;font-weight:700;color:#fff;opacity:.7;display:block;margin-bottom:4px">Total trips on Uber</label><input id="d-uber-trips" type="number" min="0" placeholder="e.g. 1200" oninput="document.getElementById('hint-uber').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
-          <div><label style="font-size:10px;font-weight:700;color:#fff;opacity:.7;display:block;margin-bottom:4px">Your Uber rating</label><input id="d-uber-rating" type="number" step="0.1" min="1" max="5" placeholder="e.g. 4.8" oninput="document.getElementById('hint-uber').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
-        </div>
-        <div id="hint-uber" style="display:none;align-items:flex-start;gap:8px;background:#fef9c3;border:1.5px solid #f59e0b;border-radius:8px;padding:9px 11px;margin-bottom:8px"><span style="font-size:18px;flex-shrink:0">&#128247;</span><div><div style="font-size:12px;font-weight:700;color:#7c5c00">Now upload screenshots to prove these numbers</div><div style="font-size:11px;color:#7c5c00;margin-top:2px">Your screenshots must clearly show your <strong>name, rating and trip count</strong>. See the example image below &darr; for exactly what to submit.</div></div></div>
-        <label>Uber profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
-        <div id="example-uber-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Uber screenshot:</div>
-          <img id="example-uber-img" src="" alt="Example Uber screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
-          <div style="font-size:10px;color:var(--muted);margin-top:4px">Your screenshot must show your name, rating and trip count like this example.</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
-          <div class="dbox" id="dbox-uber-1"><input type="file" accept="image/*" onchange="mPlatShot('uber',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
-          <div class="dbox" id="dbox-uber-2"><input type="file" accept="image/*" onchange="mPlatShot('uber',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
-          <div class="dbox" id="dbox-uber-3"><input type="file" accept="image/*" onchange="mPlatShot('uber',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
-        </div>
-        <div id="plat-count-uber" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
+      <input type="hidden" id="d-lo"/>
+
+      <!-- 1. Personal Details -->
+      <div class="fg"><label>Document Type *</label>
+        <select id="d-idtype" onchange="onIdTypeChange(this.value)" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg)">
+          <option value="said">South African ID</option>
+          <option value="passport">Passport</option>
+        </select>
       </div>
-      <div id="shot-bolt" style="display:none" class="fg">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:10px;background:#1cc64e;border-radius:8px">
-          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Total trips on Bolt</label><input id="d-bolt-trips" type="number" min="0" placeholder="e.g. 850" oninput="document.getElementById('hint-bolt').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
-          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Your Bolt rating</label><input id="d-bolt-rating" type="number" step="0.1" min="1" max="5" placeholder="e.g. 4.9" oninput="document.getElementById('hint-bolt').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
-        </div>
-        <div id="hint-bolt" style="display:none;align-items:flex-start;gap:8px;background:#fef9c3;border:1.5px solid #f59e0b;border-radius:8px;padding:9px 11px;margin-bottom:8px"><span style="font-size:18px;flex-shrink:0">&#128247;</span><div><div style="font-size:12px;font-weight:700;color:#7c5c00">Now upload screenshots to prove these numbers</div><div style="font-size:11px;color:#7c5c00;margin-top:2px">Your screenshots must clearly show your <strong>name, rating and trip count</strong>. See the example image below &darr; for exactly what to submit.</div></div></div>
-        <label>Bolt profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
-        <div style="font-weight:700;color:var(--g);font-size:13px;margin-bottom:10px;padding:11px 13px;background:#f0fdf4;border-radius:8px;border-left:3px solid var(--gm);line-height:1.55">
-          &#128222; <strong>Bolt drivers:</strong> Contact <strong>Bolt Support</strong> and request your <strong>total number of trips completed since you started on Bolt</strong> (e.g. since 2023). Ask them for your all-time trip total and mention it in your profile. <strong>Including your total trip history greatly increases your chances of being matched with a vehicle owner.</strong>
-        </div>
-        <div id="example-bolt-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Bolt screenshot:</div>
-          <img id="example-bolt-img" src="" alt="Example Bolt screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
-          <div style="font-size:10px;color:var(--muted);margin-top:4px">Your screenshot must show your name, rating and trip count like this example.</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
-          <div class="dbox" id="dbox-bolt-1"><input type="file" accept="image/*" onchange="mPlatShot('bolt',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
-          <div class="dbox" id="dbox-bolt-2"><input type="file" accept="image/*" onchange="mPlatShot('bolt',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
-          <div class="dbox" id="dbox-bolt-3"><input type="file" accept="image/*" onchange="mPlatShot('bolt',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
-        </div>
-        <div id="plat-count-bolt" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
+      <div class="fg"><label id="d-id-label">SA ID Number *</label>
+        <input id="d-id" placeholder="13-digit SA ID number" required oninput="onSaidInput(this.value)"/>
+        <div id="d-id-feedback" style="font-size:11px;margin-top:3px"></div>
       </div>
-      <div id="shot-indrive" style="display:none" class="fg">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;padding:10px;background:#ff6600;border-radius:8px">
-          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Total trips on inDrive</label><input id="d-indrive-trips" type="number" min="0" placeholder="e.g. 320" oninput="document.getElementById('hint-indrive').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
-          <div><label style="font-size:10px;font-weight:700;color:#fff;display:block;margin-bottom:4px">Your inDrive rating</label><input id="d-indrive-rating" type="number" step="0.1" min="1" max="5" placeholder="e.g. 4.7" oninput="document.getElementById('hint-indrive').style.display=this.value?'flex':'none'" style="width:100%;padding:7px 9px;border-radius:6px;border:none;font-size:13px;font-family:inherit"/></div>
+      <!-- Auto-filled from SA ID -->
+      <div id="d-dob-row" style="display:none">
+        <div class="fg"><label>Date of Birth</label>
+          <div id="d-dob-display" style="padding:8px 10px;background:var(--bg2,#f5f5f5);border:1.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--muted)">Calculated from ID number</div>
         </div>
-        <div id="hint-indrive" style="display:none;align-items:flex-start;gap:8px;background:#fef9c3;border:1.5px solid #f59e0b;border-radius:8px;padding:9px 11px;margin-bottom:8px"><span style="font-size:18px;flex-shrink:0">&#128247;</span><div><div style="font-size:12px;font-weight:700;color:#7c5c00">Now upload screenshots to prove these numbers</div><div style="font-size:11px;color:#7c5c00;margin-top:2px">Your screenshots must clearly show your <strong>name, rating and trip count</strong>. See the example image below &darr; for exactly what to submit.</div></div></div>
-        <label>inDrive profile screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 required &mdash; shows your rating &amp; trips</span></label>
-        <div id="example-indrive-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example inDrive screenshot:</div>
-          <img id="example-indrive-img" src="" alt="Example inDrive screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
-          <div style="font-size:10px;color:var(--muted);margin-top:4px">Your screenshot must show your name, rating and trip count like this example.</div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
-          <div class="dbox" id="dbox-indrive-1"><input type="file" accept="image/*" onchange="mPlatShot('indrive',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
-          <div class="dbox" id="dbox-indrive-2"><input type="file" accept="image/*" onchange="mPlatShot('indrive',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
-          <div class="dbox" id="dbox-indrive-3"><input type="file" accept="image/*" onchange="mPlatShot('indrive',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
-        </div>
-        <div id="plat-count-indrive" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
       </div>
-      <div class="fg"><label>Document Type *</label><select id="d-idtype" onchange="var t=this.value;eid('d-id').placeholder=t==='passport'?'Passport number':t==='temp'?'Temporary ID number':'SA ID number (13 digits)';" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;background:var(--bg)"><option value="said">SA ID (Green/Smart Card)</option><option value="temp">Temporary ID</option><option value="passport">Passport</option></select></div>
-      <div class="fg"><label>ID / Document Number *</label><input id="d-id" placeholder="SA ID number (13 digits)" required/></div>
-      <div class="fg"><label>Licence Number *</label><input id="d-lic" placeholder="Licence number" required/></div>
-      <div class="fg"><label>Licence Obtained Date *</label>
+      <div id="d-citizen-row" style="display:none">
+        <div class="fg"><label>Citizenship</label>
+          <div style="padding:8px 10px;background:var(--bg2,#f5f5f5);border:1.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--muted)">South African Citizen</div>
+        </div>
+      </div>
+      <!-- Shown for Passport -->
+      <div id="d-dob-manual-row" style="display:none">
+        <div class="fg"><label>Date of Birth *</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+            <select id="d-dobdd"><option value="">Day</option></select>
+            <select id="d-dobmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
+            <select id="d-dobyy"><option value="">Year</option></select>
+          </div>
+        </div>
+        <div class="fg"><label>Citizenship / Residency Status *</label>
+          <select id="d-citizen">
+            <option value="">Select status</option>
+            <option value="sa">South African Citizen</option>
+            <option value="permit">Valid Work / Asylum Permit</option>
+          </select>
+        </div>
+      </div>
+      <input type="hidden" id="d-dobdd-hidden"/>
+      <input type="hidden" id="d-dobmm-hidden"/>
+      <input type="hidden" id="d-dobyy-hidden"/>
+      <input type="hidden" id="d-citizen-hidden"/>
+      <input type="hidden" id="d-gender" value=""/>
+
+      <!-- 2. Address -->
+      <div class="fg"><label>Address *</label>
+        <div style="position:relative">
+          <input id="d-addr-search" type="text" placeholder="Start typing your street address..." autocomplete="off" oninput="onAddrInput(this.value)" style="width:100%;box-sizing:border-box"/>
+          <div id="d-addr-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card,#fff);border:1.5px solid var(--border);border-radius:8px;z-index:200;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.12)"></div>
+        </div>
+        <div id="d-addr-confirm" style="display:none;margin-top:8px;padding:10px 12px;background:#f0fdf4;border:1.5px solid var(--gm);border-radius:8px">
+          <div style="font-size:12px;font-weight:700;color:var(--gm);margin-bottom:4px">&#10003; Address selected</div>
+          <div id="d-addr-text" style="font-size:13px;color:var(--g)"></div>
+          <button type="button" onclick="clearAddr()" style="margin-top:6px;font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;text-decoration:underline">Change address</button>
+        </div>
+        <input id="d-street-no" type="hidden"/>
+        <input id="d-street-name" type="hidden"/>
+        <input id="d-suburb" type="hidden"/>
+        <input id="d-province" type="hidden"/>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px">&#128204; Your address helps owners find drivers near their vehicle.</div>
+      </div>
+
+      <!-- 3. Contact -->
+      <div class="fg"><label>WhatsApp *</label><input id="d-wa" type="tel" placeholder="+27..." required/></div>
+
+      <!-- 4. Driving Credentials -->
+      <div class="fg"><label>Driver Licence Number *</label><input id="d-lic" placeholder="Licence number" required/></div>
+      <div class="fg"><label>Date of First Issue *</label>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
           <select id="d-licdd"><option value="">Day</option></select>
           <select id="d-licmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
@@ -1350,44 +1301,104 @@ nav div::-webkit-scrollbar{display:none}
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:3px">Date your driver's licence expires</div>
       </div>
-      <div class="fg">
-        <label>Do you have a valid PDP (Professional Driving Permit)? *</label>
-        <div style="display:flex;gap:16px;margin-top:6px">
-          <label class="chk"><input type="radio" name="d-pdp" id="d-pdp-yes" value="yes" onchange="togglePdpUpload(this)"> Yes, I have a valid PDP</label>
-          <label class="chk"><input type="radio" name="d-pdp" id="d-pdp-no" value="no" onchange="togglePdpUpload(this)"> No, I don't have a PDP</label>
+      <div class="fg" id="d-pdp-wrap">
+        <label>PDP Expiry Date <span style="font-size:11px;font-weight:400;color:var(--muted)">(leave blank if you don't have a PDP)</span></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+          <select id="d-pdpexpdd"><option value="">Day</option></select>
+          <select id="d-pdpexpmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
+          <select id="d-pdpexpyy"><option value="">Year</option></select>
         </div>
-        <div id="pdp-no-block" style="display:none;margin-top:8px;padding:10px 13px;background:#fff1f2;border:1.5px solid #fecdd3;border-radius:8px;font-size:12px;color:#dc2626;font-weight:600">&#128683; You cannot complete registration without a valid PDP. A Professional Driving Permit is required by law to drive passengers commercially in South Africa.</div>
-        <div id="pdp-upload-block" style="display:none;margin-top:8px">
+        <div id="d-pdp-upload-row" style="display:none;margin-top:8px">
           <div class="dbox" id="dbox-pdp" style="max-width:200px"><input type="file" accept="image/*,.pdf" onchange="mDoc('dbox-pdp','pdp_doc',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">Upload PDP *</div><div style="font-size:9px;color:var(--muted)">Photo or PDF</div></div>
-          <div style="margin-top:10px"><label style="font-size:13px;font-weight:600">PDP Expiry Date *</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:5px">
-              <select id="d-pdpexpdd"><option value="">Day</option></select>
-              <select id="d-pdpexpmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
-              <select id="d-pdpexpyy"><option value="">Year</option></select>
-            </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:3px">Date your PDP expires</div>
-          </div>
         </div>
       </div>
+
+      <!-- 5. Platforms -->
+      <div class="fg"><label>Platforms *</label>
+        <div class="checks">
+          <label class="chk"><input type="checkbox" value="Uber" class="dpc" onchange="togglePlatShot('uber',this)"> Uber</label>
+          <label class="chk"><input type="checkbox" value="Bolt" class="dpc" onchange="togglePlatShot('bolt',this)"> Bolt</label>
+          <label class="chk"><input type="checkbox" value="inDrive" class="dpc" onchange="togglePlatShot('indrive',this)"> inDrive</label>
+        </div>
+      </div>
+      <div id="shot-uber" style="display:none" class="fg">
+        <label>Uber screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 &mdash; must show your name, rating &amp; trips</span></label>
+        <div id="example-uber-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Uber screenshot:</div>
+          <img id="example-uber-img" src="" alt="Example Uber screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="dbox" id="dbox-uber-1"><input type="file" accept="image/*" onchange="mPlatShot('uber',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
+          <div class="dbox" id="dbox-uber-2"><input type="file" accept="image/*" onchange="mPlatShot('uber',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
+          <div class="dbox" id="dbox-uber-3"><input type="file" accept="image/*" onchange="mPlatShot('uber',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
+        </div>
+        <div id="plat-count-uber" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
+      </div>
+      <div id="shot-bolt" style="display:none" class="fg">
+        <label>Bolt screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 &mdash; must show your name, rating &amp; trips</span></label>
+        <div style="font-weight:700;color:var(--g);font-size:13px;margin-bottom:10px;padding:11px 13px;background:#f0fdf4;border-radius:8px;border-left:3px solid var(--gm);line-height:1.55">
+          &#128222; <strong>Bolt drivers:</strong> Contact Bolt Support to request your all-time trip total.
+        </div>
+        <div id="example-bolt-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example Bolt screenshot:</div>
+          <img id="example-bolt-img" src="" alt="Example Bolt screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="dbox" id="dbox-bolt-1"><input type="file" accept="image/*" onchange="mPlatShot('bolt',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
+          <div class="dbox" id="dbox-bolt-2"><input type="file" accept="image/*" onchange="mPlatShot('bolt',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
+          <div class="dbox" id="dbox-bolt-3"><input type="file" accept="image/*" onchange="mPlatShot('bolt',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
+        </div>
+        <div id="plat-count-bolt" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
+      </div>
+      <div id="shot-indrive" style="display:none" class="fg">
+        <label>inDrive screenshots * <span style="font-size:10px;color:var(--muted);font-weight:400;margin-left:4px">Minimum 2 &mdash; must show your name, rating &amp; trips</span></label>
+        <div id="example-indrive-wrap" style="margin-bottom:8px;padding:8px 10px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);display:none">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px">Example inDrive screenshot:</div>
+          <img id="example-indrive-img" src="" alt="Example inDrive screenshot" style="width:100%;max-width:280px;border-radius:6px;display:block">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:4px">
+          <div class="dbox" id="dbox-indrive-1"><input type="file" accept="image/*" onchange="mPlatShot('indrive',0,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 1 *</div></div>
+          <div class="dbox" id="dbox-indrive-2"><input type="file" accept="image/*" onchange="mPlatShot('indrive',1,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 2 *</div></div>
+          <div class="dbox" id="dbox-indrive-3"><input type="file" accept="image/*" onchange="mPlatShot('indrive',2,this)"><div style="font-size:16px">&#128247;</div><div style="font-size:10px;font-weight:600">Screenshot 3</div></div>
+        </div>
+        <div id="plat-count-indrive" style="font-size:11px;color:var(--gm);font-weight:600;margin-top:2px"></div>
+      </div>
+
+      <!-- 6. Verified E-hailing Trips -->
       <div class="fg">
-        <label>Do you have at least 1 year of e-hailing experience? *</label>
-        <div style="display:flex;gap:16px;margin-top:6px">
-          <label class="chk"><input type="radio" name="d-exp" id="d-exp-yes" value="yes"> Yes, 1+ year experience</label>
-          <label class="chk"><input type="radio" name="d-exp" id="d-exp-no" value="no"> No, less than 1 year</label>
-        </div>
-        <div id="exp-no-note" style="display:none;margin-top:8px;padding:10px 13px;background:#fff8e1;border:1.5px solid #E8A520;border-radius:8px;font-size:12px;color:#7a5200;font-weight:600">&#9888; TrustMate SA requires a minimum of 1 year of e-hailing platform experience. You will not be able to proceed without this.</div>
+        <label>Verified E-hailing Trips *</label>
+        <select id="d-trips" onchange="onTripsChange(this.value)">
+          <option value="">Select total trips across all platforms</option>
+          <option value="0">0</option>
+          <option value="50">50+</option>
+          <option value="100">100+</option>
+          <option value="250">250+</option>
+          <option value="500">500+</option>
+          <option value="1000">1,000+</option>
+          <option value="2500">2,500+</option>
+          <option value="5000">5,000+</option>
+          <option value="10000">10,000+</option>
+        </select>
+        <div id="d-trips-block" style="display:none;margin-top:8px;padding:10px 13px;background:#fff8e1;border:1.5px solid #E8A520;border-radius:8px;font-size:12px;color:#7a5200;font-weight:600">TrustMate currently requires drivers to have at least 50 verified e-hailing trips before joining the platform. Once you reach 50 verified trips, you&rsquo;re welcome to register.</div>
       </div>
-      <div class="frow">
-        <div class="fg"><label>Weekly Check-in Amount (R) *</label><input id="d-wci" type="number" placeholder="e.g. 2500"/><div style="font-size:11px;color:var(--muted);margin-top:3px">Amount you will pay the owner per week</div></div>
-        <div class="fg"><label>Security Deposit *</label>
-          <select id="d-dep-type" onchange="eid('d-dep-wrap').style.display=this.value==='amount'?'block':'none'">
-            <option value="none">No deposit</option>
-            <option value="amount">I will pay a deposit</option>
-          </select>
-          <div id="d-dep-wrap" style="display:none;margin-top:6px"><input id="d-dep" type="number" placeholder="Deposit amount (R)"/></div>
-        </div>
+
+      <!-- 7. Safe Parking -->
+      <div class="fg"><label>Safe parking available?</label>
+        <select id="d-pk"><option value="false">No</option><option value="true">Yes</option></select>
       </div>
-      <div class="fg"><label>About yourself</label><textarea id="d-bio" placeholder="Brief intro..."></textarea></div>
+
+      <!-- 8. Deposit -->
+      <div class="fg"><label>Security Deposit *</label>
+        <select id="d-dep-type" onchange="eid('d-dep-wrap').style.display=this.value==='amount'?'block':'none'">
+          <option value="none">No deposit</option>
+          <option value="amount">I will pay a deposit</option>
+        </select>
+        <div id="d-dep-wrap" style="display:none;margin-top:6px"><input id="d-dep" type="number" placeholder="Deposit amount (R)"/></div>
+      </div>
+
+      <!-- 9. About Yourself -->
+      <div class="fg"><label>About yourself</label><textarea id="d-bio" placeholder="Brief intro — experience, why you want to rent, etc."></textarea></div>
+
       <div style="display:flex;gap:8px"><button class="btn btn-out" onclick="backS1()">Back</button><button class="btn btn-g" style="flex:1" onclick="reg2d()">Continue</button></div>
     </div>
 
@@ -2208,19 +2219,116 @@ function togglePlatNone(cb){
     });
   }
 }
-function togglePdpUpload(radio){
-  var isYes=radio.value==='yes';
-  var ub=document.getElementById('pdp-upload-block');
-  var nb=document.getElementById('pdp-no-block');
-  if(ub)ub.style.display=isYes?'block':'none';
-  if(nb)nb.style.display=isYes?'none':'block';
+// ── ID TYPE / SA ID AUTO-FILL ────────────────────────────────
+function onIdTypeChange(type){
+  var isSaid=type==='said';
+  eid('d-id-label').textContent=isSaid?'SA ID Number *':'Passport Number *';
+  eid('d-id').placeholder=isSaid?'13-digit SA ID number':'Passport number';
+  eid('d-id').value='';
+  eid('d-id-feedback').textContent='';
+  eid('d-dob-row').style.display='none';
+  eid('d-citizen-row').style.display='none';
+  eid('d-dob-manual-row').style.display=isSaid?'none':'block';
+  eid('d-citizen-hidden').value=isSaid?'sa':'';
 }
+function onSaidInput(val){
+  var fb=eid('d-id-feedback');
+  if(eid('d-idtype').value!=='said'){fb.textContent='';return;}
+  val=val.replace(/\D/g,'');
+  if(val.length<13){fb.style.color='var(--muted)';fb.textContent=val.length+'/13 digits';eid('d-dob-row').style.display='none';eid('d-citizen-row').style.display='none';return;}
+  if(val.length>13){fb.style.color='#dc2626';fb.textContent='SA ID must be exactly 13 digits.';return;}
+  // Luhn check
+  var sum=0;
+  for(var i=0;i<13;i++){var d=parseInt(val[i]);if(i%2===0){sum+=d;}else{var d2=d*2;sum+=d2>9?d2-9:d2;}}
+  // Extract DOB: YYMMDD
+  var yy=parseInt(val.substring(0,2)),mm=val.substring(2,4),dd=val.substring(4,6);
+  var curYr=new Date().getFullYear()%100;
+  var fullYr=yy<=(curYr-16)?2000+yy:1900+yy;
+  var dob=new Date(fullYr+'-'+mm+'-'+dd);
+  if(isNaN(dob.getTime())||parseInt(mm)<1||parseInt(mm)>12||parseInt(dd)<1||parseInt(dd)>31){
+    fb.style.color='#dc2626';fb.textContent='Invalid ID number — date of birth digits are incorrect.';return;
+  }
+  // Luhn validation (sum%10===0 for valid SA IDs)
+  if(sum%10!==0){fb.style.color='#dc2626';fb.textContent='Invalid SA ID number — please check and try again.';return;}
+  var age=Math.floor((Date.now()-dob.getTime())/(1000*60*60*24*365.25));
+  if(age<18){fb.style.color='#dc2626';fb.textContent='You must be at least 18 years old to register.';return;}
+  var dobStr=dd+' '+['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][parseInt(mm)-1]+' '+fullYr;
+  eid('d-dob-display').textContent=dobStr;
+  eid('d-dob-row').style.display='block';
+  eid('d-citizen-row').style.display='block';
+  eid('d-dobdd-hidden').value=dd;eid('d-dobmm-hidden').value=mm;eid('d-dobyy-hidden').value=fullYr;
+  eid('d-citizen-hidden').value='sa';
+  eid('d-ag').value=age;
+  fb.style.color='var(--gm)';fb.textContent='&#10003; Valid SA ID';
+}
+// ── ADDRESS SEARCH (OpenStreetMap Nominatim) ─────────────────
+var _addrTimer=null,_addrSelected=false;
+function onAddrInput(val){
+  clearTimeout(_addrTimer);
+  var res=eid('d-addr-results');
+  if(val.length<4){res.style.display='none';return;}
+  _addrTimer=setTimeout(function(){
+    fetch('https://nominatim.openstreetmap.org/search?format=json&countrycodes=za&addressdetails=1&limit=5&q='+encodeURIComponent(val),{headers:{'Accept-Language':'en'}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      if(!data.length){res.style.display='none';return;}
+      res.innerHTML='';
+      data.forEach(function(item){
+        var d=document.createElement('div');
+        d.style.cssText='padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);line-height:1.4';
+        d.textContent=item.display_name;
+        d.onmouseenter=function(){this.style.background='var(--bg2,#f5f5f5)';};
+        d.onmouseleave=function(){this.style.background='';};
+        d.onclick=function(){selectAddr(item);};
+        res.appendChild(d);
+      });
+      res.style.display='block';
+    }).catch(function(){res.style.display='none';});
+  },400);
+}
+function selectAddr(item){
+  var a=item.address||{};
+  var street=(a.house_number?a.house_number+' ':'')+( a.road||a.pedestrian||a.footway||'');
+  var suburb=a.suburb||a.neighbourhood||a.quarter||a.village||a.town||'';
+  var province=a.state||'';
+  // Normalise province to SA province names
+  var provMap={'gauteng':'Gauteng','western cape':'Western Cape','kwazulu-natal':'KwaZulu-Natal','eastern cape':'Eastern Cape','limpopo':'Limpopo','mpumalanga':'Mpumalanga','north west':'North West','free state':'Free State','northern cape':'Northern Cape'};
+  var provKey=(province||'').toLowerCase();
+  for(var k in provMap){if(provKey.indexOf(k)!==-1){province=provMap[k];break;}}
+  eid('d-street-no').value=a.house_number||'';
+  eid('d-street-name').value=a.road||a.pedestrian||'';
+  eid('d-suburb').value=suburb;
+  eid('d-province').value=province;
+  var lo=[street,suburb,province].filter(Boolean).join(', ');
+  eid('d-lo').value=lo;
+  eid('d-addr-text').textContent=lo;
+  eid('d-addr-confirm').style.display='block';
+  eid('d-addr-search').style.display='none';
+  eid('d-addr-results').style.display='none';
+  _addrSelected=true;
+}
+function clearAddr(){
+  _addrSelected=false;
+  eid('d-addr-search').value='';eid('d-addr-search').style.display='';
+  eid('d-addr-confirm').style.display='none';
+  eid('d-addr-results').style.display='none';
+  eid('d-lo').value='';eid('d-street-no').value='';eid('d-street-name').value='';eid('d-suburb').value='';eid('d-province').value='';
+}
+// ── PDP EXPIRY SHOW/HIDE ─────────────────────────────────────
 document.addEventListener('change',function(e){
-  if(e.target&&e.target.name==='d-exp'){
-    var note=document.getElementById('exp-no-note');
-    if(note)note.style.display=e.target.value==='no'?'block':'none';
+  if(e.target&&e.target.id==='d-pdpexpdd'){
+    var hasDate=e.target.value&&eid('d-pdpexpmm').value&&eid('d-pdpexpyy').value;
+    eid('d-pdp-upload-row').style.display=hasDate?'block':'none';
+  }
+  if(e.target&&(e.target.id==='d-pdpexpmm'||e.target.id==='d-pdpexpyy')){
+    var hasDate=eid('d-pdpexpdd').value&&eid('d-pdpexpmm').value&&eid('d-pdpexpyy').value;
+    eid('d-pdp-upload-row').style.display=hasDate?'block':'none';
   }
 });
+// ── TRIPS GATE ───────────────────────────────────────────────
+function onTripsChange(val){
+  eid('d-trips-block').style.display=(val==='0')?'block':'none';
+}
 (function initLicDateSelects(){
   var dd=document.getElementById('d-licdd'),yy=document.getElementById('d-licyy');
   var expdd=document.getElementById('d-licexpdd'),expyy=document.getElementById('d-licexpyy');
@@ -2233,7 +2341,7 @@ document.addEventListener('change',function(e){
   fillDays(dd); fillYearsPast(yy,curYr,1960);
   fillDays(expdd); fillYearsFuture(expyy,curYr,curYr+20);
   fillDays(pdpdd); fillYearsFuture(pdpyy,curYr,curYr+10);
-  fillDays(dobdd); fillYearsPast(dobyy,curYr-18,curYr-80);
+  if(dobdd)fillDays(dobdd); if(dobyy)fillYearsPast(dobyy,curYr-18,curYr-80);
 })();
 function mPlatShot(plat,idx,inp){
   if(!inp.files||!inp.files[0])return;
@@ -3786,59 +3894,61 @@ function backS1(){
 function reg2d() {
   clearErr('reg-err');
   var ph=rPhone||(eid('d-ph')?eid('d-ph').value.trim():'');
-  var dobdd=eid('d-dobdd').value,dobmm=eid('d-dobmm').value,dobyy=eid('d-dobyy').value;
-  var gender=eid('d-gender').value,citizen=eid('d-citizen').value;
-  var streetNo=eid('d-street-no').value.trim(),streetName=eid('d-street-name').value.trim();
-  var suburb=eid('d-suburb').value.trim(),province=eid('d-province').value.trim();
-  var wa=eid('d-wa').value.trim(),idNo=eid('d-id').value.trim(),lic=eid('d-lic').value.trim();
-  var plats=Array.from(document.querySelectorAll('.dpc:checked'));
+  var wa=eid('d-wa').value.trim();
+  var idNo=eid('d-id').value.trim();
+  var lic=eid('d-lic').value.trim();
+  var idType=eid('d-idtype').value;
+  var tripsVal=eid('d-trips').value;
   if(!ph){showErr('reg-err','Phone number is required.');return;}
   if(!wa){showErr('reg-err','WhatsApp number is required.');return;}
-  if(!dobdd||!dobmm||!dobyy){showErr('reg-err','Date of birth (day, month and year) is required.');return;}
-  // Calculate age from DOB and set hidden field
-  var dobAge=Math.floor((Date.now()-new Date(dobyy+'-'+dobmm+'-'+dobdd).getTime())/(1000*60*60*24*365.25));
-  if(dobAge<18){showErr('reg-err','You must be at least 18 years old to register.');return;}
-  eid('d-ag').value=dobAge;
-  if(!gender){showErr('reg-err','Please select your gender.');return;}
-  if(!citizen){showErr('reg-err','Please select your citizenship / residency status.');return;}
-  if(!streetNo){showErr('reg-err','Street number is required for your full address.');return;}
-  if(!streetName){showErr('reg-err','Street name is required for your full address.');return;}
-  if(!suburb){showErr('reg-err','Suburb is required for your full address.');return;}
-  if(!province){showErr('reg-err','Please select your province.');return;}
-  var lo=streetNo+' '+streetName+', '+suburb+', '+province;
-  eid('d-lo').value=lo;
-  if(!idNo){showErr('reg-err','SA ID Number is required.');return;}
+  // ID validation
+  if(!idNo){showErr('reg-err',(idType==='passport'?'Passport':'SA ID')+' number is required.');return;}
+  if(idType==='said'){
+    if(!/^\d{13}$/.test(idNo)){showErr('reg-err','SA ID number must be exactly 13 digits.');return;}
+    var age=parseInt(eid('d-ag').value||0);
+    if(!age||age<18){showErr('reg-err','Please enter a valid SA ID number. The date of birth derived from it shows you are under 18.');return;}
+  }
+  // For passport: validate DOB and citizenship
+  var dobdd,dobmm,dobyy,citizenVal;
+  if(idType==='passport'){
+    dobdd=eid('d-dobdd').value;dobmm=eid('d-dobmm').value;dobyy=eid('d-dobyy').value;
+    citizenVal=eid('d-citizen').value;
+    if(!dobdd||!dobmm||!dobyy){showErr('reg-err','Date of birth is required for passport holders.');return;}
+    var dobAge=Math.floor((Date.now()-new Date(dobyy+'-'+dobmm+'-'+dobdd).getTime())/(1000*60*60*24*365.25));
+    if(dobAge<18){showErr('reg-err','You must be at least 18 years old to register.');return;}
+    eid('d-ag').value=dobAge;
+    if(!citizenVal){showErr('reg-err','Please select your citizenship / residency status.');return;}
+    eid('d-dobdd-hidden').value=dobdd;eid('d-dobmm-hidden').value=dobmm;eid('d-dobyy-hidden').value=dobyy;
+    eid('d-citizen-hidden').value=citizenVal;
+  }
+  // Address
+  if(!_addrSelected||!eid('d-lo').value){showErr('reg-err','Please search for and select your address.');return;}
+  // Licence
   if(!lic){showErr('reg-err','Licence Number is required.');return;}
   var licdd=eid('d-licdd').value,licmm=eid('d-licmm').value,licyy=eid('d-licyy').value;
-  if(!licdd||!licmm||!licyy){showErr('reg-err','Licence obtained date (day, month and year) is required.');return;}
-  // Auto-calculate years driving from licence obtained date
+  if(!licdd||!licmm||!licyy){showErr('reg-err','Date of first issue (day, month and year) is required.');return;}
   var yrsLicensed=Math.floor((Date.now()-new Date(licyy+'-'+licmm+'-'+licdd).getTime())/(1000*60*60*24*365.25));
   eid('d-yr').value=Math.max(0,yrsLicensed);
   var licexpdd=eid('d-licexpdd').value,licexpmm=eid('d-licexpmm').value,licexpyy=eid('d-licexpyy').value;
   if(!licexpdd||!licexpmm||!licexpyy){showErr('reg-err','Licence expiry date (day, month and year) is required.');return;}
-  var wci=eid('d-wci').value.trim();
-  if(!wci){showErr('reg-err','Weekly check-in amount is required.');return;}
-  var pdpAns=document.querySelector('input[name="d-pdp"]:checked');
-  if(!pdpAns){showErr('reg-err','Please answer the PDP question.');return;}
-  if(pdpAns.value==='no'){showErr('reg-err','A valid PDP (Professional Driving Permit) is required to register on TrustMate SA.');return;}
-  if(pdpAns.value==='yes'&&!docFiles.pdp_doc){showErr('reg-err','Please upload your PDP document.');return;}
-  if(pdpAns.value==='yes'){var pdpexpdd=eid('d-pdpexpdd').value,pdpexpmm=eid('d-pdpexpmm').value,pdpexpyy=eid('d-pdpexpyy').value;if(!pdpexpdd||!pdpexpmm||!pdpexpyy){showErr('reg-err','PDP expiry date (day, month and year) is required.');return;}}
-  var expAns=document.querySelector('input[name="d-exp"]:checked');
-  if(!expAns){showErr('reg-err','Please answer the e-hailing experience question.');return;}
-  if(expAns.value==='no'){showErr('reg-err','TrustMate SA requires at least 1 year of e-hailing platform experience to register.');return;}
-  var isNonePlat=document.getElementById('dpc-none')&&document.getElementById('dpc-none').checked;
-  if(!plats.length&&!isNonePlat){showErr('reg-err','Please select at least one platform (Uber, Bolt, inDrive) or choose "None".');return;}
+  // PDP: optional but if a date is partially entered, require all fields
+  var pdpexpdd=eid('d-pdpexpdd').value,pdpexpmm=eid('d-pdpexpmm').value,pdpexpyy=eid('d-pdpexpyy').value;
+  var pdpPartial=(pdpexpdd||pdpexpmm||pdpexpyy)&&!(pdpexpdd&&pdpexpmm&&pdpexpyy);
+  if(pdpPartial){showErr('reg-err','PDP expiry date is incomplete — please fill in all three fields or leave it blank.');return;}
+  var hasPdp=!!(pdpexpdd&&pdpexpmm&&pdpexpyy);
+  if(hasPdp&&!docFiles.pdp_doc){showErr('reg-err','Please upload your PDP document.');return;}
+  // Platforms
+  var plats=Array.from(document.querySelectorAll('.dpc:checked'));
+  if(!plats.length){showErr('reg-err','Please select at least one platform (Uber, Bolt or inDrive).');return;}
   var platVals=plats.map(function(c){return c.value;});
-  if(!isNonePlat){
-    for(var pi=0;pi<platVals.length;pi++){
-      var pk=platVals[pi]==='inDrive'?'indrive':platVals[pi].toLowerCase();
-      var uploaded=(platFiles[pk]||[]).filter(Boolean).length;
-      if(uploaded<2){
-        showErr('reg-err','Please upload at least 2 screenshots for '+platVals[pi]+' (you have '+uploaded+'/2). Screenshots must show your name, rating and trip count.');
-        return;
-      }
-    }
+  for(var pi=0;pi<platVals.length;pi++){
+    var pk=platVals[pi]==='inDrive'?'indrive':platVals[pi].toLowerCase();
+    var uploaded=(platFiles[pk]||[]).filter(Boolean).length;
+    if(uploaded<2){showErr('reg-err','Please upload at least 2 screenshots for '+platVals[pi]+' (you have '+uploaded+'/2).');return;}
   }
+  // Trips gate
+  if(!tripsVal){showErr('reg-err','Please select your verified e-hailing trips.');return;}
+  if(tripsVal==='0'){showErr('reg-err','TrustMate requires at least 50 verified e-hailing trips to register.');return;}
   eid('reg-s2-d').style.display='none'; eid('reg-s3').style.display='block';
   eid('rs2').className='sbi done'; eid('rs3').className='sbi on';
 }
@@ -3950,7 +4060,7 @@ async function doReg() {
   var ph=rPhone||(isD?eid('d-ph').value.trim():oCarData.ph)||'';
   var lo=isD?eid('d-lo').value.trim():oCarData.lo;
   var wa=isD?(eid('d-wa').value.trim()||null):(oCarData.wa||null);
-  var pc=isD?(eid('d-pc')?eid('d-pc').value:null):(eid('o-pc')?eid('o-pc').value:null);
+  var pc=isD?'whatsapp':(eid('o-pc')?eid('o-pc').value:null);
   var ownerIdUrl=null,ownerHsUrl=null;
   if(rRole==='owner'){
     var safeEmail=rEmail.replace(/[^a-z0-9]/gi,'_');
@@ -4004,38 +4114,35 @@ async function doReg() {
           var sExt=sComp!==sFile?'jpg':(sFile.name.split('.').pop()||'jpg').toLowerCase();
           var sPath='screenshots/'+uid+'-'+sp+'-'+fi+'-'+Date.now()+'.'+sExt;
           var sUp=await sb.storage.from('driver-docs').upload(sPath,sComp,{upsert:true,contentType:sComp.type||sFile.type});
-          if(!sUp.error){urls.push(sb.storage.from('driver-docs').getPublicUrl(sPath).data.publicUrl);}
+          if(sUp.error){
+            console.error('screenshot upload error ('+sp+' #'+fi+'):',sUp.error);
+            showErr('reg-err','Failed to upload '+sp+' screenshot '+(fi+1)+': '+sUp.error.message+'. Please try again.');
+            return;
+          }
+          urls.push(sb.storage.from('driver-docs').getPublicUrl(sPath).data.publicUrl);
         }
         if(urls.length) shotUrls[sp]=JSON.stringify(urls);
       }
     }
     var depType=eid('d-dep-type')?eid('d-dep-type').value:'none';
     var depAmt=depType==='amount'?parseInt(eid('d-dep').value||0)||null:null;
-    var dobdd2=eid('d-dobdd').value,dobmm2=eid('d-dobmm').value,dobyy2=eid('d-dobyy').value;
+    var dobdd2=eid('d-dobdd-hidden').value,dobmm2=eid('d-dobmm-hidden').value,dobyy2=eid('d-dobyy-hidden').value;
     var dobDate=(dobdd2&&dobmm2&&dobyy2)?(dobyy2+'-'+dobmm2+'-'+dobdd2):null;
-    var genderVal=eid('d-gender').value||null;
-    var citizenVal=eid('d-citizen').value||null;
+    var citizenVal=eid('d-citizen-hidden').value||null;
     var licdd2=eid('d-licdd').value,licmm2=eid('d-licmm').value,licyy2=eid('d-licyy').value;
     var licDate=(licdd2&&licmm2&&licyy2)?(licdd2+'/'+licmm2+'/'+licyy2):null;
     var licexpdd2=eid('d-licexpdd').value,licexpmm2=eid('d-licexpmm').value,licexpyy2=eid('d-licexpyy').value;
     var licExpDate=(licexpdd2&&licexpmm2&&licexpyy2)?(licexpdd2+'/'+licexpmm2+'/'+licexpyy2):null;
     var pdpexpdd2=eid('d-pdpexpdd')?eid('d-pdpexpdd').value:'',pdpexpmm2=eid('d-pdpexpmm')?eid('d-pdpexpmm').value:'',pdpexpyy2=eid('d-pdpexpyy')?eid('d-pdpexpyy').value:'';
     var pdpExpDate=(pdpexpdd2&&pdpexpmm2&&pdpexpyy2)?(pdpexpdd2+'/'+pdpexpmm2+'/'+pdpexpyy2):null;
-    var isNonePlat2=document.getElementById('dpc-none')&&document.getElementById('dpc-none').checked;
-    var platList=isNonePlat2?['None']:Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;});
+    var platList=Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;});
     // PDP upload
     var pdpDocUrl=null;
     if(docFiles.pdp_doc){pdpDocUrl=await upFile('driver-docs',uid+'/pdp-'+Date.now(),docFiles.pdp_doc);}
-    var hasPdp=(document.querySelector('input[name="d-pdp"]:checked')||{}).value==='yes';
-    var has1yr=(document.querySelector('input[name="d-exp"]:checked')||{}).value==='yes';
-    // Self-declared platform stats
-    var selfUberTrips=parseInt((eid('d-uber-trips')||{}).value||0)||null;
-    var selfUberRating=parseFloat((eid('d-uber-rating')||{}).value||0)||null;
-    var selfBoltTrips=parseInt((eid('d-bolt-trips')||{}).value||0)||null;
-    var selfBoltRating=parseFloat((eid('d-bolt-rating')||{}).value||0)||null;
-    var selfIndriveTrips=parseInt((eid('d-indrive-trips')||{}).value||0)||null;
-    var selfIndriveRating=parseFloat((eid('d-indrive-rating')||{}).value||0)||null;
-    var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,date_of_birth:dobDate,gender:genderVal,citizenship:citizenVal,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,license_date:licDate,license_expiry_date:licExpDate,pdp_expiry_date:pdpExpDate,weekly_checkin_amount:parseInt(eid('d-wci').value||0)||null,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:isNonePlat2?null:shotUrls.uber,screenshot_bolt_url:isNonePlat2?null:shotUrls.bolt,screenshot_indrive_url:isNonePlat2?null:shotUrls.indrive,has_pdp:hasPdp,pdp_url:pdpDocUrl,has_1yr_experience:has1yr,self_uber_trips:selfUberTrips,self_uber_rating:selfUberRating,self_bolt_trips:selfBoltTrips,self_bolt_rating:selfBoltRating,self_indrive_trips:selfIndriveTrips,self_indrive_rating:selfIndriveRating},u);
+    var hasPdp=!!(pdpExpDate);
+    var tripsDecl=parseInt(eid('d-trips').value||0)||0;
+    var has1yr=tripsDecl>=50;
+    var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,date_of_birth:dobDate,citizenship:citizenVal,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,license_date:licDate,license_expiry_date:licExpDate,pdp_expiry_date:pdpExpDate,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:shotUrls.uber,screenshot_bolt_url:shotUrls.bolt,screenshot_indrive_url:shotUrls.indrive,has_pdp:hasPdp,pdp_url:pdpDocUrl,has_1yr_experience:has1yr,declared_trips:tripsDecl},u);
     // Use SECURITY DEFINER RPC to bypass RLS (anon users can't update via direct query)
     var dpR=await sb.rpc('complete_driver_registration',{payload:dpPayload});
     if(dpR.error){
@@ -6353,7 +6460,7 @@ function _msTrp(d,p){
   return{s:Math.max(.1,total/req),met:false,val:total};
 }
 function _msRatings(d){
-  var rs=[d.uber_rating,d.bolt_rating,d.indrive_rating].filter(function(r){return r!=null&&r>0;});
+  var rs=[d.uber_rating,d.bolt_rating,d.indrive_rating].map(parseFloat).filter(function(r){return !isNaN(r)&&r>0;});
   if(!rs.length)return{s:.4,met:null,val:null};
   var avg=rs.reduce(function(a,b){return a+b;},0)/rs.length;
   return{s:Math.min(1,avg/5),met:avg>=4,val:Math.round(avg*10)/10};
@@ -6394,7 +6501,7 @@ function calculateMatchScore(driver,ownerPrefs,ownerLoc){
   if(p.max_distance_km!=null&&distC.km!=null&&distC.km>p.max_distance_km){
     distC.s=Math.min(distC.s,0.10);distC.met=false;
   }
-  var total=distC.s*_MS_W.distance+profileScore*softMul*(1-_MS_W.distance);
+  var total=distC.s*_MS_W.distance+profileScore*softMul;
   var score=Math.round(Math.min(100,total*100));
 
   var hasPrefs=p.min_trust_score!=null||p.min_driving_exp!=null||p.min_years_licensed!=null||p.min_trips!=null||p.max_distance_km!=null||p.preferred_area||p.min_age!=null||p.preferred_gender||(p.citizenship&&p.citizenship!=='either');
