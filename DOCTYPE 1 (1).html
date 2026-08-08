@@ -1297,35 +1297,7 @@ nav div::-webkit-scrollbar{display:none}
       <!-- 3. Contact -->
       <div class="fg"><label>WhatsApp *</label><input id="d-wa" type="tel" placeholder="+27..." required/></div>
 
-      <!-- 4. Driving Credentials -->
-      <div class="fg"><label>Driver Licence Number *</label><input id="d-lic" placeholder="Licence number" required/></div>
-      <div class="fg"><label>Date of First Issue *</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-          <select id="d-licdd"><option value="">Day</option></select>
-          <select id="d-licmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
-          <select id="d-licyy"><option value="">Year</option></select>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px">Date you first obtained your driver's licence</div>
-      </div>
-      <div class="fg"><label>Licence Expiry Date *</label>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-          <select id="d-licexpdd"><option value="">Day</option></select>
-          <select id="d-licexpmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
-          <select id="d-licexpyy"><option value="">Year</option></select>
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px">Date your driver's licence expires</div>
-      </div>
-      <div class="fg" id="d-pdp-wrap">
-        <label>PDP Expiry Date <span style="font-size:11px;font-weight:400;color:var(--muted)">(leave blank if you don't have a PDP)</span></label>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-          <select id="d-pdpexpdd"><option value="">Day</option></select>
-          <select id="d-pdpexpmm"><option value="">Month</option><option value="01">January</option><option value="02">February</option><option value="03">March</option><option value="04">April</option><option value="05">May</option><option value="06">June</option><option value="07">July</option><option value="08">August</option><option value="09">September</option><option value="10">October</option><option value="11">November</option><option value="12">December</option></select>
-          <select id="d-pdpexpyy"><option value="">Year</option></select>
-        </div>
-        <div id="d-pdp-upload-row" style="display:none;margin-top:8px">
-          <div class="dbox" id="dbox-pdp" style="max-width:200px"><input type="file" accept="image/*,.pdf" onchange="mDoc('dbox-pdp','pdp_doc',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">Upload PDP *</div><div style="font-size:9px;color:var(--muted)">Photo or PDF</div></div>
-        </div>
-      </div>
+      <!-- 4. Driving Credentials - licence/PDP dates filled by admin after verification -->
 
       <!-- 5. Platforms -->
       <div class="fg"><label>Platforms *</label>
@@ -2328,33 +2300,15 @@ function clearAddr(){
   eid('d-addr-results').style.display='none';
   eid('d-lo').value='';eid('d-street-no').value='';eid('d-street-name').value='';eid('d-suburb').value='';eid('d-province').value='';
 }
-// ── PDP EXPIRY SHOW/HIDE ─────────────────────────────────────
-document.addEventListener('change',function(e){
-  if(e.target&&e.target.id==='d-pdpexpdd'){
-    var hasDate=e.target.value&&eid('d-pdpexpmm').value&&eid('d-pdpexpyy').value;
-    eid('d-pdp-upload-row').style.display=hasDate?'block':'none';
-  }
-  if(e.target&&(e.target.id==='d-pdpexpmm'||e.target.id==='d-pdpexpyy')){
-    var hasDate=eid('d-pdpexpdd').value&&eid('d-pdpexpmm').value&&eid('d-pdpexpyy').value;
-    eid('d-pdp-upload-row').style.display=hasDate?'block':'none';
-  }
-});
 // ── TRIPS GATE ───────────────────────────────────────────────
 function onTripsChange(val){
   eid('d-trips-block').style.display=(val==='0')?'block':'none';
 }
-(function initLicDateSelects(){
-  var dd=document.getElementById('d-licdd'),yy=document.getElementById('d-licyy');
-  var expdd=document.getElementById('d-licexpdd'),expyy=document.getElementById('d-licexpyy');
-  var pdpdd=document.getElementById('d-pdpexpdd'),pdpyy=document.getElementById('d-pdpexpyy');
+(function initRegDobSelects(){
   var curYr=new Date().getFullYear();
   function fillDays(el){if(!el)return;for(var i=1;i<=31;i++){var o=document.createElement('option');o.value=String(i).padStart(2,'0');o.textContent=i;el.appendChild(o);}}
   function fillYearsPast(el,from,to){if(!el)return;for(var y=from;y>=to;y--){var o=document.createElement('option');o.value=y;o.textContent=y;el.appendChild(o);}}
-  function fillYearsFuture(el,from,to){if(!el)return;for(var y=from;y<=to;y++){var o=document.createElement('option');o.value=y;o.textContent=y;el.appendChild(o);}}
   var dobdd=document.getElementById('d-dobdd'),dobyy=document.getElementById('d-dobyy');
-  fillDays(dd); fillYearsPast(yy,curYr,1960);
-  fillDays(expdd); fillYearsFuture(expyy,curYr,curYr+20);
-  fillDays(pdpdd); fillYearsFuture(pdpyy,curYr,curYr+10);
   if(dobdd)fillDays(dobdd); if(dobyy)fillYearsPast(dobyy,curYr-18,curYr-80);
 })();
 function mPlatShot(plat,idx,inp){
@@ -3865,6 +3819,8 @@ async function reg1() {
   var r=await _sendRegOtp(rEmail);
   btn.textContent='Continue';btn.disabled=false;
   if(r.error){showErr('reg-err',r.error);return;}
+  // Persist state so page reload while checking email doesn't reset the flow
+  try{sessionStorage.setItem('_reg',JSON.stringify({n:rName,e:rEmail,ph:rPhone,p:rPass,role:rRole}));}catch(err){}
   eid('otp-email-display').textContent=rEmail;
   eid('reg-s1').style.display='none';
   eid('reg-s1-otp').style.display='block';
@@ -3920,6 +3876,7 @@ async function regVerifyOtp() {
   if(r.error){showErr('reg-err',r.error);return;}
   clearInterval(_otpCountdownInterval);
   clearErr('reg-err');
+  try{sessionStorage.removeItem('_reg');}catch(e){}
   eid('reg-s1-otp').style.display='none';
   eid('rs1').className='sbi done'; eid('rs2').className='sbi on';
   eid('reg-s2-d').style.display=rRole==='driver'?'block':'none';
@@ -3942,8 +3899,25 @@ function regBackToS1(){
   clearInterval(_otpCountdownInterval);
   eid('reg-s1-otp').style.display='none';
   eid('reg-s1').style.display='block';
+  try{sessionStorage.removeItem('_reg');}catch(e){}
   clearErr('reg-err');
 }
+// Restore OTP screen if page reloaded while user was checking email
+(function restoreRegState(){
+  try{
+    var saved=sessionStorage.getItem('_reg');
+    if(!saved)return;
+    var d=JSON.parse(saved);
+    if(!d||!d.e)return;
+    rName=d.n||'';rEmail=d.e;rPhone=d.ph||'';rPass=d.p||'';
+    if(d.role){rRole=d.role;setRole(d.role);}
+    go('register');
+    eid('reg-s1').style.display='none';
+    eid('reg-s1-otp').style.display='block';
+    eid('otp-email-display').textContent=rEmail;
+    startOtpCountdown(OTP_WINDOW_SECS);
+  }catch(e){}
+})();
 function backS1(){
   eid('reg-s1').style.display='block';
   eid('reg-s2-d').style.display='none';
@@ -3982,20 +3956,6 @@ function reg2d() {
   }
   // Address
   if(!_addrSelected||!eid('d-lo').value){showErr('reg-err','Please search for and select your address.');return;}
-  // Licence
-  if(!lic){showErr('reg-err','Licence Number is required.');return;}
-  var licdd=eid('d-licdd').value,licmm=eid('d-licmm').value,licyy=eid('d-licyy').value;
-  if(!licdd||!licmm||!licyy){showErr('reg-err','Date of first issue (day, month and year) is required.');return;}
-  var yrsLicensed=Math.floor((Date.now()-new Date(licyy+'-'+licmm+'-'+licdd).getTime())/(1000*60*60*24*365.25));
-  eid('d-yr').value=Math.max(0,yrsLicensed);
-  var licexpdd=eid('d-licexpdd').value,licexpmm=eid('d-licexpmm').value,licexpyy=eid('d-licexpyy').value;
-  if(!licexpdd||!licexpmm||!licexpyy){showErr('reg-err','Licence expiry date (day, month and year) is required.');return;}
-  // PDP: optional but if a date is partially entered, require all fields
-  var pdpexpdd=eid('d-pdpexpdd').value,pdpexpmm=eid('d-pdpexpmm').value,pdpexpyy=eid('d-pdpexpyy').value;
-  var pdpPartial=(pdpexpdd||pdpexpmm||pdpexpyy)&&!(pdpexpdd&&pdpexpmm&&pdpexpyy);
-  if(pdpPartial){showErr('reg-err','PDP expiry date is incomplete — please fill in all three fields or leave it blank.');return;}
-  var hasPdp=!!(pdpexpdd&&pdpexpmm&&pdpexpyy);
-  if(hasPdp&&!docFiles.pdp_doc){showErr('reg-err','Please upload your PDP document.');return;}
   // Platforms
   var plats=Array.from(document.querySelectorAll('.dpc:checked'));
   if(!plats.length){showErr('reg-err','Please select at least one platform (Uber, Bolt or inDrive).');return;}
@@ -4188,20 +4148,11 @@ async function doReg() {
     var dobdd2=eid('d-dobdd-hidden').value,dobmm2=eid('d-dobmm-hidden').value,dobyy2=eid('d-dobyy-hidden').value;
     var dobDate=(dobdd2&&dobmm2&&dobyy2)?(dobyy2+'-'+dobmm2+'-'+dobdd2):null;
     var citizenVal=eid('d-citizen-hidden').value||null;
-    var licdd2=eid('d-licdd').value,licmm2=eid('d-licmm').value,licyy2=eid('d-licyy').value;
-    var licDate=(licdd2&&licmm2&&licyy2)?(licdd2+'/'+licmm2+'/'+licyy2):null;
-    var licexpdd2=eid('d-licexpdd').value,licexpmm2=eid('d-licexpmm').value,licexpyy2=eid('d-licexpyy').value;
-    var licExpDate=(licexpdd2&&licexpmm2&&licexpyy2)?(licexpdd2+'/'+licexpmm2+'/'+licexpyy2):null;
-    var pdpexpdd2=eid('d-pdpexpdd')?eid('d-pdpexpdd').value:'',pdpexpmm2=eid('d-pdpexpmm')?eid('d-pdpexpmm').value:'',pdpexpyy2=eid('d-pdpexpyy')?eid('d-pdpexpyy').value:'';
-    var pdpExpDate=(pdpexpdd2&&pdpexpmm2&&pdpexpyy2)?(pdpexpdd2+'/'+pdpexpmm2+'/'+pdpexpyy2):null;
     var platList=Array.from(document.querySelectorAll('.dpc:checked')).map(function(c){return c.value;});
-    // PDP upload
-    var pdpDocUrl=null;
-    if(docFiles.pdp_doc){pdpDocUrl=await upFile('driver-docs',uid+'/pdp-'+Date.now(),docFiles.pdp_doc);}
-    var hasPdp=!!(pdpExpDate);
+    var hasPdp=false;
     var tripsDecl=parseInt(eid('d-trips').value||0)||0;
     var has1yr=tripsDecl>=50;
-    var dpPayload=Object.assign({user_id:uid,years_driving:parseInt(eid('d-yr').value||0),platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,date_of_birth:dobDate,citizenship:citizenVal,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,license_number:eid('d-lic').value.trim()||null,license_date:licDate,license_expiry_date:licExpDate,pdp_expiry_date:pdpExpDate,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:shotUrls.uber,screenshot_bolt_url:shotUrls.bolt,screenshot_indrive_url:shotUrls.indrive,has_pdp:hasPdp,pdp_url:pdpDocUrl,has_1yr_experience:has1yr,declared_trips:tripsDecl},u);
+    var dpPayload=Object.assign({user_id:uid,years_driving:0,platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,date_of_birth:dobDate,citizenship:citizenVal,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:shotUrls.uber,screenshot_bolt_url:shotUrls.bolt,screenshot_indrive_url:shotUrls.indrive,has_pdp:false,has_1yr_experience:has1yr,declared_trips:tripsDecl},u);
     // Use SECURITY DEFINER RPC to bypass RLS (anon users can't update via direct query)
     var dpR=await sb.rpc('complete_driver_registration',{payload:dpPayload});
     if(dpR.error){
