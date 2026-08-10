@@ -3617,7 +3617,7 @@ async function loadProfPage(dpId) {
     +(joinedDate?profHistRow('&#128197;','Joined TrustMate',joinedDate,'var(--g)'):'')
     +profHistRow('&#128101;','Rentals Completed',rentals>0?rentals+' rental'+(rentals!==1?'s':''):'No completed TrustMate rentals yet.',rentals>0?'var(--gm)':'var(--muted)')
     +profHistRow('&#11088;','Owner Reviews',revs.length>0?revs.length+' review'+(revs.length!==1?'s':''):'No owner reviews yet.',revs.length>0?'var(--gm)':'var(--muted)')
-    +profHistRow('&#128181;','Payment Reliability',rentals>0?(d.missed_payments||0)===0&&(d.late_payments||0)===0?'Perfect payment record':((d.late_payments||0)+' late, '+(d.missed_payments||0)+' missed'):'No payment history available.', rentals>0&&(d.missed_payments||0)===0&&(d.late_payments||0)===0?'var(--gm)':'var(--muted)')
+    +profHistRow('&#128181;','Payment Reliability',(rentals>0||(d.ontime_payments||0)>0||(d.late_payments||0)>0||(d.missed_payments||0)>0)?(d.missed_payments||0)===0&&(d.late_payments||0)===0?'Perfect payment record':((d.late_payments||0)+' late, '+(d.missed_payments||0)+' missed'):'No payment history available.', (rentals>0||(d.ontime_payments||0)>0||(d.late_payments||0)>0||(d.missed_payments||0)>0)&&(d.missed_payments||0)===0&&(d.late_payments||0)===0?'var(--gm)':'var(--muted)')
     +profHistRow('&#128663;','Vehicle Damage Reports',(d.damage_incidents||0)>0?d.damage_incidents+' report'+(d.damage_incidents!==1?'s':''):'No damage reports.', (d.damage_incidents||0)>0?'#dc2626':'var(--gm)')
     +profHistRow('&#9888;&#65039;','Vehicle Incidents',(d.accidents||0)>0||( d.reckless_driving||0)>0?((d.accidents||0)+' accident'+(d.accidents!==1?'s':'')+', '+(d.reckless_driving||0)+' reckless driving'):'No vehicle incidents.', (d.accidents||0)>0||(d.reckless_driving||0)>0?'#dc2626':'var(--gm)')
     +'</div>';
@@ -3929,7 +3929,6 @@ function reg2d() {
   var ph=rPhone||(eid('d-ph')?eid('d-ph').value.trim():'');
   var wa=eid('d-wa').value.trim();
   var idNo=eid('d-id').value.trim();
-  var lic=eid('d-lic').value.trim();
   var idType=eid('d-idtype').value;
   var tripsVal=eid('d-trips').value;
   if(!ph){showErr('reg-err','Phone number is required.');return;}
@@ -4107,7 +4106,7 @@ async function doReg() {
   if(!uid){showErr('reg-err','Signup failed. Please try again.');return;}
 
   var now=new Date().toISOString();
-  await sb.from('profiles').upsert({id:uid,email:rEmail,full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',terms_accepted:true,popia_accepted:true,terms_accepted_at:now,popia_accepted_at:now,terms_version:'1.0',tc_accepted_at:now,tc_version:'July 2026'},{onConflict:'id'});
+  await sb.from('profiles').upsert({id:uid,email:rEmail,full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',terms_accepted:true,popia_accepted:true,terms_accepted_at:now,popia_accepted_at:now,terms_version:'1.0',tc_accepted_at:now,tc_version:'July 2026',email_confirmed:true},{onConflict:'id'});
   var t=Date.now();
   if(isD){
     var u={};
@@ -7483,6 +7482,8 @@ async function subWeeklyUpdate() {
   btn.disabled=true; btn.textContent='Submitting...';
   var comment=(document.getElementById('wu-comment')||{}).value||'';
   var errors=[];
+  // Map action types to driver_profiles counter columns
+  var _paymentColMap={'payment_ontime':'ontime_payments','payment_late':'late_payments','payment_missed':'missed_payments'};
   for(var i=0;i<checks.length;i++){
     var type=checks[i].value, pts=parseInt(checks[i].getAttribute('data-pts')||'0');
     try {
@@ -7493,6 +7494,15 @@ async function subWeeklyUpdate() {
       });
       var _res=await _resp.json();
       if(!_resp.ok||_res.error)errors.push(checks[i].value);
+      // Directly increment payment counter if applicable (send-match-email doesn't handle trust_action type)
+      var _col=_paymentColMap[type];
+      if(_col&&_wuDpId){
+        var _dpRow=await sb.from('driver_profiles').select('id,'+_col).eq('id',_wuDpId).maybeSingle();
+        if(_dpRow.data){
+          var _upd={}; _upd[_col]=(_dpRow.data[_col]||0)+1;
+          await sb.from('driver_profiles').update(_upd).eq('id',_wuDpId);
+        }
+      }
     } catch(e){ errors.push(checks[i].value); }
   }
   if(errors.length){toast('Some updates failed. Please try again.');btn.disabled=false;btn.textContent='Submit Weekly Update';return;}
@@ -8556,12 +8566,9 @@ async function adReg(){
   var dr=await sb.from('driver_profiles').select('*').eq('status','pending').order('created_at',{ascending:false});
   var pDrvs=dr.data||[];
   var dUids=pDrvs.map(function(d){return d.user_id;});
-  // Only show drivers who have confirmed their email
-  var dPr=dUids.length?await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,created_at,email_confirmed').in('id',dUids):{data:[]};
+  var dPr=dUids.length?await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,created_at').in('id',dUids):{data:[]};
   var dpm={};(dPr.data||[]).forEach(function(p){dpm[p.id]=p;});
-  // Filter to email-confirmed only
-  pDrvs=pDrvs.filter(function(d){return dpm[d.user_id]&&dpm[d.user_id].email_confirmed;});
-  var or=await sb.from('profiles').select('*').in('role',['owner','both']).eq('admin_status','pending').eq('email_confirmed',true).order('created_at',{ascending:false});
+  var or=await sb.from('profiles').select('*').in('role',['owner','both']).eq('admin_status','pending').order('created_at',{ascending:false});
   var pOwns=or.data||[];
   var total=pDrvs.length+pOwns.length;
   if(!total){el.innerHTML='<div class="adm-pg"><div class="ptitle">New Registrations</div><div class="empty"><div class="empty-i">&#10003;</div><p>All caught up! No pending registrations.</p></div>';var b=document.getElementById('abadge');if(b)b.style.display='none';return;}
@@ -10813,6 +10820,7 @@ async function adStats(){
 
   var pm={};profs.forEach(function(p){pm[p.id]=p;});
   var dpm2={};dps.forEach(function(d){dpm2[d.user_id]=d;});
+  var dpIdMap={};dps.forEach(function(d){dpIdMap[d.id]=d;});
   var carMap2={};cars.forEach(function(c){carMap2[c.id]=c;});
   var now=new Date();
   var d30=new Date(now-30*864e5).toISOString();
@@ -11181,7 +11189,11 @@ async function adStats(){
     html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px">';
     html+=anKpi(tas.length,'Total Actions','#1a5c28',null);
     // Helper: resolve trust_action actor — driver_id or owner_id
-    function taUser(t){var uid=t.driver_id||t.owner_id||'';return pm[uid]||{_uid:uid};}
+    function taUser(t){
+      if(t.driver_id){var dp=dpIdMap[t.driver_id];if(dp)return pm[dp.user_id]||{_uid:t.driver_id};}
+      if(t.owner_id){return pm[t.owner_id]||{_uid:t.owner_id};}
+      return{_uid:''};
+    }
     html+=anKpi(posTA,'Positive','#15803d','anDrill("Positive Trust Actions",'+JSON.stringify(tas.filter(function(t){return t.points>0;}).slice(0,200).map(function(t){var u=taUser(t);return [esc(u.full_name||(u._uid||'').slice(0,8)),t.action_type.replace(/_/g,' '),'+'+t.points,fmtD(t.created_at)];}))+',[\"User\",\"Action\",\"Points\",\"Date\"])');
     html+=anKpi(negTA,'Negative','#dc2626','anDrill("Negative Trust Actions",'+JSON.stringify(tas.filter(function(t){return t.points<0;}).slice(0,200).map(function(t){var u=taUser(t);return [esc(u.full_name||(u._uid||'').slice(0,8)),t.action_type.replace(/_/g,' '),''+t.points,fmtD(t.created_at)];}))+',[\"User\",\"Action\",\"Points\",\"Date\"])');
     html+=anKpi((totalPts>0?'+':'')+totalPts,'Net Points',totalPts>=0?'#15803d':'#dc2626',null);
