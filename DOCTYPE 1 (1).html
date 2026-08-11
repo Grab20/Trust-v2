@@ -1455,6 +1455,16 @@ nav div::-webkit-scrollbar{display:none}
         </div>
         <div class="dbox" id="ddcrim" style="margin-top:4px"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddcrim','crim',this)"><div style="font-size:20px">&#128273;</div><div style="font-size:10px;font-weight:600;color:var(--muted)">Criminal Check (Optional)</div><div style="font-size:9px;color:var(--muted)">PDF or image accepted</div></div>
       </div>
+      <!-- PDP - Optional -->
+      <div style="background:var(--cream);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--g)">&#128663; PDP (Professional Driving Permit) <span style="font-size:10px;font-weight:600;background:#fef3c7;color:#7c5c00;padding:2px 6px;border-radius:999px;margin-left:4px">Optional</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">If you have a PDP, upload it here. Owners strongly prefer drivers with a valid PDP.</div>
+          </div>
+        </div>
+        <div class="dbox" id="ddpdp" style="margin-top:4px"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddpdp','pdp',this)"><div style="font-size:20px">&#128663;</div><div style="font-size:10px;font-weight:600;color:var(--muted)">PDP Document (Optional)</div><div style="font-size:9px;color:var(--muted)">PDF or image accepted</div></div>
+      </div>
       <div style="display:flex;gap:8px"><button class="btn btn-out" onclick="backS2()">Back</button><button class="btn btn-g" style="flex:1" id="d-reg-btn" onclick="reg3()">Create Account</button></div>
     </div>
   </div></div>
@@ -4118,6 +4128,7 @@ async function doReg() {
     if(docFiles.did){var x=await upFile('driver-docs',uid+'/idcopy-'+t,docFiles.did);if(x)u.doc_id_url=x;}
     if(docFiles.por){var x=await upFile('driver-docs',uid+'/por-'+t,docFiles.por);if(x)u.proof_of_residence_url=x;}
     if(docFiles.crim){var x=await upFile('driver-docs',uid+'/criminal-'+t,docFiles.crim);if(x){u.criminal_check_url=x;u.criminal_check_submitted=true;}}
+    if(docFiles.pdp){var x=await upFile('driver-docs',uid+'/pdp-'+t,docFiles.pdp);if(x){u.pdp_url=x;u.has_pdp=true;}}
     var hasDoc=Object.keys(u).length>0;// pending if ANY doc uploaded
     var shotUrls={uber:null,bolt:null,indrive:null};
     for(var sp in platFiles){
