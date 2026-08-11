@@ -702,8 +702,8 @@ nav div::-webkit-scrollbar{display:none}
   <button class="bntab" id="bn-browse" onclick="go('cars')">
     <span class="bnt-icon">&#128269;</span>Browse
   </button>
-  <button class="bntab" id="bn-msgs" onclick="U?go('dashboard'):go('login')">
-    <span class="bnt-icon">&#128172;</span>Messages
+  <button class="bntab" id="bn-msgs" onclick="U?(go('dashboard'),dpanel('ap')):go('login')">
+    <span class="bnt-icon">&#128203;</span>Requests
   </button>
   <button class="bntab" id="bn-profile" onclick="U?go('dashboard'):go('login')">
     <span class="bnt-icon">&#128100;</span>Profile
@@ -5317,7 +5317,7 @@ async function refreshChatNav(){
     :isO?await sb.from('applications').select('id').eq('owner_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle()
     :{data:null};
   var hasMatch=!!(appR&&appR.data);
-  var sb2=eid('sb-ch'); if(sb2)sb2.style.display=hasMatch?'flex':'none';
+  var sb2=eid('sb-ch'); if(sb2)sb2.style.display='none';
   var unreadCnt=0;
   if(hasMatch){
     var appId=appR.data.id;
@@ -6722,9 +6722,9 @@ async function pAp() {
         +'<span style="padding:2px 7px;border-radius:999px;font-size:11px;color:'+(accTotal>0?'#8b2020':'var(--gm)')+';background:'+(accTotal>0?'#fee2e2':'var(--gs)')+'">&#9888; '+accTotal+' incidents</span>'
         +'</div>';
 
-      // Docs — released as soon as driver applies; contact locked until chatbox agreement
+      // Docs — released as soon as driver applies; contact released on match
       var docsVisible=a.initiated_by==='driver'||isMatched;
-      var contactVisible=a.driver_agreed_terms&&a.owner_agreed_terms;
+      var contactVisible=isMatched;
       var docRow='';
       if(docsVisible){
         docRow='<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px">DOCUMENTS</div><div style="display:flex;gap:5px;flex-wrap:wrap">';
@@ -6753,7 +6753,7 @@ async function pAp() {
         +'<div style="font-size:15px;font-weight:700;color:var(--g);margin-bottom:2px">'+(pf.full_name||'Driver')+'</div>'
         +'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">&#128205; '+(pf.location||'-')
         +(contactVisible?(' &middot; &#128222; '+(pf.phone||'-')+' &#128241; '+(pf.whatsapp||'-'))
-          :' &middot; <span style="font-size:10px;color:#E8A520;font-weight:600">&#128274; Contact after chatbox agreement</span>')
+          :' &middot; <span style="font-size:10px;color:#E8A520;font-weight:600">&#128274; Contact visible after match</span>')
         +'</div>'
         +'<div class="tp '+si[0]+'" style="display:inline-flex;padding:2px 8px;align-items:center;gap:4px;margin-bottom:4px">'
         +'<span style="font-family:\'Playfair Display\',serif;font-size:13px;font-weight:800;'+si[1].replace('sc-h','color:var(--gm)').replace('sc-m','color:#7c5c00').replace('sc-o','color:#9a3412').replace('sc-l','color:#8b2020')+'">'+( dp.trust_score||0)+'</span>'
