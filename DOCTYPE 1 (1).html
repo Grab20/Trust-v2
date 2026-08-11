@@ -8563,7 +8563,7 @@ async function incDecline(dpId){
 async function adReg(){
   var el=document.getElementById('ap-reg');
   el.innerHTML='<div class="adm-pg"><div class="ptitle">New Registrations</div></div>'+adSpin();
-  var dr=await sb.from('driver_profiles').select('*').eq('status','pending').order('created_at',{ascending:false});
+  var dr=await sb.from('driver_profiles').select('*').in('status',['pending','incomplete']).not('doc_uploaded_at','is',null).order('created_at',{ascending:false});
   var pDrvs=dr.data||[];
   var dUids=pDrvs.map(function(d){return d.user_id;});
   var dPr=dUids.length?await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,created_at').in('id',dUids):{data:[]};
