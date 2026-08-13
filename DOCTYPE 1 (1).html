@@ -4138,12 +4138,22 @@ async function doReg() {
     }
   }
   var r=await sb.auth.signUp({email:rEmail,password:rPass,options:{data:{full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',doc_id_url:ownerIdUrl,photo_headshot_url:ownerHsUrl,email_verified:true}}});
+  var uid=null;
   if(r.error){
-    var msg=r.error.message;
-    if(/rate.limit|too.many/i.test(msg))msg='Too many signup attempts for this email. Please wait 1 hour and try again, or use a different email address.';
-    showErr('reg-err',msg);return;
+    var msg=r.error.message||'';
+    if(/rate.limit|too.many/i.test(msg)){showErr('reg-err','Too many signup attempts for this email. Please wait 1 hour and try again, or use a different email address.');return;}
+    // Account already exists from a previous attempt — sign in and continue with uploads
+    if(/already.registered|already.exists|user.*exists/i.test(msg)||r.error.status===422){
+      var si=await sb.auth.signInWithPassword({email:rEmail,password:rPass});
+      if(si.error){
+        showErr('reg-err','Your account already exists but the password didn\'t match. Please go to the login page and sign in, then complete your profile from the dashboard.');return;
+      }
+      uid=si.data&&si.data.user?si.data.user.id:null;
+    } else {
+      showErr('reg-err',msg||'Signup failed. Please try again.');return;
+    }
   }
-  var uid=r.data&&r.data.user?r.data.user.id:null;
+  if(!uid)uid=r.data&&r.data.user?r.data.user.id:null;
   if(!uid){showErr('reg-err','Signup failed. Please try again.');return;}
 
   var now=new Date().toISOString();
@@ -4175,9 +4185,15 @@ async function doReg() {
           var sPath='screenshots/'+uid+'-'+sp+'-'+fi+'-'+Date.now()+'.'+sExt;
           var sUp=await sb.storage.from('driver-docs').upload(sPath,sComp,{upsert:true,contentType:sComp.type||sFile.type});
           if(sUp.error){
-            console.error('screenshot upload error ('+sp+' #'+fi+'):',sUp.error);
-            showErr('reg-err','Failed to upload '+sp+' screenshot '+(fi+1)+': '+sUp.error.message+'. Please try again.');
-            return;
+            // Retry once on transient storage errors
+            console.warn('screenshot upload retry ('+sp+' #'+fi+'):',sUp.error);
+            await new Promise(function(res){setTimeout(res,1500);});
+            sUp=await sb.storage.from('driver-docs').upload(sPath,sComp,{upsert:true,contentType:sComp.type||sFile.type});
+          }
+          if(sUp.error){
+            console.error('screenshot upload failed ('+sp+' #'+fi+'):',sUp.error);
+            showErr('reg-err','Could not upload '+sp+' screenshot '+(fi+1)+' ('+sUp.error.message+'). Your account was created — please log in and re-upload your screenshots from the Documents tab.');
+            // Don't return — account is created, continue to finish registration
           }
           urls.push(sb.storage.from('driver-docs').getPublicUrl(sPath).data.publicUrl);
         }
