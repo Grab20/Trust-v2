@@ -2613,6 +2613,10 @@ window.addEventListener('hashchange', function() {
       if(rateParam&&pg==='dashboard'){
         setTimeout(function(){openRateDriverModal(rateParam,'your driver');},800);
       }
+      // Handle return from Yoco payment
+      if(new URLSearchParams(window.location.search).get('payment')){
+        setTimeout(handleBoostPaymentReturn, 600);
+      }
     }, {once:true});
     // If no session exists, redirect to login immediately
     document.addEventListener('trustmate-no-auth', function(){
@@ -4412,26 +4416,36 @@ async function pOv() {
     } else {
       // No active boost — show request card (only if approved driver)
       if(DP.status==='approved'){
-        var _brqR=await sb.from('boost_requests').select('id,status,created_at').eq('driver_id',U.id).order('created_at',{ascending:false}).limit(1).maybeSingle();
-        var _brq=_brqR.data;
-        if(_brq&&_brq.status==='pending'){
+        // Load pricing from DB
+        var _bCfgR=await sb.from('boost_config').select('key,value');
+        var _bCfg={};(_bCfgR.data||[]).forEach(function(r){_bCfg[r.key]=r.value;});
+        var _dPrice='R'+(parseInt(_bCfg.driver_boost_price_cents||4900)/100).toFixed(0);
+        var _dDays=_bCfg.driver_boost_days||'7';
+        // Check for a pending payment (already initiated checkout)
+        var _bpR=await sb.from('boost_payments').select('id,payment_status,yoco_checkout_id').eq('user_id',U.id).eq('boost_type','driver').in('payment_status',['pending','paid']).order('created_at',{ascending:false}).limit(1).maybeSingle();
+        var _bp=_bpR.data;
+        if(_bp&&_bp.payment_status==='paid'){
+          // Paid but boost not active yet (webhook delay) — show processing message
+          html+='<div class="tbox" style="border:1.5px solid var(--gm);background:#f0fdf4">'
+            +'<div style="font-size:13px;font-weight:800;color:var(--gm);margin-bottom:4px">&#11088; TrustMate Boost</div>'
+            +'<div style="font-size:12px;color:var(--gm)">Payment confirmed! Your boost is being activated — refresh in a moment.</div>'
+            +'</div>';
+        } else if(_bp&&_bp.payment_status==='pending'){
           html+='<div class="tbox" style="border:1.5px solid #fde68a;background:#fffbeb">'
             +'<div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:4px">&#11088; TrustMate Boost</div>'
-            +'<div style="font-size:12px;color:#a16207;margin-bottom:10px">Your boost request is <strong>pending review</strong> by admin.</div>'
-            +'<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:999px">&#9203; Pending</span>'
-            +'</div>';
-        } else if(_brq&&_brq.status==='declined'){
-          html+='<div class="tbox" style="border:1.5px solid var(--border)">'
-            +'<div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:4px">&#11088; TrustMate Boost</div>'
-            +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Get featured at the top of owner searches and track who views your profile.</div>'
-            +'<div style="font-size:11px;color:#dc2626;margin-bottom:8px">&#9888; Your last request was declined. You can request again.</div>'
-            +'<button class="btn btn-gm" style="width:100%;padding:9px;font-size:13px;font-weight:700" onclick="requestBoost()">&#128640; Request a Boost</button>'
+            +'<div style="font-size:12px;color:#a16207;margin-bottom:10px">Payment in progress. Complete your Yoco checkout or start a new one.</div>'
+            +'<button class="btn btn-gm" style="width:100%;padding:9px;font-size:13px;font-weight:700" onclick="startBoostCheckout(\'driver\',\''+esc(U.id)+'\')">&#128640; Resume / Pay '+_dPrice+'</button>'
             +'</div>';
         } else {
           html+='<div class="tbox" style="border:1.5px solid var(--border)">'
-            +'<div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:4px">&#11088; TrustMate Boost</div>'
-            +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Get featured at the top of owner searches and track who views your profile.</div>'
-            +'<button class="btn btn-gm" style="width:100%;padding:9px;font-size:13px;font-weight:700" onclick="requestBoost()">&#128640; Request a Boost</button>'
+            +'<div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:6px">&#11088; TrustMate Boost</div>'
+            +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Get featured at the top of owner searches. Track profile views and see who liked your profile.</div>'
+            +'<div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">'
+            +'<div><div style="font-size:11px;color:var(--muted)">Driver Boost</div><div style="font-size:11px;color:var(--muted)">Duration</div></div>'
+            +'<div style="text-align:right"><div style="font-size:18px;font-weight:900;color:var(--gm)">'+_dPrice+'</div><div style="font-size:11px;color:var(--muted)">'+_dDays+' days</div></div>'
+            +'</div>'
+            +'<button class="btn btn-gm" style="width:100%;padding:11px;font-size:14px;font-weight:800" onclick="startBoostCheckout(\'driver\',\''+esc(U.id)+'\')">&#128640; Boost My Profile — '+_dPrice+'</button>'
+            +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Secure payment via Yoco</div>'
             +'</div>';
         }
       }
@@ -4696,6 +4710,49 @@ async function pOv() {
         +statCard(approvedCars,'My Cars','var(--g)','Tap to view','lc')
         +(isMatched&&matchedApps[0]?(function(){var _a=matchedApps[0],_dp2=mdpm[_a.driver_id]||{},_pf2=mpm[_a.driver_id]||{};return '<div class="stat-chip" onclick="openWeeklyUpdate(\''+esc(_dp2.id||'')+'\',\''+_a.id+'\',\''+esc(_pf2.full_name||'Driver')+'\')" style="border-color:var(--gm)"><div class="stat-chip-n" style="font-size:22px;color:var(--gm)">&#128197;</div><div class="stat-chip-l">Weekly Update</div><div class="stat-chip-h">Rate this week</div></div>';})():'')
       +'</div>';
+
+      // ── OWNER VEHICLE BOOST CARD ──
+      var _oCfgR=await sb.from('boost_config').select('key,value');
+      var _oCfg={};(_oCfgR.data||[]).forEach(function(r){_oCfg[r.key]=r.value;});
+      var _vPrice='R'+(parseInt(_oCfg.vehicle_boost_price_cents||8900)/100).toFixed(0);
+      var _vDays=_oCfg.vehicle_boost_days||'7';
+      // Find owner's most recently active or approved car
+      var _oCarsR=await sb.from('cars').select('id,make,model,year,admin_status').eq('owner_id',U.id).eq('admin_status','approved').neq('status','removed').order('created_at',{ascending:false}).limit(1).maybeSingle();
+      var _oCar=_oCarsR.data;
+      if(_oCar){
+        // Check if that car already has an active boost
+        var _ocBNow=new Date().toISOString();
+        var _ocBoostR=await sb.from('boosts').select('id').eq('type','vehicle').eq('target_id',_oCar.id).eq('status','active').lte('start_at',_ocBNow).gte('end_at',_ocBNow).maybeSingle();
+        if(!_ocBoostR.data){
+          // Check pending payment
+          var _ocBpR=await sb.from('boost_payments').select('id,payment_status').eq('user_id',U.id).eq('boost_type','vehicle').eq('target_id',_oCar.id).in('payment_status',['pending','paid']).order('created_at',{ascending:false}).limit(1).maybeSingle();
+          var _ocBp=_ocBpR.data;
+          if(_ocBp&&_ocBp.payment_status==='paid'){
+            html+='<div class="tbox" style="border:1.5px solid var(--gm);background:#f0fdf4;margin-bottom:12px">'
+              +'<div style="font-size:13px;font-weight:800;color:var(--gm);margin-bottom:4px">&#11088; Vehicle Boost</div>'
+              +'<div style="font-size:12px;color:var(--gm)">Payment confirmed! Your vehicle boost is being activated — refresh in a moment.</div>'
+              +'</div>';
+          } else if(_ocBp&&_ocBp.payment_status==='pending'){
+            html+='<div class="tbox" style="border:1.5px solid #fde68a;background:#fffbeb;margin-bottom:12px">'
+              +'<div style="font-size:13px;font-weight:800;color:#92400e;margin-bottom:4px">&#11088; Vehicle Boost</div>'
+              +'<div style="font-size:12px;color:#a16207;margin-bottom:10px">Payment in progress.</div>'
+              +'<button class="btn btn-gm" style="width:100%;padding:9px;font-size:13px;font-weight:700" onclick="startBoostCheckout(\'vehicle\',\''+esc(_oCar.id)+'\')">Resume / Pay '+_vPrice+'</button>'
+              +'</div>';
+          } else {
+            var _oCarNm=(_oCar.year||'')+' '+(_oCar.make||'')+' '+(_oCar.model||'');
+            html+='<div class="tbox" style="border:1.5px solid var(--border);margin-bottom:12px">'
+              +'<div style="font-size:13px;font-weight:800;color:var(--g);margin-bottom:6px">&#11088; Boost Your Vehicle</div>'
+              +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Feature <strong>'+esc(_oCarNm.trim())+'</strong> at the top of driver searches.</div>'
+              +'<div style="background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">'
+              +'<div><div style="font-size:11px;color:var(--muted)">Vehicle Boost</div><div style="font-size:11px;color:var(--muted)">Duration</div></div>'
+              +'<div style="text-align:right"><div style="font-size:18px;font-weight:900;color:var(--gm)">'+_vPrice+'</div><div style="font-size:11px;color:var(--muted)">'+_vDays+' days</div></div>'
+              +'</div>'
+              +'<button class="btn btn-gm" style="width:100%;padding:11px;font-size:14px;font-weight:800" onclick="startBoostCheckout(\'vehicle\',\''+esc(_oCar.id)+'\')">&#128640; Boost This Vehicle — '+_vPrice+'</button>'
+              +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:8px">Secure payment via Yoco</div>'
+              +'</div>';
+          }
+        }
+      }
 
       // ── Past rentals carousel ──
       var pastApps=apps.filter(function(a){return a.status==='approved'&&a.unmatched_at;});
@@ -5915,6 +5972,7 @@ async function pLc(){
     +'<label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:400;cursor:pointer;margin-bottom:6px">'
     +'<input type="checkbox" id="nc-dep-tog" onchange="eid(\'nc-dep-wrap\').style.display=this.checked?\'block\':\'none\'" style="width:16px;height:16px;accent-color:var(--gm)"> Yes, require a deposit</label>'
     +'<div id="nc-dep-wrap" style="display:none"><input id="nc-dep" type="number" placeholder="Amount e.g. 5000"></div></div>'
+    +'<div class="fg"><label>Platforms</label><div class="checks"><label class="chk"><input type="checkbox" value="Uber" class="nc-opc"> Uber</label><label class="chk"><input type="checkbox" value="Bolt" class="nc-opc"> Bolt</label><label class="chk"><input type="checkbox" value="inDrive" class="nc-opc"> inDrive</label></div></div>'
     +'<div class="fg"><label>Description</label><textarea id="nc-desc" placeholder="Describe the car..." style="height:60px;resize:vertical"></textarea></div>'
     +'<div style="display:flex;gap:8px;margin-top:12px">'
     +'<button class="btn btn-gm" style="flex:1" onclick="ncGoStep(2)">Next: Ideal Driver &#8594;</button>'
@@ -6012,6 +6070,7 @@ async function submitNewCar(){
     toast('Please fill in Make, Model, Year, Price and Location.');return;
   }
   var dep=eid('nc-dep-tog')&&eid('nc-dep-tog').checked&&eid('nc-dep').value?parseInt(eid('nc-dep').value)||null:null;
+  var plats=Array.from(document.querySelectorAll('.nc-opc:checked')).map(function(c){return c.value;});
   var prefs=readIdpPrefs('nc');
   var r=await sb.from('cars').insert({
     owner_id:U.id,
@@ -6022,6 +6081,7 @@ async function submitNewCar(){
     transmission:eid('nc-trans').value,
     fuel_policy:eid('nc-fuel').value,
     deposit:dep,
+    platforms:plats.length?plats:null,
     description:(eid('nc-desc').value||'').trim()||null,
     ideal_driver_prefs:prefs,
     admin_status:'pending'
@@ -12442,16 +12502,29 @@ async function adBoost(){
   // Auto-expire any boosts whose end_at has passed
   await sb.rpc('expire_stale_boosts');
   var now=new Date().toISOString();
-  var [bRes,dRes,cRes,brqRes]=await Promise.all([
+  var [bRes,dRes,cRes,brqRes,bpRes]=await Promise.all([
     sb.from('boosts').select('*').order('created_at',{ascending:false}).limit(100),
     sb.from('profiles').select('id,full_name,email').eq('role','driver').order('full_name'),
     sb.from('cars').select('id,make,model,year,location').eq('admin_status','approved').neq('status','removed').order('make'),
-    sb.from('boost_requests').select('id,driver_id,message,status,admin_note,created_at,profiles!driver_id(full_name,email)').eq('status','pending').order('created_at',{ascending:true})
+    sb.from('boost_requests').select('id,driver_id,message,status,admin_note,created_at,profiles!driver_id(full_name,email)').eq('status','pending').order('created_at',{ascending:true}),
+    sb.from('boost_payments').select('*').order('created_at',{ascending:false}).limit(200)
   ]);
   var boosts=bRes.data||[];
   var drivers=dRes.data||[];
   var cars=cRes.data||[];
   var boostReqs=brqRes.data||[];
+  var payments=bpRes.data||[];
+  // Build payment lookup by boost_id
+  var payByBoostId={};
+  payments.forEach(function(p){if(p.boost_id)payByBoostId[p.boost_id]=p;});
+  // Revenue calcs
+  var paidPayments=payments.filter(function(p){return p.payment_status==='paid';});
+  var todayStr=new Date().toISOString().slice(0,10);
+  var todayRev=paidPayments.filter(function(p){return p.paid_at&&p.paid_at.slice(0,10)===todayStr;}).reduce(function(s,p){return s+p.amount_cents;},0);
+  var driverRev=paidPayments.filter(function(p){return p.boost_type==='driver';}).reduce(function(s,p){return s+p.amount_cents;},0);
+  var vehicleRev=paidPayments.filter(function(p){return p.boost_type==='vehicle';}).reduce(function(s,p){return s+p.amount_cents;},0);
+  var totalRev=driverRev+vehicleRev;
+  function rndFmt(c){return 'R'+(c/100).toFixed(2);}
   var driverMap={};drivers.forEach(function(d){driverMap[d.id]=d;});
   var carMap={};cars.forEach(function(c){carMap[c.id]=c;});
 
@@ -12460,11 +12533,17 @@ async function adBoost(){
     return '<span style="font-size:9px;font-weight:800;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.4px;'+(map[s]||map.expired)+'">'+s+'</span>';
   };
 
+  var payStatusPill=function(s){
+    var m={paid:'background:#d1fae5;color:#065f46',pending:'background:#fef3c7;color:#7a5200',failed:'background:#fee2e2;color:#dc2626',cancelled:'background:#f0ede5;color:#6b6b60',refunded:'background:#ede9fe;color:#5b21b6'};
+    return '<span style="font-size:9px;font-weight:800;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px;'+(m[s]||m.pending)+'">'+(s||'pending')+'</span>';
+  };
+
   var boostRows=boosts.map(function(b){
     var target=b.type==='driver'?driverMap[b.target_id]:carMap[b.target_id];
     var nm=b.type==='driver'?(target&&target.full_name||b.target_id):(target&&((target.year||'')+' '+target.make+' '+target.model)||b.target_id);
     var sub=b.type==='driver'?(target&&target.email||''):(target&&target.location||'');
     var isPast=b.status==='expired'||b.status==='cancelled';
+    var pay=payByBoostId[b.id]||null;
     return '<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px'+(isPast?';opacity:.65':'')+'">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">'
       +'<div class="av" style="width:40px;height:40px;font-size:14px;flex-shrink:0">'+ini(nm)+'</div>'
@@ -12474,12 +12553,22 @@ async function adBoost(){
       +'</div>'
       +statusPill(b.status)
       +'</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11px;color:var(--muted);margin-bottom:10px">'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:11px;color:var(--muted);margin-bottom:8px">'
       +'<div>Start<div style="font-weight:600;color:var(--text);font-size:12px">'+fmtD(b.start_at)+'</div></div>'
       +'<div>Expiry<div style="font-weight:600;color:var(--text);font-size:12px">'+fmtD(b.end_at)+'</div></div>'
       +'<div>Impressions<div style="font-weight:600;color:var(--text);font-size:12px">'+(b.impressions||0)+'</div></div>'
       +'<div>Profile Views<div style="font-weight:600;color:var(--text);font-size:12px">'+(b.profile_views||0)+'</div></div>'
       +'</div>'
+      +(pay
+        ?'<div style="background:var(--cream);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
+          +'<span style="color:var(--muted)">Payment</span>'+payStatusPill(pay.payment_status)+'</div>'
+          +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;color:var(--muted)">'
+          +'<div>Amount<div style="font-weight:700;color:var(--text);font-size:12px">'+rndFmt(pay.amount_cents)+'</div></div>'
+          +'<div>Paid<div style="font-weight:700;color:var(--text);font-size:12px">'+(pay.paid_at?fmtD(pay.paid_at):'—')+'</div></div>'
+          +'<div style="grid-column:1/-1">Yoco Ref<div style="font-weight:600;color:var(--text);font-size:10px;word-break:break-all">'+(pay.yoco_checkout_id||'—')+'</div></div>'
+          +'</div></div>'
+        :'<div style="font-size:10px;color:var(--muted);margin-bottom:8px">No payment record (admin-activated)</div>')
       +'<div style="display:flex;gap:6px">'
       +(b.status==='active'
         ?'<button class="btn btn-out btn-sm" onclick="boostExtend(\''+b.id+'\')">Extend</button>'
@@ -12495,7 +12584,23 @@ async function adBoost(){
   var carOptions=cars.map(function(c){return '<option value="'+esc(c.id)+'">'+esc((c.year||'')+' '+c.make+' '+c.model+' ('+c.location+')')+'</option>';}).join('');
 
   el.innerHTML='<div style="padding:20px 24px;max-width:760px">'
-    +'<div style="font-family:\'Playfair Display\',serif;font-size:22px;font-weight:800;color:var(--g);margin-bottom:20px">&#11088; TrustMate Boost Management</div>'
+    +'<div style="font-family:\'Playfair Display\',serif;font-size:22px;font-weight:800;color:var(--g);margin-bottom:16px">&#11088; TrustMate Boost Management</div>'
+
+    // Revenue strip
+    +'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px">'
+    +'<div style="background:#fff;border:1.5px solid var(--gm);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:16px;font-weight:900;color:var(--gm)">'+rndFmt(todayRev)+'</div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:2px">Today\'s Revenue</div></div>'
+    +'<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:16px;font-weight:900;color:var(--g)">'+rndFmt(driverRev)+'</div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:2px">Driver Boosts</div></div>'
+    +'<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:16px;font-weight:900;color:var(--g)">'+rndFmt(vehicleRev)+'</div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:2px">Vehicle Boosts</div></div>'
+    +'<div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:16px;font-weight:900;color:var(--amber)">'+rndFmt(totalRev)+'</div>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:2px">Total Revenue</div></div>'
+    +'</div>'
 
     // Test Mode Toggle
     +'<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">'
@@ -12554,14 +12659,65 @@ async function adBoost(){
     +'</div>';
 }
 
-async function requestBoost(){
-  if(!U||!DP)return;
-  var msg=prompt('Add a short message to admin (optional — e.g. "I have 5★ reviews and a full schedule"):','');
-  if(msg===null)return; // cancelled
-  var r=await sb.from('boost_requests').insert({driver_id:U.id,driver_profile_id:DP.id,message:msg||null});
-  if(r.error){toast('Error: '+r.error.message);return;}
-  toast('&#11088; Boost request sent! Admin will review it.');
-  pOv();
+// ── Yoco Payment Flow ─────────────────────────────────────────
+async function startBoostCheckout(boostType, targetId){
+  if(!U){toast('Please log in first.');return;}
+  var btn=event&&event.target;
+  if(btn){btn.disabled=true;btn.textContent='Processing…';}
+  try{
+    var siteUrl=window.location.origin+window.location.pathname;
+    var res=await fetch('/.netlify/functions/create-boost-checkout',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({boost_type:boostType,target_id:targetId,user_id:U.id,site_url:siteUrl})
+    });
+    var data=await res.json();
+    if(!res.ok||!data.redirectUrl){
+      toast(data.error||'Payment setup failed. Please try again.');
+      if(btn){btn.disabled=false;btn.textContent='Try Again';}
+      return;
+    }
+    // Redirect to Yoco checkout
+    window.location.href=data.redirectUrl;
+  }catch(e){
+    toast('Network error. Please try again.');
+    if(btn){btn.disabled=false;}
+  }
+}
+
+// Called on page load — handles return from Yoco checkout
+async function handleBoostPaymentReturn(){
+  var params=new URLSearchParams(window.location.search);
+  var paymentResult=params.get('payment');
+  var checkoutId=params.get('checkoutId');
+  if(!paymentResult)return;
+  // Clean URL
+  var cleanUrl=window.location.pathname;
+  window.history.replaceState({},'',cleanUrl);
+  if(paymentResult==='success'&&checkoutId){
+    // Poll payment status — webhook may take a few seconds
+    toast('&#11088; Payment received! Verifying your boost…');
+    var attempts=0;
+    var poll=setInterval(async function(){
+      attempts++;
+      try{
+        var r=await fetch('/.netlify/functions/check-payment-status?checkoutId='+encodeURIComponent(checkoutId));
+        var d=await r.json();
+        if(d.payment&&d.payment.payment_status==='paid'){
+          clearInterval(poll);
+          toast('&#11088; Boost activated! Refreshing your dashboard…');
+          setTimeout(function(){pOv();},1500);
+        } else if(attempts>=12){
+          clearInterval(poll);
+          toast('Payment confirmed — boost is being activated. Refresh in a moment if needed.');
+        }
+      }catch(e){if(attempts>=12)clearInterval(poll);}
+    },3000);
+  } else if(paymentResult==='failed'){
+    toast('&#9888; Payment was unsuccessful. Your Boost has not been activated.');
+  } else if(paymentResult==='cancelled'){
+    toast('Payment cancelled. You can try again anytime.');
+  }
 }
 
 async function approveBoostRequest(reqId,driverId){
