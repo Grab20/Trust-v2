@@ -1154,6 +1154,8 @@ nav div::-webkit-scrollbar{display:none}
     <div class="fg"><label>Email</label><input id="le" type="email" placeholder="you@example.com"/></div>
     <div class="fg"><label>Password</label><input id="lp" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/></div>
     <button class="btn btn-g btn-w" onclick="doLogin()" id="login-btn">Sign in</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0 2px"><div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:12px;color:var(--muted);white-space:nowrap">or</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
+    <button class="btn btn-w" onclick="doGoogleAuth(null)" id="login-google-btn" style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--border);background:#fff;color:#374151;font-weight:600"><svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>Continue with Google</button>
     <div class="afoot">No account? <a onclick="go('register')">Register</a> &middot; <a onclick="showForgot()">Forgot password?</a></div>
   </div></div>
 </div>
@@ -1602,7 +1604,7 @@ nav div::-webkit-scrollbar{display:none}
         <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">&#128064;</div><div style="font-size:13px;color:#1a1a1a;line-height:1.4"><strong>Get 3× more profile views</strong> from serious matches</div></div>
         <div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">&#9889;</div><div style="font-size:13px;color:#1a1a1a;line-height:1.4"><strong>Match up to 7 days faster</strong> — limited spots available</div></div>
       </div>
-      <div style="margin-top:14px;padding:10px 12px;background:#fef3c7;border-radius:10px;font-size:12px;color:#92400e;font-weight:700;text-align:center" id="boost-promo-price-tag">Starting from R49 / 7 days</div>
+      <div style="display:none" id="boost-promo-price-tag"></div>
     </div>
     <!-- Actions -->
     <div style="padding:16px 20px 20px;background:#fff;display:flex;flex-direction:column;gap:8px">
@@ -1641,6 +1643,7 @@ nav div::-webkit-scrollbar{display:none}
       <button class="atab" id="atab-tc" onclick="adNav('tc')">&#128221; T&amp;C</button>
       <button class="atab" id="atab-decl" onclick="adNav('decl')">&#10060; Declines</button>
       <button class="atab" id="atab-boost" onclick="adNav('boost')">&#11088; Boost</button>
+      <button class="atab" id="atab-camp" onclick="adNav('camp')">&#128140; Campaigns</button>
       <button class="atab" id="atab-stats" onclick="adNav('stats')">&#128202; Analytics</button>
       <button class="atab" id="atab-set" onclick="adNav('set')">&#9881; Settings</button>
     </div>
@@ -1718,6 +1721,9 @@ nav div::-webkit-scrollbar{display:none}
       <div class="adm-nav" id="an-boost" onclick="adNav('boost')">
         <span class="adm-nav-icon">&#11088;</span> Boost Management
       </div>
+      <div class="adm-nav" id="an-camp" onclick="adNav('camp')">
+        <span class="adm-nav-icon">&#128140;</span> Email Campaigns
+      </div>
 
       <!-- ANALYTICS -->
       <div class="adm-nav-group">Analytics</div>
@@ -1755,6 +1761,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="adm-panel" id="ap-tc"></div>
       <div class="adm-panel" id="ap-decl"></div>
       <div class="adm-panel" id="ap-boost"></div>
+      <div class="adm-panel" id="ap-camp"></div>
       <div class="adm-panel" id="ap-d360"></div>
       <div class="adm-panel" id="ap-o360"></div>
     </div>
@@ -2540,6 +2547,48 @@ sb.auth.onAuthStateChange(function(ev, session) {
         }
       }
     } catch(e) {}
+    // Handle Google OAuth return
+    var isGoogleUser=session.user.app_metadata&&session.user.app_metadata.provider==='google';
+    if(isGoogleUser){
+      loadP().then(function(){
+        if(!P||!P.role){
+          // New Google user — needs to choose role and complete profile
+          var savedRole='driver';
+          try{savedRole=sessionStorage.getItem('_googleRole')||'driver';sessionStorage.removeItem('_googleRole');}catch(e){}
+          rRole=savedRole;
+          rName=session.user.user_metadata&&session.user.user_metadata.full_name?session.user.user_metadata.full_name:'';
+          rEmail=session.user.email||'';
+          rPass=''; // Google users have no password
+          // Create minimal profile row so they can continue
+          var now3=new Date().toISOString();
+          sb.from('profiles').upsert({id:U.id,email:rEmail,full_name:rName,role:savedRole,terms_accepted:true,popia_accepted:true,terms_accepted_at:now3,popia_accepted_at:now3,terms_version:'1.0',tc_accepted_at:now3,tc_version:'July 2026',email_confirmed:true},{onConflict:'id'}).then(function(){
+            loadP().then(function(){
+              setNav();
+              // Send them to Step 2 of registration to complete profile
+              go('register');
+              setTimeout(function(){
+                // Show Step 2 (skip S1, skip OTP)
+                setRole(savedRole);
+                eid('reg-s1')&&(eid('reg-s1').style.display='none');
+                eid('reg-s1-otp')&&(eid('reg-s1-otp').style.display='none');
+                eid('reg-s2-d')&&(eid('reg-s2-d').style.display=savedRole==='driver'?'block':'none');
+                eid('reg-s2-o')&&(eid('reg-s2-o').style.display=savedRole==='owner'?'block':'none');
+                var rs1=eid('rs1'),rs2=eid('rs2');
+                if(rs1){rs1.classList.remove('on');rs1.classList.add('done');}
+                if(rs2)rs2.classList.add('on');
+                toast('Welcome '+rName.split(' ')[0]+'! Please complete your profile.');
+              },300);
+            });
+          });
+        } else {
+          // Returning Google user — just log them in
+          setNav();
+          toast('Welcome back!');
+          go('dashboard');
+        }
+      });
+      return;
+    }
     loadP().then(setNav);
   }
   if (ev === 'PASSWORD_RECOVERY') {
@@ -2694,6 +2743,8 @@ function setNav() {
   if(bnProf) bnProf.innerHTML='<span class="bnt-icon">'+(in_?'&#128100;':'&#128274;')+'</span>'+(in_?'Profile':'Sign In');
   // Show boost promo once per session for eligible users
   if (in_) maybeShowBoostPromo();
+  // Re-render featured cars if driver just logged in while on the cars page
+  if(in_&&P&&(P.role==='driver'||P.role==='both')&&eid('cars-featured')){loadFeaturedCars();}
 }
 
 // ── BOOST PROMO POPUP ─────────────────────────────────
@@ -2731,15 +2782,13 @@ function maybeShowBoostPromo() {
   var benefit2 = isOwner && !isDriver
     ? '<div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">&#128064;</div><div style="font-size:13px;color:#1a1a1a;line-height:1.4"><strong>Get 3× more driver applications</strong> from verified drivers</div></div>'
     : '<div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">&#128064;</div><div style="font-size:13px;color:#1a1a1a;line-height:1.4"><strong>Get 3× more profile views</strong> from serious owners</div></div>';
-  var priceTag = isOwner && !isDriver ? 'Starting from R89 / 7 days' : 'Starting from R49 / 7 days';
   var tryLabel = isDriver && !isOwner ? '&#128640; Boost My Profile'
                : isOwner  && !isDriver ? '&#128640; Boost My Vehicle'
                : '&#128640; Boost Now';
   var t = eid('boost-promo-title'), btn = eid('boost-promo-try-btn');
-  var bens = eid('boost-promo-benefits'), pt = eid('boost-promo-price-tag');
+  var bens = eid('boost-promo-benefits');
   if (t) t.textContent = title;
   if (btn) btn.innerHTML = tryLabel;
-  if (pt) pt.textContent = priceTag;
   if (bens) {
     bens.innerHTML =
       '<div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:#fef3c7;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">&#11088;</div><div style="font-size:13px;color:#1a1a1a;line-height:1.4"><strong>Appear at the top</strong> of search results — seen first</div></div>'
@@ -4117,6 +4166,20 @@ async function doLogin() {
 async function doSignOut() {
   _drvCache=null;_carCache=null; await sb.auth.signOut(); go('home'); }
 
+async function doGoogleAuth(role) {
+  try{if(role)sessionStorage.setItem('_googleRole',role);}catch(e){}
+  var btn=eid('login-google-btn')||eid('reg-google-btn');
+  if(btn){btn.disabled=true;btn.textContent='Redirecting to Google…';}
+  var r=await sb.auth.signInWithOAuth({
+    provider:'google',
+    options:{redirectTo:window.location.origin+'/?google_auth=1',queryParams:{access_type:'offline',prompt:'select_account'}}
+  });
+  if(r.error){
+    if(btn){btn.disabled=false;btn.innerHTML='<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>Continue with Google';}
+    toast('Google sign-in failed: '+r.error.message);
+  }
+}
+
 // ── REGISTER ───────────────────────────────────────────
 function setRole(r) {
   rRole=r;
@@ -4359,17 +4422,18 @@ async function saveRegLater(){
       user_id:U.id,
       status:'incomplete',
       id_number:idNo,
-      location:loc,
       platforms:plats.length?plats:null,
-      declared_trips:tripsVal,
       deposit_amount:depAmt,
       bio:bio,
       safe_parking:safeP,
       age:age,
       years_driving:0
     };
-    // Whatsapp → save to profile
-    if(wa){await sb.from('profiles').update({whatsapp:wa}).eq('id',U.id);}
+    // location + whatsapp → save to profiles table (not driver_profiles)
+    var profUpdate={};
+    if(wa)profUpdate.whatsapp=wa;
+    if(loc)profUpdate.location=loc;
+    if(Object.keys(profUpdate).length){await sb.from('profiles').update(profUpdate).eq('id',U.id);}
     var ex=await sb.from('driver_profiles').select('id').eq('user_id',U.id).maybeSingle();
     var dbErr;
     if(ex.data){
@@ -4600,15 +4664,20 @@ async function doReg() {
     var _totalUploads=_docCount+_shotCount; var _doneUploads=0;
     function _upd(){if(_totalUploads>0)_regProgress('Uploading '+_doneUploads+' of '+_totalUploads+'…');}
     _upd();
-    if(docFiles.df){var x=await upFile('driver-docs',uid+'/fullbody-'+t,docFiles.df);if(x)u.photo_fullbody_url=x;_doneUploads++;_upd();}
-    if(docFiles.dh){var x=await upFile('driver-docs',uid+'/headshot-'+t,docFiles.dh);if(x)u.photo_headshot_url=x;_doneUploads++;_upd();}
-    if(docFiles.dhid){var x=await upFile('driver-docs',uid+'/holdingid-'+t,docFiles.dhid);if(x)u.photo_holding_id_url=x;_doneUploads++;_upd();}
-    if(docFiles.dl){var x=await upFile('driver-docs',uid+'/license-front-'+t,docFiles.dl);if(x)u.doc_license_url=x;_doneUploads++;_upd();}
+    var _failedDocs=[];
+    if(docFiles.df){var x=await upFile('driver-docs',uid+'/fullbody-'+t,docFiles.df,'photo_fullbody_url');if(x)u.photo_fullbody_url=x;else _failedDocs.push('Full Body photo');_doneUploads++;_upd();}
+    if(docFiles.dh){var x=await upFile('driver-docs',uid+'/headshot-'+t,docFiles.dh,'photo_headshot_url');if(x)u.photo_headshot_url=x;else _failedDocs.push('Headshot');_doneUploads++;_upd();}
+    if(docFiles.dhid){var x=await upFile('driver-docs',uid+'/holdingid-'+t,docFiles.dhid,'photo_holding_id_url');if(x)u.photo_holding_id_url=x;else _failedDocs.push('Holding ID photo');_doneUploads++;_upd();}
+    if(docFiles.dl){var x=await upFile('driver-docs',uid+'/license-front-'+t,docFiles.dl);if(x)u.doc_license_url=x;else _failedDocs.push('Licence Front');_doneUploads++;_upd();}
     if(docFiles.dlb){var x=await upFile('driver-docs',uid+'/license-back-'+t,docFiles.dlb);if(x)u.doc_license_back_url=x;_doneUploads++;_upd();}
-    if(docFiles.did){var x=await upFile('driver-docs',uid+'/idcopy-'+t,docFiles.did);if(x)u.doc_id_url=x;_doneUploads++;_upd();}
-    if(docFiles.por){var x=await upFile('driver-docs',uid+'/por-'+t,docFiles.por);if(x)u.proof_of_residence_url=x;_doneUploads++;_upd();}
+    if(docFiles.did){var x=await upFile('driver-docs',uid+'/idcopy-'+t,docFiles.did);if(x)u.doc_id_url=x;else _failedDocs.push('ID/Passport');_doneUploads++;_upd();}
+    if(docFiles.por){var x=await upFile('driver-docs',uid+'/por-'+t,docFiles.por);if(x)u.proof_of_residence_url=x;else _failedDocs.push('Proof of Residence');_doneUploads++;_upd();}
     if(docFiles.crim){var x=await upFile('driver-docs',uid+'/criminal-'+t,docFiles.crim);if(x){u.criminal_check_url=x;u.criminal_check_submitted=true;}_doneUploads++;_upd();}
     if(docFiles.pdp){var x=await upFile('driver-docs',uid+'/pdp-'+t,docFiles.pdp);if(x){u.pdp_url=x;u.has_pdp=true;}_doneUploads++;_upd();}
+    if(_failedDocs.length){
+      var btn2=eid('d-reg-btn');if(btn2){btn2.textContent='Complete Registration';btn2.disabled=false;}
+      showErr('reg-err','Upload failed for: '+_failedDocs.join(', ')+'. Please check your connection and try again.');return;
+    }
     var hasDoc=Object.keys(u).length>0;
     var shotUrls={uber:null,bolt:null,indrive:null};
     for(var sp in platFiles){
@@ -5977,7 +6046,9 @@ async function pDc() {
     {k:'doc_license_url',l:'Licence Front',n:'lic',icon:'&#128203;',cam:true},
     {k:'doc_license_back_url',l:'Licence Back',n:'licb',icon:'&#128203;',cam:true},
     {k:'doc_id_url',l:'ID/Passport',n:'id',icon:'&#128196;',cam:false},
-    {k:'proof_of_residence_url',l:'Proof of Residence',n:'por',icon:'&#127968;',cam:false}
+    {k:'proof_of_residence_url',l:'Proof of Residence',n:'por',icon:'&#127968;',cam:false},
+    {k:'criminal_check_url',l:'Criminal Check',n:'crim',icon:'&#128373;',cam:false},
+    {k:'pdp_url',l:'PDP Certificate',n:'pdp',icon:'&#128203;',cam:false}
   ];
   el.innerHTML='<div class="shd">Documents</div>'
     +(!DP.proof_of_residence_url?'<div style="background:#fef2f2;border:1.5px solid #dc2626;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><span style="font-size:18px;flex-shrink:0">&#127968;</span><div><div style="font-size:12px;font-weight:700;color:#dc2626">Proof of Residence required</div><div style="font-size:11px;color:#7f1d1d;margin-top:2px">Your application cannot be reviewed until you upload a bank statement or utility bill.</div></div></div>':'')
@@ -6003,12 +6074,16 @@ async function pDc() {
 }
 async function upDocItem(n,col,inp) {
   var file=inp.files[0];if(!file)return;
-  var url=await upFile('driver-docs',U.id+'/'+n,file);
-  if(!url){toast('Upload failed');return;}
+  var url=await upFile('driver-docs',U.id+'/'+n,file,col);
+  if(!url){toast('Upload failed — please check your connection and try again.');return;}
   var upd={};upd[col]=url;
+  if(col==='criminal_check_url')upd.criminal_check_submitted=true;
+  if(col==='pdp_url')upd.has_pdp=true;
   await sb.from('driver_profiles').update(upd).eq('id',DP.id);
-  DP[col]=url; toast('Uploaded!'); pDc();
-  // Notify admin that a document was uploaded (fire-and-forget)
+  DP[col]=url;
+  if(col==='criminal_check_url')DP.criminal_check_submitted=true;
+  if(col==='pdp_url')DP.has_pdp=true;
+  toast('Uploaded!'); pDc();
   sendDriverEmail('doc_uploaded', DP.id);
 }
 // Camera capture for headshot / holding-ID in driver docs panel
@@ -6810,9 +6885,9 @@ async function submitNewCar(){
 }
 async function ownerReinstateCar(cid,btn){
   if(btn){btn.textContent='Reinstating...';btn.disabled=true;}
-  var r=await sb.from('cars').update({status:'available',removed_at:null,removed_by:null,removal_reason:null}).eq('id',cid).eq('owner_id',U.id).select();
+  var r=await sb.from('cars').update({status:'available',admin_status:'approved',removed_at:null,removed_by:null,removal_reason:null}).eq('id',cid).eq('owner_id',U.id).select();
   if(r.error){toast('Error: '+r.error.message);if(btn){btn.textContent='&#8635; Reinstate';btn.disabled=false;}return;}
-  toast('Car reinstated! It will be available once admin approves it if needed.');
+  toast('Car reinstated and back in listings!');
   pLc();
 }
 function ownerRemoveCar(cid, cmake){
@@ -8608,6 +8683,7 @@ function adNav(name) {
   if(name==='decl')  adDecl();
   if(name==='set')   adSet();
   if(name==='boost') adBoost();
+  if(name==='camp')  adCamp();
   if(name==='d360')  {} // opened programmatically
   if(name==='o360')  {} // opened programmatically
 }
@@ -8615,6 +8691,7 @@ function adNav(name) {
 // Helpers
 function adSpin(){return '<div class="loading"><div class="spin"></div>Loading...</div>';}
 function adIni(n){return((n||'?').split(' ').map(function(x){return x[0]||'?';}).join('').toUpperCase().slice(0,2));}
+function waNum(n){var s=(n||'').replace(/[\s\-()]/g,'');if(s.startsWith('+'))s=s.slice(1);if(s.startsWith('0'))s='27'+s.slice(1);return s;}
 function adPill(s){var m={approved:'p-a',pending:'p-p',rejected:'p-r',available:'p-a'};return '<span class="pill '+(m[s]||'p-p')+'">'+s+'</span>';}
 function adSc(s){if(s>=80)return 'var(--gm)';if(s>=60)return 'var(--amber)';return '#dc2626';}
 function adSl(s){if(s>=90)return 'Trusted Driver';if(s>=80)return 'Reliable Driver';if(s>=70)return 'Good Standing';if(s>=60)return 'Fair Standing';if(s>=50)return 'Needs Improvement';return 'High Risk';}
@@ -9021,13 +9098,13 @@ async function adOv(){
   var [usersR,dpsR,carsR,revsR,trustR,msgR,logR,pvR,
        cntTotalR,cntActiveR,cntApprovedR,cntRejectedR,cntTodayAppR,cntTodayMatchR,
        recentAppsR,cntDrvInitR,cntOwnInitR,activePricedCarsR]=await Promise.all([
-    sb.from('profiles').select('id,full_name,email,role,admin_status,created_at,email_confirmed').limit(2000),
+    sb.from('profiles').select('id,full_name,email,role,admin_status,location,created_at,email_confirmed').limit(2000),
     sb.from('driver_profiles').select('id,user_id,status,trust_score,suspended,license_expiry_date,pdp_expiry_date,applications_paused,created_at').limit(2000),
     sb.from('cars').select('id,status,admin_status,owner_id,make,model,year,price_per_week,created_at').limit(2000),
     sb.from('reviews').select('id,rating,created_at'),
     sb.from('trust_actions').select('id,driver_id,owner_id,points,action_type,created_at').order('created_at',{ascending:false}).limit(50),
     sb.from('messages').select('id,application_id,created_at').order('created_at',{ascending:false}).limit(200),
-    sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false}).limit(100),
+    sb.from('login_events').select('id,user_id,role,created_at').order('created_at',{ascending:false}).limit(2000),
     sb.from('page_views').select('id,page,visitor_id,created_at').order('created_at',{ascending:false}).limit(100),
     // Server-side counts — unaffected by row cap
     sb.from('applications').select('*',{count:'exact',head:true}),
@@ -9082,7 +9159,7 @@ async function adOv(){
   // ── Compute alert counts ──
   var pdrvs=dps.filter(function(d){return d.status==='pending'&&confirmedIds.has(d.user_id);}).length;
   var powns=users.filter(function(u){return(u.role==='owner'||u.role==='both')&&u.admin_status==='pending'&&u.email_confirmed;}).length;
-  var pcars=cars.filter(function(c){return c.admin_status==='pending';}).length;
+  var pcars=cars.filter(function(c){return c.admin_status==='pending'&&c.status!=='removed';}).length;
   var totalPending=pdrvs+powns+pcars;
 
   // Expired / expiring docs
@@ -9862,7 +9939,9 @@ async function adDrv(){
   var removedDps=allDps.filter(function(d){return d.status==='removed';});
   var nonRemovedDps=allDps.filter(function(d){return d.status!=='removed';});
   var now=Date.now(), thirtyAgo=new Date(now-30*24*60*60*1000), sevenAgo=new Date(now-7*24*60*60*1000);
+  var pausedDps=nonRemovedDps.filter(function(d){return !!d.applications_paused;});
   var counts={all:nonRemovedDps.length,removed:removedDps.length,pending:0,approved:0,rejected:0,incomplete:0,
+    paused:pausedDps.length,
     suspended:nonRemovedDps.filter(function(d){return d.suspended;}).length,
     high_trust:nonRemovedDps.filter(function(d){return (d.trust_score||0)>=80;}).length,
     low_trust:nonRemovedDps.filter(function(d){return (d.trust_score||0)<50;}).length,
@@ -9873,6 +9952,7 @@ async function adDrv(){
   var dps;
   if(adDrvFilter==='all') dps=nonRemovedDps;
   else if(adDrvFilter==='removed') dps=removedDps;
+  else if(adDrvFilter==='paused') dps=pausedDps;
   else if(adDrvFilter==='suspended') dps=nonRemovedDps.filter(function(d){return d.suspended;});
   else if(adDrvFilter==='high_trust') dps=nonRemovedDps.filter(function(d){return (d.trust_score||0)>=80;});
   else if(adDrvFilter==='low_trust') dps=nonRemovedDps.filter(function(d){return (d.trust_score||0)<50;});
@@ -9895,7 +9975,7 @@ async function adDrv(){
     +'<div class="psub">Approve, verify and manage all registered drivers</div>'
     +'<div style="margin-bottom:12px"><input id="adm-drv-q" type="text" placeholder="&#128269; Search driver name or email..." value="'+esc(window._adDrvQ||'')+'" style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;outline:none" oninput="adDrvSearchDebounced()"/></div>'
     +'<div class="tbb-row" id="drv-tabs" style="flex-wrap:wrap">'
-    +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')'],['matched','Matched ('+counts.matched+')'],['unmatched','Unmatched ('+counts.unmatched+')'],['suspended','Suspended ('+counts.suspended+')'],['high_trust','High Trust &#9679; '+counts.high_trust],['low_trust','Low Trust &#9679; '+counts.low_trust],['new_join','New 30d &#9679; '+counts.new_join],['docs_ok','Docs Valid &#9679; '+counts.docs_ok],['removed','Removed ('+counts.removed+')']].map(function(t){return '<button class="tbb'+(adDrvFilter===t[0]?' on':'')+'" onclick="window._adDrvFilter=\''+t[0]+'\';adDrv()">'+t[1]+'</button>';}).join('')
+    +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')'],['paused','&#9646;&#9646; Paused ('+counts.paused+')'],['matched','Matched ('+counts.matched+')'],['unmatched','Unmatched ('+counts.unmatched+')'],['suspended','Suspended ('+counts.suspended+')'],['high_trust','High Trust &#9679; '+counts.high_trust],['low_trust','Low Trust &#9679; '+counts.low_trust],['new_join','New 30d &#9679; '+counts.new_join],['docs_ok','Docs Valid &#9679; '+counts.docs_ok],['removed','Removed ('+counts.removed+')']].map(function(t){return '<button class="tbb'+(adDrvFilter===t[0]?' on':'')+'" onclick="window._adDrvFilter=\''+t[0]+'\';adDrv()">'+t[1]+'</button>';}).join('')
     +'</div>'
     +'<div class="psub" style="margin-top:-8px">'+dps.length+' driver'+(dps.length!==1?'s':'')+' shown</div>'
     +dps.map(function(d){
@@ -9908,6 +9988,7 @@ async function adDrv(){
         +'<div style="font-size:11px;color:var(--muted)">'+(p.email||'-')+' / '+(p.phone||'-')+(p.whatsapp?' / '+p.whatsapp:'')+' / '+(p.location||'-')+'</div></div></div>'
         +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px"><div style="font-size:13px;font-weight:700;color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</div>'+adPill(d.status||'pending')+(matchedDrvIds&&matchedDrvIds.has(d.user_id)?'<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid #86efac">MATCHED</span>':'')+(d.suspended?'<span class="pill p-r">SUSPENDED</span>':'')+(d.applications_paused?'<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;border:1px solid #fcd34d">PAUSED</span>':'')+(d.approved_at&&d.status==='approved'?'<div style="font-size:10px;color:var(--gm);margin-top:2px">&#9989; Approved: '+fmtD(d.approved_at)+'</div>':'')
         +(d.rejected_at&&d.status==='rejected'?'<div style="font-size:10px;color:#dc2626;margin-top:2px">&#10060; Rejected: '+fmtD(d.rejected_at)+'</div>':'')
+        +(['pending','pending_docs','incomplete'].includes(d.status)&&(p.whatsapp||p.phone)?'<a href="https://wa.me/'+waNum(p.whatsapp||p.phone)+'" target="_blank" style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:#25D366;color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;text-decoration:none;cursor:pointer">&#128172; WhatsApp</a>':'')
         +'</div></div>'
         +'<div style="padding:9px 14px;background:var(--cream);border-top:1px solid var(--border)">'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
@@ -10201,10 +10282,11 @@ async function adOwn(){
   var ownAppR=await sb.from('applications').select('owner_id,status,unmatched_at').in('owner_id',oids).eq('status','approved');
   var matchedOwnIds=new Set((ownAppR.data||[]).filter(function(a){return !a.unmatched_at;}).map(function(a){return a.owner_id;}));
   var unmatchedOwnIds=new Set(oids.filter(function(id){return !matchedOwnIds.has(id);}));
-  var counts={all:owners.length,pending:0,approved:0,rejected:0,incomplete:0,matched:matchedOwnIds.size,unmatched:unmatchedOwnIds.size};
+  var counts={all:owners.length,pending:0,approved:0,rejected:0,incomplete:0,matched:matchedOwnIds.size,unmatched:unmatchedOwnIds.size,paused:owners.filter(function(o){return !!o.applications_paused;}).length};
   owners.forEach(function(o){var s=o.admin_status||'pending';if(counts[s]!==undefined)counts[s]++;});
   var filteredOwners=owners.filter(function(o){
     var s=o.admin_status||'pending';
+    if(adOwnSt==='paused')return !!o.applications_paused;
     if(adOwnSt==='matched'&&!matchedOwnIds.has(o.id))return false;
     if(adOwnSt==='unmatched'&&matchedOwnIds.has(o.id))return false;
     if(adOwnSt!=='all'&&adOwnSt!=='matched'&&adOwnSt!=='unmatched'&&s!==adOwnSt)return false;
@@ -10216,7 +10298,7 @@ async function adOwn(){
     +'<div class="psub">Approve and manage vehicle owners and their listings</div>'
     +'<div style="margin-bottom:12px"><input id="adm-own-q" type="text" placeholder="&#128269; Search owner name, email or location..." value="'+esc(adOwnQ)+'" style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;outline:none" oninput="adOwnSearchDebounced()"/></div>'
     +'<div class="tbb-row">'
-    +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')'],['matched','Matched ('+counts.matched+')'],['unmatched','Unmatched ('+counts.unmatched+')']].map(function(t){
+    +[['all','All ('+counts.all+')'],['pending','Pending ('+counts.pending+')'],['approved','Approved ('+counts.approved+')'],['rejected','Rejected ('+counts.rejected+')'],['incomplete','Incomplete ('+counts.incomplete+')'],['paused','&#9646;&#9646; Paused ('+counts.paused+')'],['matched','Matched ('+counts.matched+')'],['unmatched','Unmatched ('+counts.unmatched+')']].map(function(t){
       return '<button class="tbb'+(adOwnSt===t[0]?' on':'')+'" onclick="window._adOwnSt=\''+t[0]+'\';adOwn()">'+t[1]+'</button>';
     }).join('')
     +'</div>'
@@ -10250,6 +10332,7 @@ async function adOwn(){
         // Edit toggle
         +'<div style="padding:6px 14px 8px;display:flex;gap:6px;flex-wrap:wrap">'
         +'<button class="btn btn-sm" style="background:#1e3a5f;color:#fff;border-color:#1e3a5f;font-weight:600" onclick="adOwner360(\''+o.id+'\')">&#128269; View 360</button>'
+        +((o.whatsapp||o.phone)?'<a href="https://wa.me/'+waNum(o.whatsapp||o.phone)+'" target="_blank" class="btn btn-sm" style="background:#25D366;color:#fff;border-color:#25D366;font-weight:600;text-decoration:none">&#128172; WhatsApp</a>':'')
         +'<button class="btn btn-out btn-sm" data-id="'+o.id+'" onclick="ownToggle(this.dataset.id)">&#9998; Edit Details</button>'
         +(o.admin_status==='approved'?(o.applications_paused?'<button class="btn btn-gm btn-sm" onclick="adTogglePauseOwner(\''+o.id+'\',false)">&#9654; Resume Applications</button>':'<button class="btn btn-amb btn-sm" onclick="adTogglePauseOwner(\''+o.id+'\',true)">&#9646;&#9646; Pause Applications</button>'):'')
         +(!o.is_suspended?'<button class="btn btn-red btn-sm" onclick="adSuspendOwner(\''+o.id+'\',true)">&#128683; Suspend Owner</button>':'<button class="btn btn-gm btn-sm" onclick="adSuspendOwner(\''+o.id+'\',false)">&#10003; Reinstate Owner</button>')
@@ -10470,17 +10553,19 @@ async function adCar(){
   ]);
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
   var matchedCarIds=new Set((appR.data||[]).map(function(a){return a.car_id;}));
-  var ccounts={all:activeCarsA.length,pending:activeCarsA.filter(function(c){return (c.admin_status||'pending')==='pending';}).length,approved:activeCarsA.filter(function(c){return c.admin_status==='approved';}).length,rejected:activeCarsA.filter(function(c){return c.admin_status==='rejected';}).length,removed:removedCarsA.length,matched:activeCarsA.filter(function(c){return matchedCarIds.has(c.id);}).length,unmatched:activeCarsA.filter(function(c){return c.admin_status==='approved'&&!matchedCarIds.has(c.id);}).length};
+  var pausedCarsA=activeCarsA.filter(function(c){return !!c.applications_paused;});
+  var ccounts={all:activeCarsA.length,pending:activeCarsA.filter(function(c){return (c.admin_status||'pending')==='pending';}).length,approved:activeCarsA.filter(function(c){return c.admin_status==='approved';}).length,rejected:activeCarsA.filter(function(c){return c.admin_status==='rejected';}).length,removed:removedCarsA.length,matched:activeCarsA.filter(function(c){return matchedCarIds.has(c.id);}).length,unmatched:activeCarsA.filter(function(c){return c.admin_status==='approved'&&!matchedCarIds.has(c.id);}).length,paused:pausedCarsA.length};
   var cars=adCarFilter==='removed'?removedCarsA
     :adCarFilter==='matched'?activeCarsA.filter(function(c){return matchedCarIds.has(c.id);})
     :adCarFilter==='unmatched'?activeCarsA.filter(function(c){return c.admin_status==='approved'&&!matchedCarIds.has(c.id);})
+    :adCarFilter==='paused'?pausedCarsA
     :adCarFilter==='all'?activeCarsA
     :activeCarsA.filter(function(c){return (c.admin_status||'pending')===adCarFilter;});
   el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Vehicles</div>'
     +'<div class="psub">Review and approve all listed vehicles</div>'
     +'<div style="margin-bottom:12px"><input id="adm-car-q" type="text" placeholder="&#128269; Search make, model, location..." style="width:100%;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-family:inherit;background:#fff;outline:none" oninput="adCarSearchDebounced()"/></div>'
     +'<div class="tbb-row">'
-    +[['all','All ('+ccounts.all+')'],['pending','Pending ('+ccounts.pending+')'],['approved','Approved ('+ccounts.approved+')'],['rejected','Rejected ('+ccounts.rejected+')'],['removed','Removed ('+ccounts.removed+')'],['matched','Matched ('+ccounts.matched+')'],['unmatched','Unmatched ('+ccounts.unmatched+')']].map(function(t){return '<button class="tbb'+(adCarFilter===t[0]?' on':'')+'" onclick="window._adCarFilter=\''+t[0]+'\';adCar()">'+t[1]+'</button>';}).join('')
+    +[['all','All ('+ccounts.all+')'],['pending','Pending ('+ccounts.pending+')'],['approved','Approved ('+ccounts.approved+')'],['rejected','Rejected ('+ccounts.rejected+')'],['removed','Removed ('+ccounts.removed+')'],['matched','Matched ('+ccounts.matched+')'],['unmatched','Unmatched ('+ccounts.unmatched+')'],['paused','⏸ Paused ('+ccounts.paused+')']].map(function(t){return '<button class="tbb'+(adCarFilter===t[0]?' on':'')+'" onclick="window._adCarFilter=\''+t[0]+'\';adCar()">'+t[1]+'</button>';}).join('')
     +'</div>'
     +'<div class="psub" style="margin-top:-8px">'+cars.length+' vehicle'+(cars.length!==1?'s':'')+' shown</div>'
     +(adCarFilter==='removed'
@@ -10622,8 +10707,9 @@ async function adAdminRemoveCar(cid){
 }
 async function adReinstateCar(cid){
   if(!confirm('Reinstate this vehicle back to active listings?'))return;
-  var r=await sb.from('cars').update({status:'pending',removed_at:null,removed_by:null,removal_reason:null}).eq('id',cid);
+  var r=await sb.from('cars').update({status:'available',admin_status:'approved',removed_at:null,removed_by:null,removal_reason:null}).eq('id',cid).select();
   if(r.error){toast('Error: '+r.error.message);return;}
+  if(!r.data||!r.data.length){toast('Update blocked — check admin permissions');return;}
   toast('Vehicle reinstated successfully.'); adCar(); adOv();
 }
 async function adSetCar(cid,status){
@@ -12517,7 +12603,8 @@ async function adStats(){
     });
     dps.filter(function(d){return d.status==='approved';}).forEach(function(d){
       var p=pm[d.user_id]||{};
-      var city=locCity((p.location||''))||(locCity(d.location||''))||'Unknown';
+      var loc=(p.location||'').trim();
+      var city=loc?locCity(loc):'Unknown';
       if(!cityData[city])cityData[city]={cars:[],drivers:[],apps:0,matches:0};
       cityData[city].drivers.push(d);
     });
@@ -12604,9 +12691,14 @@ async function adStats(){
     // Segment: drivers only (role='driver') and owners (role='owner' OR 'both')
     var uaDrv=ua.filter(function(u){return u.role==='driver';});
     var uaOwn=ua.filter(function(u){return u.role==='owner'||u.role==='both';});
+    // Build approved driver set from driver_profiles (profiles.admin_status not used for drivers)
+    var approvedDrvSet=new Set(dps.filter(function(d){return d.status==='approved';}).map(function(d){return d.user_id;}));
 
     function uaSeg(arr,label,color,nav){
-      var approved=arr.filter(function(u){return u.admin_status==='approved';});
+      var isDriverSeg=arr.length&&(arr[0]||{}).role==='driver';
+      var approved=isDriverSeg
+        ?arr.filter(function(u){return approvedDrvSet.has(u.user_id);})
+        :arr.filter(function(u){return u.admin_status==='approved';});
       var act7=arr.filter(function(u){return u.last_login_at&&new Date(u.last_login_at)>=d7;});
       var act30=arr.filter(function(u){return u.last_login_at&&new Date(u.last_login_at)>=d30;});
       var dormant=arr.filter(function(u){return u.last_login_at&&new Date(u.last_login_at)<d30&&new Date(u.last_login_at)>=d90;});
@@ -12738,6 +12830,36 @@ async function adStats(){
     html+='<text x="2" y="'+(chartH+1)+'" font-size="9" fill="currentColor" opacity="0.55">0</text>';
     html+='</svg></div>';
     html+='<div style="font-size:11px;color:var(--muted);margin-top:6px">Chart shows unique users per day. Data from login_events (most recent 1,000 records, covering approx. last 30–60 days). Use dormant/inactive KPIs above for complete historical reach.</div>';
+
+    // ── Day-of-week login heatmap (Mon-first) ──
+    html+='<div class="occ-sh" style="margin-top:24px">&#128197; Logins by Day of Week</div>';
+    // Day indices: Mon=1..Sun=0 in JS getDay(). Reorder Mon-first: [1,2,3,4,5,6,0]
+    var DOW_LABELS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    var DOW_JS=[1,2,3,4,5,6,0]; // JS getDay() values in Mon-first order
+    var dowCounts={1:0,2:0,3:0,4:0,5:0,6:0,0:0};
+    logins.forEach(function(l){
+      if(!l.created_at)return;
+      var filterRole2=l.role||'';
+      if(uaChartFilter==='driver'&&filterRole2!=='driver')return;
+      if(uaChartFilter==='owner'&&filterRole2!=='owner'&&filterRole2!=='both')return;
+      var dow=new Date(l.created_at).getDay();
+      dowCounts[dow]=(dowCounts[dow]||0)+1;
+    });
+    var dowVals=DOW_JS.map(function(d){return dowCounts[d]||0;});
+    var dowMax=Math.max.apply(null,dowVals)||1;
+    var dowBarW=60, dowGap=16, dowH=100, dowSvgW=(dowBarW+dowGap)*7;
+    html+='<div style="overflow-x:auto"><svg width="'+dowSvgW+'" height="'+(dowH+40)+'" style="display:block;margin-bottom:4px">';
+    DOW_LABELS.forEach(function(lbl,i){
+      var v=dowVals[i];
+      var bH=Math.round((v/dowMax)*dowH);
+      var x=i*(dowBarW+dowGap);
+      var barColor=uaChartFilter==='driver'?'#1a5c28':uaChartFilter==='owner'?'#0369a1':'#15803d';
+      html+='<rect x="'+x+'" y="'+(dowH-bH)+'" width="'+dowBarW+'" height="'+bH+'" fill="'+barColor+'" rx="4" opacity="0.85"><title>'+lbl+': '+v+' logins</title></rect>';
+      html+='<text x="'+(x+dowBarW/2)+'" y="'+(dowH+14)+'" font-size="11" text-anchor="middle" fill="currentColor" font-weight="600">'+lbl+'</text>';
+      html+='<text x="'+(x+dowBarW/2)+'" y="'+(dowH-bH-5)+'" font-size="10" text-anchor="middle" fill="currentColor" opacity="0.7">'+v+'</text>';
+    });
+    html+='</svg></div>';
+    html+='<div style="font-size:11px;color:var(--muted);margin-bottom:8px">Login frequency by day of week (from most recent 1,000 login events). Filter applies.</div>';
 
   }else if(activeTab==='activity'){
     html+='<div class="occ-sh">&#128100; Login History</div>';
@@ -13956,6 +14078,142 @@ async function boostActivateExisting(boostId){
   toast('&#11088; Boost reactivated!');adBoost();
 }
 // ── END BOOST ─────────────────────────────────────────────────
+
+// ── EMAIL CAMPAIGNS ────────────────────────────────────────────
+var _campSecret='';
+async function adCamp(){
+  var el=eid('ap-camp');if(!el)return;
+  var defaultHtml=[
+    'Hi {{name}},',
+    '',
+    'We\'re excited to introduce TrustBoost — TrustMate\'s premium visibility upgrade that puts your profile in front of the right owners faster.',
+    '',
+    'With TrustBoost you get:',
+    '- Featured placement at the top of owner searches',
+    '- Priority matching — owners see you first',
+    '- Boost badge on your profile to build instant trust',
+    '- Faster approvals — stand out from hundreds of applicants',
+    '',
+    'Getting matched quickly means getting on the road and earning sooner. TrustBoost gives you that edge.',
+    '',
+    'Activate TrustBoost now: https://trustmatefleet.co.za',
+    '',
+    '— The TrustMate Team',
+    'trustmatefleet.co.za',
+  ].join('\n');
+
+  el.innerHTML='<div class="adm-pg">'
+    +'<div class="ptitle">&#128140; Email Campaigns</div>'
+    +'<div class="psub">Send targeted promotional emails to drivers or owners</div>'
+
+    // Secret key input
+    +'<div style="background:#fff8e1;border:1.5px solid #fcd34d;border-radius:10px;padding:14px 16px;margin-bottom:18px">'
+    +'<div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:6px">&#128274; Campaign Secret Key</div>'
+    +'<input id="camp-secret" type="password" placeholder="Enter ADMIN_CAMPAIGN_SECRET..." style="width:100%;padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;outline:none" oninput="_campSecret=this.value.trim()">'
+    +'</div>'
+
+    // Audience selector
+    +'<div style="margin-bottom:16px">'
+    +'<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Audience</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +[
+      ['drivers_unmatched','&#128100; Unmatched Drivers','Approved drivers not yet matched to a car'],
+      ['drivers','&#128100; All Approved Drivers','Every approved driver on the platform'],
+      ['owners_unmatched','&#127968; Unmatched Owners','Approved owners with no active match'],
+      ['owners','&#127968; All Approved Owners','Every approved owner'],
+    ].map(function(a){
+      return '<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;background:var(--cream);border:1.5px solid var(--border);border-radius:9px;padding:10px 14px;flex:1;min-width:180px">'
+        +'<input type="radio" name="camp-audience" value="'+a[0]+'" style="margin-top:2px"'+(a[0]==='drivers_unmatched'?' checked':'')+'>'
+        +'<div><div style="font-size:13px;font-weight:700">'+a[1]+'</div><div style="font-size:11px;color:var(--muted)">'+a[2]+'</div></div>'
+        +'</label>';
+    }).join('')
+    +'</div></div>'
+
+    // Subject
+    +'<div style="margin-bottom:14px">'
+    +'<label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Subject Line</label>'
+    +'<input id="camp-subject" type="text" value="&#11088; Introducing TrustBoost — Get Matched Faster on TrustMate" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none">'
+    +'</div>'
+
+    // Body
+    +'<div style="margin-bottom:18px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+    +'<label style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Message</label>'
+    +'<span style="font-size:11px;color:var(--muted)">Use <strong>{{name}}</strong> for first name personalisation</span>'
+    +'</div>'
+    +'<textarea id="camp-body" style="width:100%;height:320px;padding:10px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none;resize:vertical;line-height:1.7">'+esc(defaultHtml)+'</textarea>'
+    +'</div>'
+
+    // Preview + Send buttons
+    +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">'
+    +'<button class="btn btn-out" onclick="campPreview()" style="font-weight:700">&#128270; Preview Recipients</button>'
+    +'<button class="btn btn-gm" id="camp-send-btn" onclick="campSend()" style="font-weight:700">&#128140; Send Campaign</button>'
+    +'</div>'
+
+    // Results area
+    +'<div id="camp-result"></div>'
+    +'</div>';
+}
+
+function campAudience(){
+  var r=document.querySelector('input[name="camp-audience"]:checked');
+  return r?r.value:'drivers_unmatched';
+}
+
+async function campPreview(){
+  var res=eid('camp-result');
+  res.innerHTML='<div class="loading"><div class="spin"></div>Fetching recipients…</div>';
+  var r=await campCall(true);
+  if(!r){return;}
+  if(r.count===0){res.innerHTML='<div style="color:var(--amber);padding:12px;background:#fffbeb;border-radius:8px;border:1px solid #fcd34d">No eligible recipients found for this audience.</div>';return;}
+  res.innerHTML='<div style="background:#f0faf2;border:1.5px solid var(--gm);border-radius:10px;padding:14px 16px">'
+    +'<div style="font-weight:700;color:var(--gm);margin-bottom:10px">&#10003; '+r.count+' recipients found — ready to send</div>'
+    +'<div style="max-height:240px;overflow-y:auto;font-size:12px">'
+    +r.recipients.map(function(p,i){return '<div style="padding:4px 0;border-bottom:1px solid #dcfce7;display:flex;gap:8px"><span style="color:var(--muted);min-width:28px">'+(i+1)+'.</span><strong>'+esc(p.full_name||'?')+'</strong><span style="color:var(--muted)">'+esc(p.email)+'</span></div>';}).join('')
+    +'</div></div>';
+}
+
+async function campSend(){
+  var res=eid('camp-result');
+  var subject=eid('camp-subject').value.trim();
+  var textBody=eid('camp-body').value.trim();
+  if(!subject||!textBody){toast('Subject and message are required.');return;}
+  var audience=campAudience();
+  var audienceLabel={'drivers_unmatched':'unmatched drivers','drivers':'all approved drivers','owners_unmatched':'unmatched owners','owners':'all approved owners'}[audience]||audience;
+  if(!confirm('Send this email to '+audienceLabel+'?\n\nThis will send immediately to all eligible recipients. Are you sure?'))return;
+  var btn=eid('camp-send-btn');btn.disabled=true;btn.textContent='Sending…';
+  res.innerHTML='<div class="loading"><div class="spin"></div>Sending emails — please wait, this may take a minute…</div>';
+  var r=await campCall(false);
+  btn.disabled=false;btn.textContent='&#128140; Send Campaign';
+  if(!r){return;}
+  res.innerHTML='<div style="background:#f0faf2;border:1.5px solid var(--gm);border-radius:10px;padding:14px 16px">'
+    +'<div style="font-size:15px;font-weight:700;color:var(--gm);margin-bottom:6px">&#10003; Campaign sent!</div>'
+    +'<div style="font-size:13px">&#128140; <strong>'+r.sent+'</strong> emails sent successfully'+(r.failed>0?'<span style="color:#dc2626;margin-left:12px">&#10060; '+r.failed+' failed</span>':'')+'</div>'
+    +(r.failed>0?'<div style="font-size:11px;color:#dc2626;margin-top:6px">Failed: '+r.failedList.join(', ')+'</div>':'')
+    +'</div>';
+}
+
+async function campCall(preview){
+  var subject=eid('camp-subject').value.trim();
+  var textBody=eid('camp-body').value.trim();
+  var res=eid('camp-result');
+  if(!_campSecret){toast('Enter the Campaign Secret Key first.');return null;}
+  var body={audience:campAudience(),subject:subject,textBody:textBody,preview:!!preview};
+  try{
+    var r=await fetch('/.netlify/functions/send-campaign',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-secret':_campSecret},
+      body:JSON.stringify(body)
+    });
+    var d=await r.json();
+    if(!r.ok){res.innerHTML='<div style="color:#dc2626;padding:12px;background:#fff0f0;border-radius:8px;border:1px solid #fca5a5">Error: '+(d.error||r.statusText)+'</div>';return null;}
+    return d;
+  }catch(e){
+    res.innerHTML='<div style="color:#dc2626;padding:12px;background:#fff0f0;border-radius:8px;border:1px solid #fca5a5">Network error: '+e.message+'</div>';
+    return null;
+  }
+}
+// ── END CAMPAIGNS ──────────────────────────────────────────────
 function openMobDrawer(){document.getElementById('mob-drawer').classList.add('on');document.getElementById('mob-drawer').style.display='block';}
 function closeMobDrawer(){var d=document.getElementById('mob-drawer');d.classList.remove('on');setTimeout(function(){d.style.display='none';},260);}
 function showMobNav(){var b=document.getElementById('mob-menu-btn');if(b)b.style.display='flex';var dn=document.getElementById('mob-drawer-name');var dr=document.getElementById('mob-drawer-role');if(dn&&window.P)dn.textContent=P&&P.full_name?P.full_name.split(' ')[0]+' Dashboard':'Dashboard';if(dr&&window.P)dr.textContent=P?(P.role==='driver'?'Driver Account':P.role==='owner'?'Owner Account':''):'';var apL=document.getElementById('mdi-ap-l');if(apL)apL.textContent=P&&P.role==='driver'?'My Requests':'Applications';var dc=document.getElementById('mdi-dc');if(dc)dc.style.display=P&&(P.role==='driver'||P.role==='both')?'flex':'none';var lc=document.getElementById('mdi-lc');if(lc)lc.style.display=P&&(P.role==='owner'||P.role==='both')?'flex':'none';}
