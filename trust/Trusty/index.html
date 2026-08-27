@@ -4429,6 +4429,7 @@ function regBackToS1(){
       sb.from('cars').select('id').eq('owner_id',U.id).limit(1).then(function(cr){
         if(cr.data&&cr.data.length)return; // already completed
         rRole=d.role;
+        if(P){rName=P.full_name||rName;rEmail=P.email||rEmail;rPhone=P.phone||rPhone;}
         go('register');
         setTimeout(function(){
           setRole(d.role);
@@ -4439,6 +4440,10 @@ function regBackToS1(){
           var rs1=eid('rs1'),rs2=eid('rs2');
           if(rs1){rs1.classList.remove('on');rs1.classList.add('done');}
           if(rs2)rs2.classList.add('on');
+          if(d.role==='owner'){
+            var waEl=eid('o-wa');if(waEl&&P&&P.whatsapp&&!waEl.value)waEl.value=P.whatsapp;
+            var loEl=eid('o-lo');if(loEl&&P&&P.location&&!loEl.value)loEl.value=P.location;
+          }
           toast('Welcome back! Please complete your vehicle listing below.');
         },300);
       });
@@ -4493,9 +4498,9 @@ async function _retryPendingCar(){
   }
 }
 function completeOwnerReg(){
-  // Pre-fill rRole and rEmail/rName from current session so reg2o() can use them
+  // Pre-fill rRole and rEmail/rName/rPhone from current session so reg2o() can use them
   rRole='owner';
-  if(P){rName=P.full_name||'';rEmail=P.email||'';}
+  if(P){rName=P.full_name||'';rEmail=P.email||'';rPhone=P.phone||rPhone;}
   go('register');
   setTimeout(function(){
     setRole('owner');
@@ -4506,6 +4511,9 @@ function completeOwnerReg(){
     var rs1=eid('rs1'),rs2=eid('rs2');
     if(rs1){rs1.classList.remove('on');rs1.classList.add('done');}
     if(rs2)rs2.classList.add('on');
+    // Pre-fill saved values to reduce re-entry friction
+    var waEl=eid('o-wa');if(waEl&&P&&P.whatsapp&&!waEl.value)waEl.value=P.whatsapp;
+    var loEl=eid('o-lo');if(loEl&&P&&P.location&&!loEl.value)loEl.value=P.location;
     toast('Please complete your vehicle listing below.');
   },200);
 }
@@ -5029,8 +5037,7 @@ async function pOv() {
       +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">out of 100</div>'+starRow(s,16)+'<div style="font-size:11px;font-weight:700;margin-top:3px;color:'+si[4]+'">'+si[3]+'</div></div>'
       +'</div>'
       +(s===0?'<p style="font-size:11px;color:var(--muted);background:var(--cream);border-radius:6px;padding:6px 10px;margin-bottom:8px">Your TrustScore starts at 0 and increases as owners rate your reliability, payments and communication.</p>':'')
-      +(docValid&&daysLeft<30?'<p style="font-size:12px;color:var(--amber)">&#9888; Docs expire in '+daysLeft+' days.</p>':'')
-      +(docValid?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'<p style="font-size:11px;color:#dc2626">&#9888; Documents pending verification</p>')
+      +(DP.status==='approved'?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'')
       +(DP.status==='approved'?'<button onclick="openTmShare(\'driver\')" style="margin-top:10px;width:100%;padding:9px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#128279; Share My Profile</button>':'')
       +'</div>';
     // ── PROFILE STATS: views, likes (always shown for approved driver) ──
@@ -7836,7 +7843,7 @@ async function pAp() {
 
     // Fetch driver profiles and their profile info in parallel
     var [dpRes, pfRes, carRes] = await Promise.all([
-      dIds.length ? sb.from('driver_profiles').select('id,user_id,trust_score,photo_headshot_url,platforms,years_driving,late_payments,missed_payments,accidents,damage_incidents,rentals_completed,doc_id_url,doc_license_url,screenshot_uber_url,screenshot_bolt_url,screenshot_indrive_url,uber_rating,uber_trips,bolt_rating,bolt_trips,indrive_rating,indrive_trips,age,date_of_birth,license_date,gender,citizenship').in('user_id',dIds) : {data:[]},
+      dIds.length ? sb.from('driver_profiles').select('id,user_id,trust_score,photo_headshot_url,platforms,years_driving,late_payments,missed_payments,accidents,damage_incidents,rentals_completed,doc_id_url,doc_license_url,proof_of_residence_url,photo_holding_id_url,photo_fullbody_url,pdp_url,has_pdp,uber_rating,uber_trips,bolt_rating,bolt_trips,indrive_rating,indrive_trips,age,date_of_birth,license_date,gender,citizenship').in('user_id',dIds) : {data:[]},
       dIds.length ? sb.from('profiles').select('id,full_name,location,phone,whatsapp,email').in('id',dIds) : {data:[]},
       carIds.length ? sb.from('cars').select('id,make,model,year,photo_front_url,location,price_per_week,transmission,ideal_driver_prefs').in('id',carIds) : {data:[]}
     ]);
@@ -7947,9 +7954,10 @@ async function pAp() {
         docRow='<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px">DOCUMENTS</div><div style="display:flex;gap:5px;flex-wrap:wrap">';
         if(dp.doc_id_url) docRow+='<a href="'+dp.doc_id_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; ID</a>';
         if(dp.doc_license_url) docRow+='<a href="'+dp.doc_license_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; Licence</a>';
-        parseShotUrls(dp.screenshot_uber_url).forEach(function(u,i){docRow+='<a href="'+esc(u)+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#111;border-radius:5px;color:#fff;text-decoration:none">Uber '+(i+1)+'</a>';});
-        parseShotUrls(dp.screenshot_bolt_url).forEach(function(u,i){docRow+='<a href="'+esc(u)+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#34C759;border-radius:5px;color:#fff;text-decoration:none">Bolt '+(i+1)+'</a>';});
-        parseShotUrls(dp.screenshot_indrive_url).forEach(function(u,i){docRow+='<a href="'+esc(u)+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#FF6B35;border-radius:5px;color:#fff;text-decoration:none">inDrive '+(i+1)+'</a>';});
+        if(dp.proof_of_residence_url) docRow+='<a href="'+dp.proof_of_residence_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; Proof of Residence</a>';
+        if(dp.photo_holding_id_url) docRow+='<a href="'+dp.photo_holding_id_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#129091; Holding ID</a>';
+        if(dp.photo_fullbody_url) docRow+='<a href="'+dp.photo_fullbody_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128100; Full Body Photo</a>';
+        if(dp.pdp_url||dp.has_pdp) docRow+='<a href="'+(dp.pdp_url?dp.pdp_url:'#')+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#d4edd8;border-radius:5px;color:var(--gm);text-decoration:none">&#128203; PDP</a>';
         docRow+='</div></div>';
       } else {
         docRow='<div style="padding:6px 10px;background:var(--cream);border-radius:7px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:8px">'
