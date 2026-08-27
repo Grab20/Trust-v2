@@ -1,0 +1,17 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
+
+[functions]
+  node_bundler = "esbuild"
+
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
+
+# Digest emails: 7am, 12pm, 6pm SAST (= 5am, 10am, 4pm UTC)
+[functions."send-digest"]
+  schedule = "0 5,10,16 * * *"
+
