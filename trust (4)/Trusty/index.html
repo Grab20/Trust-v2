@@ -4593,6 +4593,7 @@ async function saveOwnerLater(){
     var lo=eid('o-lo')?eid('o-lo').value.trim():null;
     var wa=eid('o-wa')?eid('o-wa').value.trim():null;
     if(lo){await sb.from('profiles').update({location:lo,whatsapp:wa||null}).eq('id',U.id);}
+    _logFunnelEvent('registration_saved_for_later',{role:'owner'});
     toast('Progress saved! Log in anytime to continue your vehicle listing.');
     if(btn){btn.disabled=false;btn.textContent='&#128190; Save my progress & continue later';}
   }catch(e){toast('Error: '+e.message);if(btn){btn.disabled=false;btn.textContent='&#128190; Save my progress & continue later';}}
@@ -4656,8 +4657,9 @@ function mDoc(boxId,key,inp){
   if(clId){var cl=eid(clId);if(cl){cl.style.color='var(--gm)';cl.style.fontWeight='600';cl.innerHTML='&#10003; '+_oclabels[key];}}
 }
 // ── IMAGE VALIDATION & COMPRESSION ─────────────────────────
-var _BLOCKED_TYPES=['video/','image/heic','image/heif'];
-var _BLOCKED_EXTS=['heic','heif','mp4','mov','avi','mkv','webm','3gp'];
+// HEIC/HEIF are NOT blocked — they are converted via heic2any at upload time
+var _BLOCKED_TYPES=['video/'];
+var _BLOCKED_EXTS=['mp4','mov','avi','mkv','webm','3gp'];
 var _MAX_UPLOAD_MB=15;
 // Image-only buckets — PDFs not allowed here
 var _IMG_ONLY_BUCKETS=['car-photos','profile-photos','driver-photos'];
@@ -4666,7 +4668,7 @@ var _IMG_ONLY_FIELDS=['photo_front_url','photo_side_url','photo_back_url','photo
 function _validateUpload(file, bucket, field){
   var type=(file.type||'').toLowerCase();
   var ext=(file.name.split('.').pop()||'').toLowerCase();
-  for(var i=0;i<_BLOCKED_TYPES.length;i++){if(type.startsWith(_BLOCKED_TYPES[i])){return 'Videos and HEIC/HEIF images are not supported. Please convert to JPG or PNG first.';}}
+  for(var i=0;i<_BLOCKED_TYPES.length;i++){if(type.startsWith(_BLOCKED_TYPES[i])){return 'Video files are not supported. Please upload a JPG, PNG, or PDF.';}}
   if(_BLOCKED_EXTS.indexOf(ext)>=0){return 'File type .'+ext+' is not supported. Please upload a JPG or PNG image.';}
   if(file.size>_MAX_UPLOAD_MB*1024*1024){return 'File is too large ('+Math.round(file.size/1024/1024)+'MB). Maximum is '+_MAX_UPLOAD_MB+'MB.';}
   var isImgOnly=(_IMG_ONLY_BUCKETS.indexOf(bucket||'')>=0)||(_IMG_ONLY_FIELDS.indexOf(field||'')>=0);
@@ -4674,9 +4676,84 @@ function _validateUpload(file, bucket, field){
   return null;
 }
 
+// ── HEIC detection & lazy conversion ──────────────────────
+function _isHeic(file){
+  var type=(file.type||'').toLowerCase();
+  var ext=(file.name.split('.').pop()||'').toLowerCase();
+  return type==='image/heic'||type==='image/heif'||ext==='heic'||ext==='heif';
+}
+var _heic2anyLoading=null;
+function _loadHeic2Any(){
+  if(!_heic2anyLoading) _heic2anyLoading=new Promise(function(res,rej){
+    if(window.heic2any){res(window.heic2any);return;}
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+    s.onload=function(){res(window.heic2any);};
+    s.onerror=function(){rej(new Error('heic2any failed to load'));};
+    document.head.appendChild(s);
+  });
+  return _heic2anyLoading;
+}
+
+// ── Upload telemetry (no sensitive data logged) ────────────
+function _logUploadEvent(event, context){
+  // event: 'file_rejected'|'heic_conversion_failed'|'storage_upload_failed'|'db_update_failed'|'upload_success'
+  // context: {role, field, fileType, fileSizeMb, attempt, errorCode} — NO urls, names, IDs
+  try{
+    var payload=Object.assign({event:event,ts:new Date().toISOString()},context||{});
+    console.info('[upload]',JSON.stringify(payload));
+    // Extend here to POST to an analytics endpoint when one is available
+  }catch(e){}
+}
+
+function _logFunnelEvent(stage, context){
+  // stage: registration_started|personal_info_completed|photo_upload_started|photo_upload_succeeded|
+  //        id_upload_started|id_upload_succeeded|id_upload_failed|vehicle_started|vehicle_completed|
+  //        registration_submitted|registration_saved_for_later|owner_approved
+  // context: {role} — NO personal data
+  try{
+    var payload=Object.assign({stage:stage,ts:new Date().toISOString()},context||{});
+    console.info('[funnel]',JSON.stringify(payload));
+  }catch(e){}
+}
+
+function _setBoxStatus(boxId, state, msg){
+  // state: 'idle'|'converting'|'uploading'|'success'|'error'
+  var box=eid(boxId); if(!box) return;
+  var statusEl=box.querySelector('.box-status');
+  if(!statusEl){
+    statusEl=document.createElement('div');
+    statusEl.className='box-status';
+    statusEl.style.cssText='font-size:9px;font-weight:600;margin-top:2px;text-align:center;border-radius:4px;padding:1px 4px';
+    box.appendChild(statusEl);
+  }
+  var colors={idle:'',converting:'#7c5c00',uploading:'#1e3a5f',success:'var(--gm)',error:'#dc2626'};
+  var icons={idle:'',converting:'&#8635;',uploading:'&#8593;',success:'&#10003;',error:'&#10006;'};
+  if(state==='idle'){statusEl.style.display='none';box.style.opacity='';return;}
+  statusEl.style.display='';
+  statusEl.style.color=colors[state]||'';
+  statusEl.innerHTML=(icons[state]||'')+' '+(msg||state);
+  box.style.opacity=(state==='uploading'||state==='converting')?'0.6':'';
+}
+
 function _compressImage(file, maxPx, quality){
   maxPx=maxPx||2048; quality=quality||0.82;
   return new Promise(function(resolve){
+    // HEIC/HEIF: convert to JPEG first via heic2any (works on all browsers)
+    if(_isHeic(file)){
+      _loadHeic2Any().then(function(heic2any){
+        return heic2any({blob:file,toType:'image/jpeg',quality:quality});
+      }).then(function(jpegBlob){
+        var converted=new File([jpegBlob],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'});
+        // Re-enter compression with the now-JPEG file
+        resolve(_compressImage(converted,maxPx,quality));
+      }).catch(function(e){
+        console.error('[heic2any] conversion failed:',e);
+        _logUploadEvent('heic_conversion_failed',{fileType:file.type,fileSizeMb:Math.round(file.size/1024/1024*10)/10});
+        resolve(null); // null = caller must show error and not proceed
+      });
+      return;
+    }
     if(!file.type.startsWith('image/')||file.type==='image/gif'){resolve(file);return;}
     var url=URL.createObjectURL(file);
     var img=new Image();
@@ -4695,6 +4772,16 @@ function _compressImage(file, maxPx, quality){
     img.onerror=function(){URL.revokeObjectURL(url);resolve(file);};
     img.src=url;
   });
+}
+
+// ── Upload with one automatic retry on transient errors ────
+async function _uploadWithRetry(bucket,path,blob,opts){
+  var r=await sb.storage.from(bucket).upload(path,blob,opts);
+  if(r.error){
+    await new Promise(function(res){setTimeout(res,1500);});
+    r=await sb.storage.from(bucket).upload(path,blob,opts);
+  }
+  return r;
 }
 
 async function upFile(bucket,path,file,field){
@@ -4765,19 +4852,33 @@ async function doReg() {
     if(docFiles.oid_f){
       _regProgress('Uploading ID…');
       var oidComp=await _compressImage(docFiles.oid_f);
-      var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
-      var prePath='pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt;
-      var preUp=await sb.storage.from('profile-photos').upload(prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
-      if(!preUp.error){ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath).data.publicUrl;}
-      else{console.error('owner id upload failed:',preUp.error);_ownerUploadFailed.push('ID/Passport');}
+      if(oidComp===null){
+        // HEIC conversion failed
+        _logUploadEvent('heic_conversion_failed',{role:'owner',field:'doc_id_url',fileType:docFiles.oid_f.type});
+        _ownerUploadFailed.push('ID/Passport (could not convert — please retry with a JPG or PNG)');
+      } else {
+        var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
+        var prePath='pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt;
+        var preUp=await _uploadWithRetry('profile-photos',prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
+        if(!preUp.error){ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath).data.publicUrl;}
+        else{
+          console.error('owner id upload failed after retry:',preUp.error);
+          _logUploadEvent('storage_upload_failed',{role:'owner',field:'doc_id_url',fileType:oidComp.type,errorCode:preUp.error.statusCode||preUp.error.message});
+          _ownerUploadFailed.push('ID/Passport');
+        }
+      }
     }
     if(docFiles.o_selfie){
       _regProgress('Uploading selfie…');
       var selfieBlob=docFiles.o_selfie;
       var selfiePath='pre-reg/'+safeEmail+'-selfie-'+Date.now()+'.jpg';
-      var selfieUp=await sb.storage.from('profile-photos').upload(selfiePath,selfieBlob,{upsert:true,contentType:'image/jpeg'});
+      var selfieUp=await _uploadWithRetry('profile-photos',selfiePath,selfieBlob,{upsert:true,contentType:'image/jpeg'});
       if(!selfieUp.error){ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath).data.publicUrl;}
-      else{console.error('owner selfie upload failed:',selfieUp.error);_ownerUploadFailed.push('Selfie photo');}
+      else{
+        console.error('owner selfie upload failed after retry:',selfieUp.error);
+        _logUploadEvent('storage_upload_failed',{role:'owner',field:'photo_headshot_url',fileType:'image/jpeg',errorCode:selfieUp.error.statusCode||selfieUp.error.message});
+        _ownerUploadFailed.push('Selfie photo');
+      }
     }
     if(_ownerUploadFailed.length){
       var btn2o=eid('o-reg-btn');if(btn2o){btn2o.textContent='Create Account';btn2o.disabled=false;}
@@ -4794,7 +4895,15 @@ async function doReg() {
   if(ownerHsUrl)_profPayload.photo_headshot_url=ownerHsUrl;
   if(ownerIdUrl)_profPayload.doc_id_url=ownerIdUrl;
   var _profR=await sb.from('profiles').upsert(_profPayload,{onConflict:'id'});
-  if(_profR.error){console.error('profile upsert error:',_profR.error);}
+  if(_profR.error){
+    console.error('profile upsert error:',_profR.error);
+    _logUploadEvent('db_update_failed',{role:rRole,field:'profiles',errorCode:_profR.error.code||_profR.error.message});
+    if(rRole==='owner'){
+      var btn2oP=eid('o-reg-btn');if(btn2oP){btn2oP.textContent='Create Account';btn2oP.disabled=false;}
+      showErr('reg-err','Your account was created but your profile could not be saved ('+_profR.error.message+'). Please email support@trustmate.co.za with your name and email address so we can complete your registration.');
+      return;
+    }
+  }
   var t=Date.now();
   if(isD){
     var u={};
@@ -4897,8 +5006,10 @@ async function doReg() {
     } else {
       // Car saved — clear any stale pending-car localStorage entry
       try{localStorage.removeItem('tm_pending_car');}catch(e){}
+      _logFunnelEvent('vehicle_completed',{role:'owner'});
     }
   }
+  _logFunnelEvent('registration_submitted',{role:rRole});
   // Fire-and-forget admin notification — don't block or show errors to user
   (function(){try{fetch('/.netlify/functions/notify-docs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:rName,email:rEmail,role:rRole,uid:uid})});}catch(e){}})();
   // Sync new user to Brevo
@@ -5369,6 +5480,57 @@ async function pOv() {
         +'<button class="btn btn-gm" style="width:100%;padding:12px;font-size:14px;font-weight:800" onclick="completeOwnerReg()">&#128663; Complete My Vehicle Listing</button>'
         +'</div></div>';
       return;
+    }
+
+    // ── OWNER STATUS BANNER ──
+    var _ownerStatus=P&&P.admin_status;
+    var _ownerNote=P&&P.admin_note;
+    var _hasSelfie=P&&!!P.photo_headshot_url;
+    var _hasId=P&&!!P.doc_id_url;
+    var _hasCars=cars.length>0;
+    var _hasApprovedCar=cars.some(function(c){return c.admin_status==='approved';});
+    if(_ownerStatus==='approved'){
+      html+='<div style="background:#f0fdf4;border:1.5px solid var(--gm);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">'
+        +'<div style="font-size:22px">&#9989;</div>'
+        +'<div><div style="font-size:13px;font-weight:800;color:var(--gm)">TrustMate Account Approved</div>'
+        +'<div style="font-size:11px;color:#166534;margin-top:2px">Your account is approved and your vehicle is available to drivers.</div>'
+        +'</div></div>';
+    } else if(_ownerStatus==='rejected'){
+      html+='<div style="background:#fff1f2;border:1.5px solid #dc2626;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+        +'<div style="font-size:22px">&#10060;</div>'
+        +'<div style="font-size:13px;font-weight:800;color:#dc2626">Action Required</div>'
+        +'</div>'
+        +(_ownerNote?'<div style="font-size:12px;color:#7f1d1d;margin-bottom:10px">&#128221; Reason: '+esc(_ownerNote)+'</div>':'')
+        +'<button class="btn btn-gm" style="width:100%;padding:10px;font-size:13px;font-weight:700" onclick="dpanel(\'pr\')">&#9998; Fix &amp; Resubmit</button>'
+        +'</div>';
+    } else if(_ownerStatus!=='approved'){
+      // Pending or incomplete — show checklist
+      var _steps=[
+        {done:_hasSelfie,label:'Profile photo',action:"dpanel('pr')"},
+        {done:_hasId,label:'ID / Passport copy',action:"dpanel('pr')"},
+        {done:_hasCars,label:'Vehicle listing added',action:"completeOwnerReg()"},
+        {done:_hasApprovedCar,label:'Vehicle approved by TrustMate',action:null}
+      ];
+      var _allDone=_steps.every(function(s){return s.done;});
+      html+='<div style="background:#fff8e1;border:1.5px solid #E8A520;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+        +'<div style="font-size:13px;font-weight:800;color:#7a5200;margin-bottom:10px">'
+        +(_allDone?'&#127881; Registration submitted — under review':'&#9997;&#65039; Complete your registration')
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">'
+        +_steps.map(function(s){
+          return '<div style="display:flex;align-items:center;gap:8px">'
+            +'<span style="font-size:14px">'+(s.done?'&#9989;':'&#9711;')+'</span>'
+            +'<span style="font-size:12px;color:'+(s.done?'var(--gm)':'#92400e')+';font-weight:'+(s.done?'600':'400')+'">'+s.label+'</span>'
+            +(!s.done&&s.action?'&nbsp;<button class="btn btn-sm btn-amb" style="font-size:10px;padding:2px 8px" onclick="'+s.action+'">Fix</button>':'')
+            +'</div>';
+        }).join('')
+        +'</div>'
+        +(_allDone
+          ?'<div style="font-size:12px;color:#7a5200">&#9203; Your application is under review. We\'ll be in touch shortly.</div>'
+          :'<div style="font-size:11px;color:#92400e">Complete all steps above and our team will review your account.</div>'
+        )
+        +'</div>';
     }
 
     // ── STAT CARDS ──
@@ -6108,28 +6270,39 @@ async function pPr() {
     +'<div class="pf"><label>Location</label><span>'+(P.location||'Not set')+'</span></div>'
     +(isD&&DP?'<div class="pf"><label>Bio</label><span>'+(DP.bio||'Not set')+'</span></div>':'')
     +'</div></div>';
-  // Owner photo upload section
+  // Owner account status strip
   var isOwner=P&&(P.role==='owner'||P.role==='both');
+  if(isOwner){
+    var _aSt=P.admin_status||'pending';
+    var _statusCfg={
+      approved:{bg:'#f0fdf4',border:'var(--gm)',icon:'&#9989;',label:'Account Approved',msgColor:'#166534',msg:'Your account is approved. You\'re live on TrustMate.'},
+      pending:{bg:'#fff8e1',border:'#E8A520',icon:'&#9203;',label:'Under Review',msgColor:'#7a5200',msg:'Your account is being reviewed by our team.'},
+      rejected:{bg:'#fff1f2',border:'#dc2626',icon:'&#10060;',label:'Action Required',msgColor:'#7f1d1d',msg:P.admin_note?'Reason: '+esc(P.admin_note):'Please check your documents and resubmit.'},
+      incomplete:{bg:'#fff8e1',border:'#E8A520',icon:'&#9997;&#65039;',label:'Incomplete',msgColor:'#7a5200',msg:P.admin_note?'Required: '+esc(P.admin_note):'Some documents or details are missing.'}
+    };
+    var _sc=_statusCfg[_aSt]||_statusCfg['pending'];
+    html+='<div style="background:'+_sc.bg+';border:1.5px solid '+_sc.border+';border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+      +'<span style="font-size:18px">'+_sc.icon+'</span>'
+      +'<div><div style="font-size:12px;font-weight:800;color:'+_sc.msgColor+'">'+_sc.label+'</div>'
+      +'<div style="font-size:11px;color:'+_sc.msgColor+'">'+_sc.msg+'</div>'
+      +'</div></div>';
+  }
   if(isOwner){
     html+='<div class="tbox" style="margin-bottom:14px">'
       +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#128247; My Photos</div>'
-      +'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Update your headshot below. To update verification documents, contact support.</p>'
+      +'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Update your profile photo or ID document below.</p>'
       +'<div class="doc-grid">'
-      +'<div class="dbox '+(P.photo_headshot_url?'up':'')+'" id="ow-hs">'
-        +'<input type="file" accept="image/*" onchange="upOwnerPhoto(\'ow-hs\',\'photo_headshot_url\',this)"/>'
-        +(P.photo_headshot_url?'<img src="'+imgUrl(P.photo_headshot_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_headshot_url+'\')"/>':'<div style="font-size:18px">&#128247;</div>')
-        +'<div style="font-size:10px;font-weight:600">Headshot</div>'
-        +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_headshot_url?'Uploaded — click to replace':'Click to upload')+'</div>'
+      +'<div class="dbox '+(P.photo_headshot_url?'up':'')+'" id="ow-hs" style="position:relative">'
+        +'<input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%" onchange="upOwnerPhoto(\'ow-hs\',\'photo_headshot_url\',this)"/>'
+        +(P.photo_headshot_url?'<img src="'+imgUrl(P.photo_headshot_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px;pointer-events:none"/>':'<div style="font-size:18px">&#128247;</div>')
+        +'<div style="font-size:10px;font-weight:600">Profile Photo</div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_headshot_url?'Tap to replace':'Tap to upload')+'</div>'
       +'</div>'
-      +'<div class="dbox '+(P.photo_holding_id_url?'up':'')+'" id="ow-hid" style="cursor:'+(P.photo_holding_id_url?'pointer':'default')+'" onclick="'+(P.photo_holding_id_url?'showLbox(\''+P.photo_holding_id_url+'\')':'')+'">'
-        +(P.photo_holding_id_url?'<img src="'+imgUrl(P.photo_holding_id_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px"/>':'<div style="font-size:18px">&#129091;</div>')
-        +'<div style="font-size:10px;font-weight:600">Holding ID</div>'
-        +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_holding_id_url?'Uploaded — tap to view':'Not uploaded')+'</div>'
-      +'</div>'
-      +'<div class="dbox '+(P.doc_id_url?'up':'')+'" id="ow-idoc" style="cursor:'+(P.doc_id_url?'pointer':'default')+'" onclick="'+(P.doc_id_url?'showLbox(\''+P.doc_id_url+'\')':'')+'">'
-        +(P.doc_id_url?'<img src="'+imgUrl(P.doc_id_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px"/>':'<div style="font-size:18px">&#128196;</div>')
+      +'<div class="dbox '+(P.doc_id_url?'up':'')+'" id="ow-idoc" style="position:relative">'
+        +(P.doc_id_url?'<img src="'+imgUrl(P.doc_id_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px;pointer-events:none"/>':'<div style="font-size:18px">&#128196;</div>')
+        +'<input type="file" accept="image/*,.pdf" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%" onchange="ownerSelfUploadId(this)"/>'
         +'<div style="font-size:10px;font-weight:600">ID / Passport</div>'
-        +'<div style="font-size:9px;color:var(--muted)">'+(P.doc_id_url?'Uploaded — tap to view':'Not uploaded')+'</div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(P.doc_id_url?'Tap to replace':'Tap to upload — required')+'</div>'
       +'</div>'
       +'</div>'
     +'</div>';
@@ -6340,14 +6513,59 @@ async function snapDocPhoto(n, col) {
 
 async function upOwnerPhoto(boxId,col,inp){
   var file=inp.files[0];if(!file)return;
-  var box=eid(boxId);if(box)box.style.opacity='0.5';
+  _logFunnelEvent('photo_upload_started',{role:'owner'});
+  _setBoxStatus(boxId,'uploading','Uploading…');
   var url=await upFile('profile-photos',U.id+'/owner-'+col,file);
-  if(box)box.style.opacity='';
-  if(!url){toast('Upload failed');return;}
+  if(!url){_setBoxStatus(boxId,'error','Upload failed');toast('Upload failed');return;}
   var upd={};upd[col]=url;
   var r=await sb.from('profiles').update(upd).eq('id',U.id);
-  if(r.error){toast('Error: '+r.error.message);return;}
+  if(r.error){_setBoxStatus(boxId,'error','Save failed');toast('Error: '+r.error.message);return;}
+  _logFunnelEvent('photo_upload_succeeded',{role:'owner'});
+  _setBoxStatus(boxId,'success','Saved!');
   P[col]=url; toast('Photo updated!'); pPr();
+}
+
+async function ownerSelfUploadId(inp){
+  var file=inp.files[0]; if(!file) return;
+  var verr=_validateUpload(file,'profile-photos','doc_id_url');
+  if(verr){
+    _logUploadEvent('file_rejected',{role:'owner',field:'doc_id_url',fileType:file.type,fileSizeMb:Math.round(file.size/1024/1024*10)/10});
+    toast(verr); return;
+  }
+  _logFunnelEvent('id_upload_started',{role:'owner'});
+  _setBoxStatus('ow-idoc','converting','Converting…');
+  var comp=await _compressImage(file);
+  if(comp===null){
+    _setBoxStatus('ow-idoc','error','Convert failed');
+    _logUploadEvent('heic_conversion_failed',{role:'owner',field:'doc_id_url',fileType:file.type});
+    _logFunnelEvent('id_upload_failed',{role:'owner',reason:'heic_conversion_failed'});
+    toast("Couldn't convert this photo. Please try a JPG or PNG, or take the photo again and share as JPEG.");
+    return;
+  }
+  _setBoxStatus('ow-idoc','uploading','Uploading…');
+  var ext=comp!==file?'jpg':(file.name.split('.').pop()||'jpg').toLowerCase();
+  var path='owner-id/'+U.id+'/id-'+Date.now()+'.'+ext;
+  var up=await _uploadWithRetry('profile-photos',path,comp,{upsert:true,contentType:comp.type||file.type});
+  if(up.error){
+    _setBoxStatus('ow-idoc','error','Upload failed');
+    _logUploadEvent('storage_upload_failed',{role:'owner',field:'doc_id_url',errorCode:up.error.statusCode||up.error.message});
+    _logFunnelEvent('id_upload_failed',{role:'owner',reason:'storage_upload_failed'});
+    toast('Upload failed — please check your connection and try again. ('+up.error.message+')');
+    return;
+  }
+  var url=sb.storage.from('profile-photos').getPublicUrl(path).data.publicUrl;
+  var dbR=await sb.from('profiles').update({doc_id_url:url}).eq('id',U.id).select();
+  if(dbR.error){
+    _setBoxStatus('ow-idoc','error','Save failed');
+    _logUploadEvent('db_update_failed',{role:'owner',field:'doc_id_url',errorCode:dbR.error.code||dbR.error.message});
+    _logFunnelEvent('id_upload_failed',{role:'owner',reason:'db_update_failed'});
+    toast('File uploaded but could not save — please try again. ('+dbR.error.message+')');
+    return;
+  }
+  _logUploadEvent('upload_success',{role:'owner',field:'doc_id_url'});
+  _logFunnelEvent('id_upload_succeeded',{role:'owner'});
+  _setBoxStatus('ow-idoc','success','Saved!');
+  P.doc_id_url=url; toast('ID document updated successfully!'); pPr();
 }
 // ── CHAT ───────────────────────────────────────────────
 var _chatAppId=null, _chatSub=null, _chatIsDriver=false, _chatOtherName='', _chatCar=null;
@@ -10455,7 +10673,14 @@ async function adSetOwner(pid,status){
   var r=await sb.from('profiles').update({admin_status:status,admin_note:n?n.value.trim()||null:null,admin_reviewed_at:new Date().toISOString()}).eq('id',pid).select();
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
-  toast(status==='approved'?'Owner approved!':'Owner declined');
+  // When approving, also approve all pending cars for this owner in the same action
+  if(status==='approved'){
+    var carR=await sb.from('cars').update({admin_status:'approved'}).eq('owner_id',pid).eq('admin_status','pending');
+    if(carR.error){console.error('Car approval error (non-blocking):',carR.error);}
+    toast('Owner and vehicles approved!');
+  } else {
+    toast('Owner declined');
+  }
   _brevoSync(pid, 'owner_status_change');
   adReg();adOv();adOwn();
 }
@@ -10521,16 +10746,41 @@ async function ownUploadId(inp){
   var box=document.getElementById('oe-idbox-'+oid);
   if(box) box.classList.add('up');
   var comp=await _compressImage(file);
+  if(comp===null){
+    if(box)box.classList.remove('up');
+    toast("Couldn't convert this photo format. Please try a JPG or PNG file.");
+    _logUploadEvent('heic_conversion_failed',{role:'admin_upload',field:'doc_id_url',fileType:file.type});
+    return;
+  }
   var ext=comp!==file?'jpg':(file.name.split('.').pop()||'jpg');
   var path='owner-id/'+oid+'/id-'+Date.now()+'.'+ext;
   var up=await sb.storage.from('profile-photos').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
-  if(up.error){toast('Upload error: '+up.error.message);return;}
+  if(up.error){
+    if(box)box.classList.remove('up');
+    _logUploadEvent('storage_upload_failed',{role:'admin_upload',field:'doc_id_url',errorCode:up.error.statusCode||up.error.message});
+    toast('Upload error: '+up.error.message);
+    return;
+  }
   var url=sb.storage.from('profile-photos').getPublicUrl(path).data.publicUrl;
-  await sb.from('profiles').update({doc_id_url:url}).eq('id',oid);
-  toast('ID uploaded!'); adOwn();
+  var dbR=await sb.from('profiles').update({doc_id_url:url}).eq('id',oid).select();
+  if(dbR.error){
+    if(box)box.classList.remove('up');
+    _logUploadEvent('db_update_failed',{role:'admin_upload',field:'doc_id_url',errorCode:dbR.error.code||dbR.error.message});
+    toast('File uploaded but could not save to profile — please try again. ('+dbR.error.message+')');
+    return;
+  }
+  if(!dbR.data||!dbR.data.length){
+    if(box)box.classList.remove('up');
+    toast('Save blocked — check admin permissions.');
+    return;
+  }
+  _logUploadEvent('upload_success',{role:'admin_upload',field:'doc_id_url'});
+  toast('ID uploaded and saved!'); adOwn();
 }
 async function ownApprove(oid){
-  await sb.from('profiles').update({admin_status:'approved'}).eq('id',oid);
+  var now=new Date().toISOString();
+  await sb.from('profiles').update({admin_status:'approved',admin_reviewed_at:now}).eq('id',oid);
+  await sb.from('cars').update({admin_status:'approved'}).eq('owner_id',oid).eq('admin_status','pending');
   toast('Owner approved!'); _brevoSync(oid,'owner_status_change'); adOwn();
 }
 async function ownDecline(oid){
@@ -14233,7 +14483,7 @@ async function loadFeaturedDrivers(elId){
       +'</div>'
       +'<div style="display:flex;gap:5px" onclick="event.stopPropagation()">'
       +'<button class="btn btn-out btn-sm" style="flex:1;font-size:11px;padding:5px 4px" onclick="go(\'profile\',\''+esc(dpId)+'\')">View</button>'
-      +(isOwnerUser?'<button class="btn btn-sm" style="background:'+(slSet.has(id)?'#dcfce7':'#fee2e2')+';color:'+(slSet.has(id)?'var(--gm)':'#dc2626')+';border:1px solid '+(slSet.has(id)?'var(--gm)':'#fca5a5')+';font-size:14px;padding:5px 8px" onclick="toggleShortlist(\''+esc(id)+'\',this)" title="Like">'+(slSet.has(id)?'&#10084;&#65039;':'&#10084;')+'</button>':'')
+      +(isOwnerUser?'<button onclick="event.stopPropagation();toggleShortlist(\''+esc(id)+'\',this)" style="flex:1;padding:5px 0;font-size:11px;font-weight:700;background:#fff;color:'+(slSet.has(id)?'#e74c3c':'var(--muted)')+';border:1.5px solid '+(slSet.has(id)?'#e74c3c':'var(--border)')+';border-radius:7px;cursor:pointer;font-family:inherit">'+(slSet.has(id)?'&#10084;&#65039; Liked':'&#9825; Like')+'</button>':'')
       +'<button class="btn btn-gm btn-sm" style="flex:1;font-size:11px;padding:5px 4px" data-dpid="'+esc(dpId)+'" data-uid="'+esc(id)+'" data-dn="'+esc(nm)+'" onclick="'+(_bId?'sb.rpc(\'increment_boost_profile_views\',{p_boost_id:\''+_bId+'\'}).then(function(){});':'')+' ownerMatchBtn(this)">Apply</button>'
       +'</div>'
       +'</div></div>';

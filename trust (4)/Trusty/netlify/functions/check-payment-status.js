@@ -56,15 +56,15 @@ exports.handler = async function (event) {
         // Yoco checkout statuses: succeeded, complete, paid (varies by API version)
         const checkoutStatus = (yocoData.status || '').toLowerCase();
         const paymentStatus  = (yocoData.payment?.status || yocoData.paymentStatus || '').toLowerCase();
-        const isPaid = checkoutStatus === 'succeeded' || checkoutStatus === 'complete' || checkoutStatus === 'paid'
-                    || paymentStatus  === 'succeeded' || paymentStatus  === 'complete' || paymentStatus  === 'paid';
+        const isPaid = ['succeeded','complete','completed','paid'].includes(checkoutStatus)
+                    || ['succeeded','complete','completed','paid'].includes(paymentStatus);
 
         if (isPaid) {
           const yocoPayId = yocoData.payment?.id || yocoData.id;
           const now       = new Date();
           const expiry    = new Date(now.getTime() + payment.duration_days * 24 * 3600 * 1000);
 
-          // Idempotent boost insert
+          // Idempotent boost insert — ignore duplicate key (23505)
           const { data: boost, error: boostErr } = await sb
             .from('boosts')
             .insert({
@@ -82,8 +82,14 @@ exports.handler = async function (event) {
             .select('id')
             .maybeSingle();
 
+          if (boostErr && boostErr.code !== '23505') {
+            console.error('Boost insert error (check-payment-status):', boostErr);
+            return { statusCode: 500, headers: cors(), body: JSON.stringify({ error: 'Boost activation failed' }) };
+          }
+
           const boostId = boost?.id || null;
 
+          // Update only if still pending — prevents double-activation race condition
           await sb
             .from('boost_payments')
             .update({
@@ -95,7 +101,8 @@ exports.handler = async function (event) {
               paid_at:          now.toISOString(),
               updated_at:       now.toISOString(),
             })
-            .eq('yoco_checkout_id', checkoutId);
+            .eq('yoco_checkout_id', checkoutId)
+            .eq('payment_status', 'pending');
 
           const updatedPayment = {
             ...payment,
