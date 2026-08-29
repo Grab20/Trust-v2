@@ -8927,13 +8927,9 @@ async function subMatch() {
       ||DP.self_uber_trips||DP.self_uber_rating||DP.self_bolt_trips||DP.self_bolt_rating||DP.self_indrive_trips||DP.self_indrive_rating);
     var noPlatforms=!DP.platforms||!DP.platforms.length||(DP.platforms.length===1&&(DP.platforms[0]||'').toLowerCase()==='none');
     if(!noPlatforms&&!hasTripsOrRating&&!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
-    // Application limit: brand new drivers (zero trips on all platforms) can only send 3 per week
+    // B/N limit enforced server-side in create-application.js; track isBN to route insert
     var _anyTrips=parseInt(DP.uber_trips||0)||parseInt(DP.bolt_trips||0)||parseInt(DP.indrive_trips||0)||parseInt(DP.self_uber_trips||0)||parseInt(DP.self_bolt_trips||0)||parseInt(DP.self_indrive_trips||0)||0;
-    if(!_anyTrips){
-      var weekAgo=new Date(Date.now()-7*864e5).toISOString();
-      var bndChk=await sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',U.id).eq('initiated_by','driver').gte('created_at',weekAgo);
-      if((bndChk.count||0)>=3){toast('You have exhausted all applications for the week. Please try again next week.');btn.disabled=false;btn.textContent='Send Request';return;}
-    }
+    var _isBN=!_anyTrips;
     // Application limit: drivers with trust score <50 can only send 2 per day
     if(DP.trust_score<50){
       var today=new Date(); today.setHours(0,0,0,0);
@@ -8975,12 +8971,12 @@ async function subMatch() {
         :'You have already applied to this car and were not accepted. You cannot reapply.';
       toast(msg);btn.disabled=false;btn.textContent='Send Request';return;
     }
-    r=await sb.from('applications').insert(ins).select('id').maybeSingle();
+    r=await _submitDriverApplication(_isBN,ins);
   } else {
-    r=await sb.from('applications').insert(ins).select('id').maybeSingle();
+    r=await _submitDriverApplication(_isBN,ins);
   }
   btn.disabled=false; btn.textContent='Send Request';
-  if(r.error){toast('Error: '+r.error.message);return;}
+  if(r.error){toast('Error: '+r.error);return;}
   if (typeof gtag === 'function') {
     gtag('event', 'generate_lead', { method: matchMode === 'driver' ? 'driver_applied_to_car' : 'owner_matched_driver' });
   }
@@ -8990,6 +8986,26 @@ async function subMatch() {
   closeModal('match-modal'); toast('Request sent!');
 }
 
+// ── B/N APPLICATION HELPERS ────────────────────────────────────
+async function _submitDriverApplication(isBN, ins) {
+  // B/N drivers: route through server function for server-side limit enforcement
+  if(isBN) {
+    var sess=sb.auth.session?sb.auth.session():null;
+    var jwt=(sess&&sess.access_token)||null;
+    if(!jwt){var _s=await sb.auth.getSession();jwt=_s&&_s.data&&_s.data.session&&_s.data.session.access_token;}
+    if(!jwt) return {error:'Session expired. Please log in again.'};
+    var fnRes=await fetch('/.netlify/functions/create-application',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+jwt},
+      body:JSON.stringify({owner_id:ins.owner_id,car_id:ins.car_id||undefined,message:ins.message||undefined,counter_price:ins.counter_price||undefined})
+    });
+    var fnJson=await fnRes.json();
+    if(!fnRes.ok) return {error:fnJson.error||'Server error',code:fnJson.code};
+    return {data:{id:fnJson.id}};
+  }
+  // Non-B/N: direct Supabase insert (unchanged)
+  return await sb.from('applications').insert(ins).select('id').maybeSingle();
+}
 // ── RATE MODAL ─────────────────────────────────────────
 function openRatingModal(btn) {
   var appId=btn.getAttribute('data-aid');
@@ -11509,18 +11525,32 @@ async function adBnd(){
   var uids=dps.map(function(d){return d.user_id;});
   var pr=await sb.from('profiles').select('id,full_name,email,phone,location,created_at').in('id',uids);
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
+  // Also load bn_entitlements for paid plan status and recent app counts
+  var _bnNow=new Date().toISOString();
+  var _bnWeekAgo=new Date(Date.now()-7*864e5).toISOString();
+  var [_bnEntAll,_bnAppCounts]=await Promise.all([
+    sb.from('bn_entitlements').select('driver_id,expires_at,status').in('driver_id',uids).eq('status','active').gte('expires_at',_bnNow),
+    sb.from('applications').select('driver_id,created_at').in('driver_id',uids).eq('initiated_by','driver').gte('created_at',_bnWeekAgo)
+  ]);
+  var _bnEntMap={};(_bnEntAll.data||[]).forEach(function(e){_bnEntMap[e.driver_id]=e;});
+  var _bnAppMap={};(_bnAppCounts.data||[]).forEach(function(a){_bnAppMap[a.driver_id]=(_bnAppMap[a.driver_id]||0)+1;});
   el.innerHTML='<div class="adm-pg"><div class="ptitle">B/N Drivers</div>'
-    +'<div class="psub">'+dps.length+' approved B/N drivers (zero e-hailing trips) &mdash; limited to 3 applications/week</div>'
+    +'<div class="psub">'+dps.length+' approved B/N drivers (zero e-hailing trips)</div>'
     +dps.map(function(d){
       var p=pm[d.user_id]||{};
       var daysSince=Math.floor((Date.now()-new Date(d.created_at).getTime())/864e5);
-      return '<div class="rcard" style="border-left:4px solid #3b82f6">'
+      var ent=_bnEntMap[d.user_id];
+      var appsUsed=_bnAppMap[d.user_id]||0;
+      var planBadge=ent
+        ?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;background:#dbeafe;color:#1d4ed8">Paid ('+Math.max(0,Math.ceil((new Date(ent.expires_at)-new Date())/864e5))+'d left)</span>'
+        :'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;background:#f1f5f9;color:#64748b">Free ('+appsUsed+'/3 used)</span>';
+      return '<div class="rcard" style="border-left:4px solid '+(ent?'#1d4ed8':'#3b82f6')+'">'
         +'<div class="rcard-head">'
-        +'<div><div style="font-size:14px;font-weight:700">'+esc(p.full_name||'Unknown')+'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;background:#dbeafe;color:#1d4ed8">B/N Driver</span></div>'
+        +'<div><div style="font-size:14px;font-weight:700">'+esc(p.full_name||'Unknown')+'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;background:#dbeafe;color:#1d4ed8">B/N Driver</span>'+planBadge+'</div>'
         +'<div style="font-size:12px;color:var(--muted)">'+esc(p.email||'-')+' &middot; '+(p.location?'&#128205;'+esc(p.location):'No location')+'</div></div>'
         +'<div style="text-align:right"><span class="pill p-a">Approved</span><div style="font-size:11px;color:var(--muted);margin-top:4px">Joined '+daysSince+'d ago</div></div>'
         +'</div>'
-        +'<div style="padding:8px 14px 10px;font-size:12px;color:var(--muted)">Platforms: '+((d.platforms||[]).join(', ')||'None declared')+' &middot; TrustScore: <strong>'+(d.trust_score||0)+'</strong></div>'
+        +'<div style="padding:8px 14px 10px;font-size:12px;color:var(--muted)">Platforms: '+((d.platforms||[]).join(', ')||'None declared')+' &middot; TrustScore: <strong>'+(d.trust_score||0)+'</strong> &middot; Apps this week: <strong>'+appsUsed+'</strong></div>'
         +'</div>';
     }).join('')
     +'</div>';
@@ -15083,7 +15113,7 @@ async function handleBoostPaymentReturn(){
   window.history.replaceState({},'',cleanUrl);
   if(paymentResult==='success'&&checkoutId){
     // Poll payment status — webhook may take a few seconds
-    toast('&#11088; Payment received! Verifying your boost…');
+    toast('&#11088; Payment received! Verifying…');
     var attempts=0;
     var poll=setInterval(async function(){
       attempts++;
@@ -15093,11 +15123,11 @@ async function handleBoostPaymentReturn(){
         if(d.payment&&d.payment.payment_status==='paid'){
           clearInterval(poll);
           try{localStorage.removeItem('tm_pending_checkout');}catch(e){}
-          toast('&#11088; Boost activated! Refreshing your dashboard…');
+          toast('&#11088; Payment confirmed! Refreshing your dashboard…');
           setTimeout(function(){pOv();},1500);
         } else if(attempts>=12){
           clearInterval(poll);
-          toast('Payment confirmed — boost is being activated. Refresh in a moment if needed.');
+          toast('Payment confirmed — activating now. Refresh in a moment if needed.');
         }
       }catch(e){if(attempts>=12)clearInterval(poll);}
     },3000);
@@ -15116,6 +15146,8 @@ async function approveBoostRequest(reqId,driverId){
   var r=await sb.from('boosts').insert({type:'driver',target_id:driverId,status:'active',test_mode:false,duration_days:dur,start_at:now.toISOString(),end_at:end.toISOString(),created_by:U.id});
   if(r.error){toast('Error: '+r.error.message);return;}
   await sb.from('boost_requests').update({status:'approved',updated_at:new Date().toISOString()}).eq('id',reqId);
+  // Supersede any pending payment records for this driver so they don't accumulate
+  await sb.from('boost_payments').update({payment_status:'superseded',updated_at:now.toISOString()}).eq('user_id',driverId).eq('boost_type','driver').eq('payment_status','pending');
   toast('&#11088; Boost activated for driver!');
   adBoost();
 }
