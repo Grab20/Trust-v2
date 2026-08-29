@@ -86,14 +86,14 @@ exports.handler = async function (event) {
     .in('role', ['owner', 'both'])
     .not('doc_id_url', 'is', null)
     .is('doc_id_path', null)
-    .limit(3);
+    .limit(5);
   if (owErr) return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Owner query failed', detail: owErr.message }) };
 
   const { data: drivers, error: drErr } = await sb.from('driver_profiles')
     .select('user_id, doc_id_url')
     .not('doc_id_url', 'is', null)
     .is('doc_id_path', null)
-    .limit(2);
+    .limit(5);
   if (drErr) return { statusCode: 500, headers: CORS, body: JSON.stringify({ error: 'Driver query failed', detail: drErr.message }) };
 
   const results = [];
