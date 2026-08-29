@@ -117,6 +117,15 @@ exports.handler = async function (event) {
             updated_at:       now.toISOString(),
           }).eq('id', payment.id).eq('payment_status', 'pending');
 
+          // Supersede other abandoned pending bn_application checkouts for this user
+          await sb
+            .from('boost_payments')
+            .update({ payment_status: 'superseded', updated_at: now.toISOString() })
+            .eq('user_id', payment.user_id)
+            .eq('boost_type', 'bn_application')
+            .eq('payment_status', 'pending')
+            .neq('id', payment.id);
+
           console.log('B/N entitlement activated via boost-payment-success for checkout:', checkoutId);
           return redirect(`${siteUrl}?payment=success&checkoutId=${checkoutId}&bn=1`);
         }
