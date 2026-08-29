@@ -39,7 +39,7 @@ exports.handler = async function (event) {
   if (!boost_type || !target_id || !user_id || !site_url) {
     return { statusCode: 400, headers: cors(), body: JSON.stringify({ error: 'Missing required fields' }) };
   }
-  if (!['driver', 'vehicle'].includes(boost_type)) {
+  if (!['driver', 'vehicle', 'bn_application'].includes(boost_type)) {
     return { statusCode: 400, headers: cors(), body: JSON.stringify({ error: 'Invalid boost_type' }) };
   }
 
@@ -51,10 +51,14 @@ exports.handler = async function (event) {
   (cfg || []).forEach(r => { cfgMap[r.key] = r.value; });
 
   const amountCents = parseInt(
-    boost_type === 'driver' ? cfgMap.driver_boost_price_cents : cfgMap.vehicle_boost_price_cents
+    boost_type === 'driver'         ? cfgMap.driver_boost_price_cents
+    : boost_type === 'vehicle'      ? cfgMap.vehicle_boost_price_cents
+    : cfgMap.bn_application_price_cents || '4900'
   );
   const durationDays = parseInt(
-    boost_type === 'driver' ? cfgMap.driver_boost_days : cfgMap.vehicle_boost_days
+    boost_type === 'driver'         ? cfgMap.driver_boost_days
+    : boost_type === 'vehicle'      ? cfgMap.vehicle_boost_days
+    : cfgMap.bn_application_days    || '30'
   );
   const currency = cfgMap.currency || 'ZAR';
 

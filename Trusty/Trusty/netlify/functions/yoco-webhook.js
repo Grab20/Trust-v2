@@ -169,7 +169,62 @@ async function activateBoost(payment, checkoutId, yocoPayId, sb) {
   const now    = new Date();
   const expiry = new Date(now.getTime() + payment.duration_days * 24 * 3600 * 1000);
 
-  // ── Create the boost (idempotent — ignore duplicate key) ──────
+  // ── B/N application plan: create entitlement instead of boost ─
+  if (payment.boost_type === 'bn_application') {
+    // Overlapping purchase: extend from max(now, current_expiry) + 30 days
+    const { data: existing } = await sb
+      .from('bn_entitlements')
+      .select('id, expires_at')
+      .eq('driver_id', payment.user_id)
+      .eq('status', 'active')
+      .gte('expires_at', now.toISOString())
+      .order('expires_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const baseDate = existing ? new Date(Math.max(new Date(existing.expires_at), now)) : now;
+    const newExpiry = new Date(baseDate.getTime() + payment.duration_days * 24 * 3600 * 1000);
+
+    const { data: ent, error: entErr } = await sb
+      .from('bn_entitlements')
+      .insert({
+        driver_id:  payment.user_id,
+        payment_id: payment.id,
+        plan_type:  'paid',
+        status:     'active',
+        starts_at:  now.toISOString(),
+        expires_at: newExpiry.toISOString(),
+      })
+      .select('id')
+      .maybeSingle();
+
+    if (entErr && entErr.code !== '23505') {
+      console.error('Failed to create bn_entitlement:', entErr);
+      return;
+    }
+
+    const { error: updateErr } = await sb
+      .from('boost_payments')
+      .update({
+        payment_status:   'paid',
+        yoco_payment_id:  yocoPayId,
+        boost_start_at:   now.toISOString(),
+        boost_expires_at: newExpiry.toISOString(),
+        paid_at:          now.toISOString(),
+        updated_at:       now.toISOString(),
+      })
+      .eq('yoco_checkout_id', checkoutId)
+      .eq('payment_status', 'pending');
+
+    if (updateErr) {
+      console.error('Failed to update boost_payment for bn_application:', updateErr);
+    } else {
+      console.log('B/N entitlement activated for user:', payment.user_id, 'expires:', newExpiry.toISOString());
+    }
+    return;
+  }
+
+  // ── Standard boost (driver / vehicle) ─────────────────────────
   const { data: boost, error: boostErr } = await sb
     .from('boosts')
     .insert({
@@ -195,7 +250,6 @@ async function activateBoost(payment, checkoutId, yocoPayId, sb) {
   const boostId = boost?.id || null;
 
   // ── Update payment record to paid (only if still pending) ─────
-  // .eq('payment_status','pending') prevents a second writer from double-updating
   const { error: updateErr } = await sb
     .from('boost_payments')
     .update({
@@ -224,7 +278,7 @@ async function activateBoost(payment, checkoutId, yocoPayId, sb) {
       .eq('status', 'pending');
   }
 
-  console.log('Boost activated:', boost.id, 'for checkout:', checkoutId);
+  console.log('Boost activated:', boost?.id, 'for checkout:', checkoutId);
 
   // ── Sync boost status to Brevo (fire-and-forget) ──────────────
   try {
