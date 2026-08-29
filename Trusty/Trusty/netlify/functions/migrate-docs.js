@@ -8,7 +8,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 const SUPABASE_URL         = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 const MIGRATE_SECRET       = process.env.MIGRATE_SECRET;
 
 const CORS = {
