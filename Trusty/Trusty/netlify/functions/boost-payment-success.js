@@ -79,7 +79,49 @@ exports.handler = async function (event) {
       if (isPaid) {
         const yocoPayId = yocoData.payment?.id || yocoData.id;
         const now       = new Date();
-        const expiry    = new Date(now.getTime() + payment.duration_days * 24 * 3600 * 1000);
+
+        if (payment.boost_type === 'bn_application') {
+          // B/N plan: create entitlement (extend from current expiry if active one exists)
+          const { data: existing } = await sb
+            .from('bn_entitlements')
+            .select('id, expires_at')
+            .eq('driver_id', payment.user_id)
+            .eq('status', 'active')
+            .gte('expires_at', now.toISOString())
+            .order('expires_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          const baseDate  = existing ? new Date(Math.max(new Date(existing.expires_at), now)) : now;
+          const newExpiry = new Date(baseDate.getTime() + payment.duration_days * 24 * 3600 * 1000);
+
+          const { error: entErr } = await sb.from('bn_entitlements').insert({
+            driver_id:  payment.user_id,
+            payment_id: payment.id,
+            plan_type:  'paid',
+            status:     'active',
+            starts_at:  now.toISOString(),
+            expires_at: newExpiry.toISOString(),
+          });
+
+          if (entErr && entErr.code !== '23505') {
+            console.error('bn_entitlement insert error:', entErr);
+          }
+
+          await sb.from('boost_payments').update({
+            payment_status:   'paid',
+            yoco_payment_id:  yocoPayId,
+            boost_start_at:   now.toISOString(),
+            boost_expires_at: newExpiry.toISOString(),
+            paid_at:          now.toISOString(),
+            updated_at:       now.toISOString(),
+          }).eq('id', payment.id).eq('payment_status', 'pending');
+
+          console.log('B/N entitlement activated via boost-payment-success for checkout:', checkoutId);
+          return redirect(`${siteUrl}?payment=success&checkoutId=${checkoutId}&bn=1`);
+        }
+
+        const expiry = new Date(now.getTime() + payment.duration_days * 24 * 3600 * 1000);
 
         // Create boost (idempotent — ignore duplicate key)
         const { data: boost, error: boostErr } = await sb
@@ -120,6 +162,15 @@ exports.handler = async function (event) {
           })
           .eq('id', payment.id)
           .eq('payment_status', 'pending');
+
+        // Supersede other abandoned pending checkouts for same user+type
+        await sb
+          .from('boost_payments')
+          .update({ payment_status: 'superseded', updated_at: now.toISOString() })
+          .eq('user_id', payment.user_id)
+          .eq('boost_type', payment.boost_type)
+          .eq('payment_status', 'pending')
+          .neq('id', payment.id);
 
         console.log('Boost activated via boost-payment-success for checkout:', checkoutId);
 
