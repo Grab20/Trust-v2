@@ -10773,7 +10773,6 @@ async function adMoveToBN(dpId){
   if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
   var r=await sb.from('driver_profiles').update({
     status:'approved',
-    declared_trips:'0',
     approved_at:new Date().toISOString()
   }).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
@@ -11502,8 +11501,8 @@ async function adBnd(){
   var el=document.getElementById('ap-bnd');
   el.innerHTML='<div class="adm-pg"><div class="ptitle">B/N Drivers</div></div>'+adSpin();
   // Brand new drivers: approved drivers with declared_trips = 0 or '0'
-  var dr=await sb.from('driver_profiles').select('*').eq('status','approved').or('declared_trips.eq.0,declared_trips.is.null').order('created_at',{ascending:false});
-  var dps=(dr.data||[]).filter(function(d){return !d.declared_trips||parseInt(d.declared_trips||0)===0;});
+  var dr=await sb.from('driver_profiles').select('*').eq('status','approved').order('created_at',{ascending:false});
+  var dps=(dr.data||[]).filter(function(d){return !parseInt(d.uber_trips||0)&&!parseInt(d.bolt_trips||0)&&!parseInt(d.indrive_trips||0);});
   var badge=document.getElementById('bndbadge');
   if(badge){badge.textContent=dps.length;badge.style.display=dps.length?'inline':'none';}
   if(!dps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">B/N Drivers</div>'+empty('&#127381;','No B/N drivers yet.')+'</div>';return;}

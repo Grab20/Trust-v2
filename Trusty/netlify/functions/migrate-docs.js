@@ -29,17 +29,19 @@ function pathFromUrl(publicUrl, bucket) {
 
 async function migrateOne(sb, { table, idCol, pathCol, srcBucket, dstBucket, recordId, publicUrl, label, dryRun }) {
   const srcPath = pathFromUrl(publicUrl, srcBucket);
-  if (!srcPath) {
-    console.info('[migration]', JSON.stringify({ event: 'document_migration_failed', label, reason: 'cannot_parse_url', id: recordId.slice(0,8) }));
-    return { id: recordId.slice(0,8), label, status: 'failed', reason: 'cannot_parse_url' };
+  // Mark permanently failed records with '_error' so they are excluded from future batches
+  async function markError(reason) {
+    const upd = {}; upd[pathCol] = '_error';
+    await sb.from(table).update(upd).eq(idCol, recordId);
+    console.info('[migration]', JSON.stringify({ event: 'document_migration_failed', label, reason, id: recordId.slice(0,8) }));
+    return { id: recordId.slice(0,8), label, status: 'failed', reason };
   }
+
+  if (!srcPath) return markError('cannot_parse_url');
   if (dryRun) return { id: recordId.slice(0,8), label, status: 'dry_run', path: srcPath };
 
   const { data: fileData, error: dlErr } = await sb.storage.from(srcBucket).download(srcPath);
-  if (dlErr || !fileData) {
-    console.info('[migration]', JSON.stringify({ event: 'document_migration_failed', label, reason: 'download_failed', id: recordId.slice(0,8) }));
-    return { id: recordId.slice(0,8), label, status: 'failed', reason: 'download_failed' };
-  }
+  if (dlErr || !fileData) return markError('download_failed');
 
   const { error: upErr } = await sb.storage.from(dstBucket).upload(srcPath, fileData, { upsert: true });
   if (upErr) {
