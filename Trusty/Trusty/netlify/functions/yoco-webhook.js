@@ -103,14 +103,45 @@ exports.handler = async function (event) {
 };
 
 async function handlePaymentSucceeded(payload, sb) {
-  // Yoco puts checkoutId in payload.metadata.checkoutId
-  // The payment/transaction id is at payload.id or payload.data?.id
-  const checkoutId = payload.metadata?.checkoutId;
-  const yocoPayId  = payload.id || payload.data?.id;
+  // Yoco webhook payload shape varies — try multiple locations for the checkout ID.
+  // Priority: nested payload object → top-level → data wrapper → metadata (our fallback).
+  const checkoutId =
+    payload.payload?.checkoutId ||   // most common: { type, payload: { checkoutId, ... } }
+    payload.checkoutId               ||   // flat shape
+    payload.data?.checkoutId         ||   // data-wrapper shape
+    payload.metadata?.checkoutId     ||   // legacy/metadata fallback
+    null;
+
+  // The Yoco payment/transaction ID for our records
+  const yocoPayId =
+    payload.payload?.id ||
+    payload.data?.id    ||
+    payload.id          ||
+    null;
+
+  console.log('handlePaymentSucceeded — resolved checkoutId:', checkoutId, 'payId:', yocoPayId);
 
   if (!checkoutId) {
-    console.error('No checkoutId in webhook metadata:', payload);
-    return;
+    // Last resort: look up by user_id from our metadata (we always set this)
+    const userId = payload.payload?.metadata?.user_id || payload.metadata?.user_id;
+    if (!userId) {
+      console.error('Cannot identify payment — no checkoutId or user_id in payload:', JSON.stringify(payload));
+      return;
+    }
+    console.warn('No checkoutId found, falling back to user_id lookup:', userId);
+    const { data: fallbackPayment } = await sb
+      .from('boost_payments')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('payment_status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!fallbackPayment) {
+      console.error('No pending payment found for user_id:', userId);
+      return;
+    }
+    return activateBoost(fallbackPayment, fallbackPayment.yoco_checkout_id, yocoPayId, sb);
   }
 
   // ── Find the pending payment record ───────────────────────────
@@ -131,10 +162,14 @@ async function handlePaymentSucceeded(payload, sb) {
     return;
   }
 
+  return activateBoost(payment, checkoutId, yocoPayId, sb);
+}
+
+async function activateBoost(payment, checkoutId, yocoPayId, sb) {
   const now    = new Date();
   const expiry = new Date(now.getTime() + payment.duration_days * 24 * 3600 * 1000);
 
-  // ── Create the boost ───────────────────────────────────────────
+  // ── Create the boost (idempotent — ignore duplicate key) ──────
   const { data: boost, error: boostErr } = await sb
     .from('boosts')
     .insert({
@@ -150,26 +185,35 @@ async function handlePaymentSucceeded(payload, sb) {
       created_by:    payment.user_id,
     })
     .select('id')
-    .single();
+    .maybeSingle();
 
-  if (boostErr) {
+  if (boostErr && boostErr.code !== '23505') {
     console.error('Failed to create boost:', boostErr);
     return;
   }
 
-  // ── Update payment record to paid ─────────────────────────────
-  await sb
+  const boostId = boost?.id || null;
+
+  // ── Update payment record to paid (only if still pending) ─────
+  // .eq('payment_status','pending') prevents a second writer from double-updating
+  const { error: updateErr } = await sb
     .from('boost_payments')
     .update({
       payment_status:   'paid',
       yoco_payment_id:  yocoPayId,
-      boost_id:         boost.id,
+      boost_id:         boostId,
       boost_start_at:   now.toISOString(),
       boost_expires_at: expiry.toISOString(),
       paid_at:          now.toISOString(),
       updated_at:       now.toISOString(),
     })
-    .eq('yoco_checkout_id', checkoutId);
+    .eq('yoco_checkout_id', checkoutId)
+    .eq('payment_status', 'pending');
+
+  if (updateErr) {
+    console.error('Failed to update boost_payment:', updateErr);
+    return;
+  }
 
   // ── Approve any pending boost_request for this driver ─────────
   if (payment.boost_type === 'driver') {
@@ -195,8 +239,12 @@ async function handlePaymentSucceeded(payload, sb) {
 }
 
 async function handlePaymentFailed(payload, sb) {
-  const checkoutId = payload.metadata?.checkoutId;
-  if (!checkoutId) return;
+  const checkoutId =
+    payload.payload?.checkoutId ||
+    payload.checkoutId          ||
+    payload.data?.checkoutId    ||
+    payload.metadata?.checkoutId || null;
+  if (!checkoutId) { console.error('handlePaymentFailed: no checkoutId in payload'); return; }
 
   await sb
     .from('boost_payments')
@@ -206,8 +254,12 @@ async function handlePaymentFailed(payload, sb) {
 }
 
 async function handlePaymentRefunded(payload, sb) {
-  const checkoutId = payload.metadata?.checkoutId;
-  if (!checkoutId) return;
+  const checkoutId =
+    payload.payload?.checkoutId ||
+    payload.checkoutId          ||
+    payload.data?.checkoutId    ||
+    payload.metadata?.checkoutId || null;
+  if (!checkoutId) { console.error('handlePaymentRefunded: no checkoutId in payload'); return; }
 
   const { data: payment } = await sb
     .from('boost_payments')
