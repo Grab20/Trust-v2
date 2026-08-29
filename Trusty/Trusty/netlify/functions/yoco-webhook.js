@@ -220,6 +220,14 @@ async function activateBoost(payment, checkoutId, yocoPayId, sb) {
       console.error('Failed to update boost_payment for bn_application:', updateErr);
     } else {
       console.log('B/N entitlement activated for user:', payment.user_id, 'expires:', newExpiry.toISOString());
+      // Supersede other abandoned pending bn_application checkouts for this user
+      await sb
+        .from('boost_payments')
+        .update({ payment_status: 'superseded', updated_at: now.toISOString() })
+        .eq('user_id', payment.user_id)
+        .eq('boost_type', 'bn_application')
+        .eq('payment_status', 'pending')
+        .neq('yoco_checkout_id', checkoutId);
     }
     return;
   }
