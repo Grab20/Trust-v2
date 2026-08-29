@@ -269,6 +269,17 @@ async function activateBoost(payment, checkoutId, yocoPayId, sb) {
     return;
   }
 
+  // ── Supersede other abandoned pending checkouts for same user+type ──
+  // Users sometimes retry after 30 min (past idempotency window), creating multiple
+  // pending rows. Once one succeeds, the rest are orphaned — mark them superseded.
+  await sb
+    .from('boost_payments')
+    .update({ payment_status: 'superseded', updated_at: now.toISOString() })
+    .eq('user_id', payment.user_id)
+    .eq('boost_type', payment.boost_type)
+    .eq('payment_status', 'pending')
+    .neq('yoco_checkout_id', checkoutId);
+
   // ── Approve any pending boost_request for this driver ─────────
   if (payment.boost_type === 'driver') {
     await sb

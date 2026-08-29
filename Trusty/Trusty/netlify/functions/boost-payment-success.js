@@ -163,6 +163,15 @@ exports.handler = async function (event) {
           .eq('id', payment.id)
           .eq('payment_status', 'pending');
 
+        // Supersede other abandoned pending checkouts for same user+type
+        await sb
+          .from('boost_payments')
+          .update({ payment_status: 'superseded', updated_at: now.toISOString() })
+          .eq('user_id', payment.user_id)
+          .eq('boost_type', payment.boost_type)
+          .eq('payment_status', 'pending')
+          .neq('id', payment.id);
+
         console.log('Boost activated via boost-payment-success for checkout:', checkoutId);
 
         return redirect(`${siteUrl}?payment=success&checkoutId=${checkoutId}&boosted=1`);
