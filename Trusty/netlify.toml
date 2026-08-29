@@ -15,7 +15,3 @@
 [functions."send-digest"]
   schedule = "0 5,10,16 * * *"
 
-# Incomplete owner reminders: daily at 8am SAST (= 6am UTC)
-[functions."remind-incomplete-owners"]
-  schedule = "0 6 * * *"
-
