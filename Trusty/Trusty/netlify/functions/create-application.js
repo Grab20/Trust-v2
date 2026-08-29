@@ -110,7 +110,7 @@ exports.handler = async function (event) {
 
       if ((dayCount || 0) >= PAID_APPS_PER_DAY) {
         return resp(429, {
-          error: 'You have reached the daily application limit (4/day). Try again tomorrow.',
+          error: 'You have reached the daily application limit. Try again tomorrow.',
           code: 'BN_LIMIT_SPAM',
         });
       }
@@ -126,7 +126,7 @@ exports.handler = async function (event) {
 
       if ((weekCount || 0) >= FREE_APPS_PER_WEEK) {
         return resp(429, {
-          error: 'You have used all 3 free applications this week. Upgrade to send unlimited applications.',
+          error: 'You have reached your weekly application limit. Please try again next week.',
           code: 'BN_LIMIT_FREE',
         });
       }

@@ -5227,47 +5227,6 @@ async function pOv() {
       +(DP.status==='approved'?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'')
       +(DP.status==='approved'?'<button onclick="openTmShare(\'driver\')" style="margin-top:10px;width:100%;padding:9px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#128279; Share My Profile</button>':'')
       +'</div>';
-    // ── B/N STATUS CARD ──
-    var _isBNdrv=!parseInt(DP.uber_trips||0)&&!parseInt(DP.bolt_trips||0)&&!parseInt(DP.indrive_trips||0)&&!parseInt(DP.self_uber_trips||0)&&!parseInt(DP.self_bolt_trips||0)&&!parseInt(DP.self_indrive_trips||0);
-    if(_isBNdrv&&DP.status==='approved'){
-      var _bnNow=new Date().toISOString();
-      var [_bnEntR,_bnAppR]=await Promise.all([
-        sb.from('bn_entitlements').select('id,starts_at,expires_at,status').eq('driver_id',U.id).eq('status','active').gte('expires_at',_bnNow).order('expires_at',{ascending:false}).limit(1).maybeSingle(),
-        sb.from('applications').select('id',{count:'exact',head:true}).eq('driver_id',U.id).eq('initiated_by','driver').gte('created_at',new Date(Date.now()-7*864e5).toISOString())
-      ]);
-      var _bnEnt=_bnEntR.data;
-      var _bnUsed=_bnAppR.count||0;
-      if(_bnEnt){
-        var _bnDaysLeft=Math.max(0,Math.ceil((new Date(_bnEnt.expires_at)-new Date())/864e5));
-        html+='<div class="tbox" style="border:2px solid #1d4ed8;background:linear-gradient(135deg,#eff6ff 0%,#fff 100%)">'
-          +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
-          +'<span style="font-size:20px">&#127381;</span>'
-          +'<div><div style="font-size:13px;font-weight:800;color:#1d4ed8">B/N Unlimited Plan Active</div>'
-          +'<div style="font-size:11px;color:var(--muted);margin-top:1px">'+_bnDaysLeft+' day'+(+_bnDaysLeft===1?'':'s')+' remaining &middot; up to 4 applications/day</div>'
-          +'</div>'
-          +'</div>'
-          +'<div style="font-size:11px;color:#1e40af;background:#dbeafe;border-radius:8px;padding:8px 12px">'
-          +'Unlimited applications until '+(new Date(_bnEnt.expires_at).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}))+'. No weekly cap applies.'
-          +'</div>'
-          +'</div>';
-      } else {
-        var _bnFree=Math.max(0,3-_bnUsed);
-        var _bnBar=Math.round((3-_bnFree)/3*100);
-        html+='<div class="tbox" style="border:1.5px solid #93c5fd">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
-          +'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:16px">&#127381;</span><div style="font-size:13px;font-weight:700;color:var(--g)">B/N Weekly Applications</div></div>'
-          +'<span style="font-size:11px;font-weight:800;color:'+(_bnFree>0?'#1d4ed8':'#dc2626')+';background:'+(_bnFree>0?'#dbeafe':'#fee2e2')+';padding:2px 8px;border-radius:999px">'
-          +_bnFree+' / 3 left</span>'
-          +'</div>'
-          +'<div style="background:var(--border);border-radius:99px;height:6px;margin-bottom:10px"><div style="background:'+(_bnFree>0?'#1d4ed8':'#dc2626')+';width:'+_bnBar+'%;height:100%;border-radius:99px;transition:width .3s"></div></div>'
-          +(_bnFree===0
-            ?'<div style="font-size:11px;color:#dc2626;margin-bottom:10px">Weekly limit reached. Resets in a few days, or upgrade for unlimited access.</div>'
-              +'<button class="btn" style="width:100%;padding:10px;font-size:13px;font-weight:800;background:#1d4ed8;color:#fff;border:none;border-radius:8px;cursor:pointer" onclick="openBnUpgradeModal()">&#128640; Unlock Unlimited — R49 / 30 days</button>'
-            :'<div style="font-size:11px;color:var(--muted)">Brand New drivers get 3 free applications per 7-day rolling window. <span style="color:#1d4ed8;cursor:pointer;font-weight:700" onclick="openBnUpgradeModal()">Upgrade for unlimited.</span></div>'
-          )
-          +'</div>';
-      }
-    }
     // ── PROFILE STATS: views, likes (always shown for approved driver) ──
     var _now=new Date().toISOString();
     var [_boostR,_pvLogR,_lkAllR]=await Promise.all([
@@ -9017,15 +8976,7 @@ async function subMatch() {
     r=await _submitDriverApplication(_isBN,ins);
   }
   btn.disabled=false; btn.textContent='Send Request';
-  if(r.error){
-    if(r.code==='BN_LIMIT_FREE'){
-      toast(r.error);
-      // Show upgrade prompt after brief delay
-      setTimeout(function(){openBnUpgradeModal();},400);
-      return;
-    }
-    toast('Error: '+r.error);return;
-  }
+  if(r.error){toast('Error: '+r.error);return;}
   if (typeof gtag === 'function') {
     gtag('event', 'generate_lead', { method: matchMode === 'driver' ? 'driver_applied_to_car' : 'owner_matched_driver' });
   }
@@ -9055,36 +9006,6 @@ async function _submitDriverApplication(isBN, ins) {
   // Non-B/N: direct Supabase insert (unchanged)
   return await sb.from('applications').insert(ins).select('id').maybeSingle();
 }
-function openBnUpgradeModal() {
-  // Show paywall when B/N driver exhausts free quota
-  var existing=document.getElementById('bn-upgrade-modal');
-  if(existing) existing.remove();
-  var m=document.createElement('div');
-  m.id='bn-upgrade-modal';
-  m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center';
-  m.innerHTML='<div style="background:var(--bg);border-radius:20px 20px 0 0;padding:28px 24px 32px;max-width:480px;width:100%;box-shadow:0 -8px 40px rgba(0,0,0,.18)">'
-    +'<div style="text-align:center;margin-bottom:16px">'
-    +'<div style="font-size:36px;margin-bottom:6px">&#127381;</div>'
-    +'<div style="font-size:18px;font-weight:800;color:var(--g);margin-bottom:6px">Weekly Limit Reached</div>'
-    +'<div style="font-size:13px;color:var(--muted);line-height:1.5">Brand New drivers get 3 free applications per week. Upgrade to unlock unlimited applications for 30 days.</div>'
-    +'</div>'
-    +'<div style="background:var(--cream);border-radius:12px;padding:14px 16px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center">'
-    +'<div><div style="font-size:12px;color:var(--muted)">B/N Unlimited Plan</div><div style="font-size:11px;color:var(--muted)">30 days &middot; up to 4 applications/day</div></div>'
-    +'<div style="font-size:22px;font-weight:900;color:var(--gm)">R49</div>'
-    +'</div>'
-    +'<button class="btn btn-gm" style="width:100%;padding:13px;font-size:15px;font-weight:800;margin-bottom:10px" onclick="_bnStartCheckout()">&#128640; Unlock — R49 / 30 days</button>'
-    +'<button class="btn btn-out" style="width:100%;padding:10px;font-size:13px" onclick="document.getElementById('bn-upgrade-modal').remove()">Maybe later</button>'
-    +'</div>';
-  document.body.appendChild(m);
-  m.addEventListener('click',function(e){if(e.target===m)m.remove();});
-}
-async function _bnStartCheckout() {
-  var modal=document.getElementById('bn-upgrade-modal');
-  if(modal)modal.remove();
-  if(!U){toast('Please log in first.');return;}
-  await startBoostCheckout('bn_application',U.id);
-}
-
 // ── RATE MODAL ─────────────────────────────────────────
 function openRatingModal(btn) {
   var appId=btn.getAttribute('data-aid');
@@ -15191,9 +15112,8 @@ async function handleBoostPaymentReturn(){
   var cleanUrl=window.location.pathname;
   window.history.replaceState({},'',cleanUrl);
   if(paymentResult==='success'&&checkoutId){
-    var _isBnPayment=params.get('bn')==='1';
     // Poll payment status — webhook may take a few seconds
-    toast(_isBnPayment?'&#127381; Payment received! Activating your B/N plan…':'&#11088; Payment received! Verifying your boost…');
+    toast('&#11088; Payment received! Verifying…');
     var attempts=0;
     var poll=setInterval(async function(){
       attempts++;
@@ -15203,11 +15123,11 @@ async function handleBoostPaymentReturn(){
         if(d.payment&&d.payment.payment_status==='paid'){
           clearInterval(poll);
           try{localStorage.removeItem('tm_pending_checkout');}catch(e){}
-          toast(_isBnPayment?'&#127381; B/N Unlimited Plan activated! Refreshing…':'&#11088; Boost activated! Refreshing your dashboard…');
+          toast('&#11088; Payment confirmed! Refreshing your dashboard…');
           setTimeout(function(){pOv();},1500);
         } else if(attempts>=12){
           clearInterval(poll);
-          toast(_isBnPayment?'Payment confirmed — B/N plan is being activated. Refresh in a moment.':'Payment confirmed — boost is being activated. Refresh in a moment if needed.');
+          toast('Payment confirmed — activating now. Refresh in a moment if needed.');
         }
       }catch(e){if(attempts>=12)clearInterval(poll);}
     },3000);
