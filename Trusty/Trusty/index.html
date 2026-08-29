@@ -1682,7 +1682,7 @@ nav div::-webkit-scrollbar{display:none}
         <span class="adm-nav-badge amber" id="ibadge2" style="display:none">0</span>
       </div>
       <div class="adm-nav" id="an-bnd" onclick="adNav('bnd')">
-        <span class="adm-nav-icon">&#127381;</span> B/N Drivers
+        <span class="adm-nav-icon">&#127381;</span> B N Drivers
         <span class="adm-nav-badge" id="bndbadge" style="display:none;background:#3b82f6">0</span>
       </div>
       <div class="adm-nav" id="an-pdoc" onclick="adNav('pdoc')">
@@ -8976,7 +8976,11 @@ async function subMatch() {
     r=await _submitDriverApplication(_isBN,ins);
   }
   btn.disabled=false; btn.textContent='Send Request';
-  if(r.error){toast('Error: '+r.error);return;}
+  if(r.error){
+    // Show the server's human-readable message directly; it is already driver-friendly
+    toast(r.error);
+    return;
+  }
   if (typeof gtag === 'function') {
     gtag('event', 'generate_lead', { method: matchMode === 'driver' ? 'driver_applied_to_car' : 'owner_matched_driver' });
   }
@@ -11515,38 +11519,80 @@ function adIncSearch(){
 }
 async function adBnd(){
   var el=document.getElementById('ap-bnd');
-  el.innerHTML='<div class="adm-pg"><div class="ptitle">B/N Drivers</div></div>'+adSpin();
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">B N Drivers</div></div>'+adSpin();
   // Brand new drivers: approved drivers with declared_trips = 0 or '0'
   var dr=await sb.from('driver_profiles').select('*').eq('status','approved').order('created_at',{ascending:false});
   var dps=(dr.data||[]).filter(function(d){return !parseInt(d.uber_trips||0)&&!parseInt(d.bolt_trips||0)&&!parseInt(d.indrive_trips||0);});
   var badge=document.getElementById('bndbadge');
   if(badge){badge.textContent=dps.length;badge.style.display=dps.length?'inline':'none';}
-  if(!dps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">B/N Drivers</div>'+empty('&#127381;','No B/N drivers yet.')+'</div>';return;}
+  if(!dps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">B N Drivers</div>'+empty('&#127381;','No B N drivers yet.')+'</div>';return;}
   var uids=dps.map(function(d){return d.user_id;});
   var pr=await sb.from('profiles').select('id,full_name,email,phone,location,created_at').in('id',uids);
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
   // Also load bn_entitlements for paid plan status and recent app counts
   var _bnNow=new Date().toISOString();
   var _bnWeekAgo=new Date(Date.now()-7*864e5).toISOString();
-  var [_bnEntAll,_bnAppCounts]=await Promise.all([
+  var [_bnEntAll,_bnAppCounts,_bnPurchases]=await Promise.all([
     sb.from('bn_entitlements').select('driver_id,expires_at,status').in('driver_id',uids).eq('status','active').gte('expires_at',_bnNow),
-    sb.from('applications').select('driver_id,created_at').in('driver_id',uids).eq('initiated_by','driver').gte('created_at',_bnWeekAgo)
+    sb.from('applications').select('driver_id,created_at').in('driver_id',uids).eq('initiated_by','driver').gte('created_at',_bnWeekAgo),
+    sb.from('boost_payments').select('user_id,paid_at,amount_cents,boost_expires_at').in('user_id',uids).eq('boost_type','bn_application').eq('payment_status','paid').order('paid_at',{ascending:false})
   ]);
   var _bnEntMap={};(_bnEntAll.data||[]).forEach(function(e){_bnEntMap[e.driver_id]=e;});
   var _bnAppMap={};(_bnAppCounts.data||[]).forEach(function(a){_bnAppMap[a.driver_id]=(_bnAppMap[a.driver_id]||0)+1;});
-  el.innerHTML='<div class="adm-pg"><div class="ptitle">B/N Drivers</div>'
-    +'<div class="psub">'+dps.length+' approved B/N drivers (zero e-hailing trips)</div>'
+  // Group purchases by driver
+  var _bnPurchMap={};(_bnPurchases.data||[]).forEach(function(p){if(!_bnPurchMap[p.user_id])_bnPurchMap[p.user_id]=[];_bnPurchMap[p.user_id].push(p);});
+  var extendaDrivers=dps.filter(function(d){return _bnPurchMap[d.user_id]&&_bnPurchMap[d.user_id].length>0;});
+  var extendaTotal=(_bnPurchases.data||[]).reduce(function(s,p){return s+p.amount_cents;},0);
+
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">B N Drivers</div>'
+    +'<div class="psub">'+dps.length+' approved B N drivers (zero e-hailing trips)</div>'
+
+    // ── Extenda section ────────────────────────────────────────
+    +'<div style="background:linear-gradient(135deg,#eff6ff,#fff);border:2px solid #3b82f6;border-radius:14px;padding:16px 18px;margin-bottom:18px">'
+    +'<div style="font-size:14px;font-weight:800;color:#1d4ed8;margin-bottom:4px">&#128640; Extenda — Purchase Extender</div>'
+    +'<div style="font-size:12px;color:#3b82f6;margin-bottom:14px">Drivers who purchased the Extenda plan</div>'
+    +'<div style="display:flex;gap:12px;margin-bottom:14px">'
+    +'<div style="flex:1;background:#fff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:20px;font-weight:900;color:#1d4ed8">'+extendaDrivers.length+'</div>'
+    +'<div style="font-size:10px;color:#3b82f6;margin-top:2px">Purchasers</div></div>'
+    +'<div style="flex:1;background:#fff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:20px;font-weight:900;color:#1d4ed8">'+(_bnPurchases.data||[]).length+'</div>'
+    +'<div style="font-size:10px;color:#3b82f6;margin-top:2px">Total Purchases</div></div>'
+    +'<div style="flex:1;background:#fff;border:1.5px solid #bfdbfe;border-radius:10px;padding:10px;text-align:center">'
+    +'<div style="font-size:20px;font-weight:900;color:#1d4ed8">R'+(extendaTotal/100).toFixed(2)+'</div>'
+    +'<div style="font-size:10px;color:#3b82f6;margin-top:2px">Revenue</div></div>'
+    +'</div>'
+    +(extendaDrivers.length===0
+      ?'<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted)">No Extenda purchases yet.</div>'
+      :extendaDrivers.map(function(d){
+          var p=pm[d.user_id]||{};
+          var purchases=_bnPurchMap[d.user_id]||[];
+          var ent=_bnEntMap[d.user_id];
+          return '<div style="background:#fff;border:1px solid #bfdbfe;border-radius:10px;padding:11px 13px;margin-bottom:8px">'
+            +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+            +'<div style="font-size:13px;font-weight:700;color:var(--g)">'+esc(p.full_name||'Unknown')+'</div>'
+            +(ent?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#dbeafe;color:#1d4ed8">Active ('+Math.max(0,Math.ceil((new Date(ent.expires_at)-new Date())/864e5))+'d left)</span>':'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#64748b">Expired</span>')
+            +'</div>'
+            +'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+esc(p.email||'-')+'</div>'
+            +'<div style="font-size:11px;color:var(--muted)">'+purchases.length+' purchase'+(purchases.length!==1?'s':'')+' &middot; '
+            +purchases.map(function(pp){return fmtD(pp.paid_at)+' (R'+(pp.amount_cents/100).toFixed(2)+')';}).join(', ')
+            +'</div>'
+            +'</div>';
+        }).join(''))
+    +'</div>'
+
+    // ── Driver list ────────────────────────────────────────────
     +dps.map(function(d){
       var p=pm[d.user_id]||{};
       var daysSince=Math.floor((Date.now()-new Date(d.created_at).getTime())/864e5);
       var ent=_bnEntMap[d.user_id];
       var appsUsed=_bnAppMap[d.user_id]||0;
       var planBadge=ent
-        ?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;background:#dbeafe;color:#1d4ed8">Paid ('+Math.max(0,Math.ceil((new Date(ent.expires_at)-new Date())/864e5))+'d left)</span>'
+        ?'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;background:#dbeafe;color:#1d4ed8">Extenda ('+Math.max(0,Math.ceil((new Date(ent.expires_at)-new Date())/864e5))+'d left)</span>'
         :'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;background:#f1f5f9;color:#64748b">Free ('+appsUsed+'/3 used)</span>';
       return '<div class="rcard" style="border-left:4px solid '+(ent?'#1d4ed8':'#3b82f6')+'">'
         +'<div class="rcard-head">'
-        +'<div><div style="font-size:14px;font-weight:700">'+esc(p.full_name||'Unknown')+'<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;background:#dbeafe;color:#1d4ed8">B/N Driver</span>'+planBadge+'</div>'
+        +'<div><div style="font-size:14px;font-weight:700">'+esc(p.full_name||'Unknown')+planBadge+'</div>'
         +'<div style="font-size:12px;color:var(--muted)">'+esc(p.email||'-')+' &middot; '+(p.location?'&#128205;'+esc(p.location):'No location')+'</div></div>'
         +'<div style="text-align:right"><span class="pill p-a">Approved</span><div style="font-size:11px;color:var(--muted);margin-top:4px">Joined '+daysSince+'d ago</div></div>'
         +'</div>'
@@ -14936,6 +14982,37 @@ async function adBoost(){
         }).join('')
         +'</div>'
       :'')
+
+    // ── Extenda section ───────────────────────────────────────
+    +(function(){
+      var extPays=payments.filter(function(p){return p.boost_type==='bn_application'&&p.payment_status==='paid';});
+      if(!extPays.length)return '<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+        +'<div style="font-size:13px;font-weight:800;color:#1d4ed8;margin-bottom:2px">&#128640; Extenda — Purchase Extender</div>'
+        +'<div style="font-size:11px;color:#3b82f6">No Extenda purchases yet.</div></div>';
+      var extRev=extPays.reduce(function(s,p){return s+p.amount_cents;},0);
+      var extByUser={};extPays.forEach(function(p){if(!extByUser[p.user_id])extByUser[p.user_id]=[];extByUser[p.user_id].push(p);});
+      var extUserIds=Object.keys(extByUser);
+      return '<div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+        +'<div style="font-size:13px;font-weight:800;color:#1d4ed8;margin-bottom:10px">&#128640; Extenda — Purchase Extender</div>'
+        +'<div style="display:flex;gap:10px;margin-bottom:12px">'
+        +'<div style="flex:1;background:#fff;border:1px solid #bfdbfe;border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:#1d4ed8">'+extUserIds.length+'</div><div style="font-size:10px;color:#3b82f6">Purchasers</div></div>'
+        +'<div style="flex:1;background:#fff;border:1px solid #bfdbfe;border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:#1d4ed8">'+extPays.length+'</div><div style="font-size:10px;color:#3b82f6">Purchases</div></div>'
+        +'<div style="flex:1;background:#fff;border:1px solid #bfdbfe;border-radius:8px;padding:8px;text-align:center"><div style="font-size:16px;font-weight:900;color:#1d4ed8">R'+(extRev/100).toFixed(2)+'</div><div style="font-size:10px;color:#3b82f6">Revenue</div></div>'
+        +'</div>'
+        +'<div style="overflow-x:auto"><table class="atbl"><thead><tr><th>Driver</th><th>Purchases</th><th>Revenue</th><th>Last Paid</th></tr></thead><tbody>'
+        +extUserIds.map(function(uid){
+            var plist=extByUser[uid];
+            var dr=drivers.find(function(d){return d.id===uid;})||{};
+            return '<tr>'
+              +'<td style="font-weight:600">'+(dr.full_name||dr.email||uid)+'<br><span style="font-size:10px;color:var(--muted)">'+(dr.email||'')+'</span></td>'
+              +'<td style="text-align:center">'+plist.length+'</td>'
+              +'<td style="text-align:center;font-weight:700;color:#1d4ed8">R'+(plist.reduce(function(s,p){return s+p.amount_cents;},0)/100).toFixed(2)+'</td>'
+              +'<td style="font-size:11px;white-space:nowrap">'+fmtD(plist[0].paid_at)+'</td>'
+              +'</tr>';
+          }).join('')
+        +'</tbody></table></div>'
+        +'</div>';
+    })()
 
     // Existing boosts
     +(boosts.length
