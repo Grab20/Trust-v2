@@ -3295,7 +3295,7 @@ function applyForCar(btn) {
 function drvHTML(d) {
   var p=d.profile||{}, name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
   var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,300,85)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center top"/>':ini(name);
-  var vbadge=(d.doc_id_url&&d.doc_license_url)?'<span class="vbadge">&#10003; Verified</span>':'';
+  var vbadge=((d.doc_id_url||d.doc_id_path)&&(d.doc_license_url||d.doc_license_path))?'<span class="vbadge">&#10003; Verified</span>':'';
   var plats=(d.platforms||[]).map(pb).join('')||'<span style="font-size:10px;color:var(--muted)">Not set</span>';
   var mbadge=d.isMatched?'<span class="matched">Matched</span>':'<span class="avail">Available</span>';
   var isOwn=P&&(P.role==='owner'||P.role==='both')&&U&&U.id!==d.user_id;
@@ -3310,7 +3310,7 @@ function drvHTML(d) {
     acts+=' <button class="btn btn-g btn-sm" onclick="go(\'login\')">Sign in to Connect</button>';
   }
   // Rebuilt driver card - reference image style
-  var isVerif=!!(d.doc_id_url&&d.doc_license_url);
+  var isVerif=!!((d.doc_id_url||d.doc_id_path)&&(d.doc_license_url||d.doc_license_path));
   var lateP=(d.late_payments||0)+(d.missed_payments||0);
   var acc=(d.accidents||0)+(d.damage_incidents||0);
   var onTime=d.ontime_payments||0;
@@ -4056,14 +4056,14 @@ async function loadProfPage(dpId) {
 
     +summaryHTML
 
-    +(isMatchedWithDriver&&(d.doc_id_url||d.doc_license_url||d.photo_headshot_url||d.photo_fullbody_url||d.photo_holding_id_url)
+    +(isMatchedWithDriver&&(d.doc_id_path||d.doc_id_url||d.doc_license_path||d.doc_license_url||d.photo_headshot_url||d.photo_fullbody_path||d.photo_fullbody_url||d.photo_holding_id_path||d.photo_holding_id_url)
       ?'<div style="margin-bottom:18px"><h3 style="font-family:\'Playfair Display\',serif;font-size:15px;margin-bottom:8px">&#128274; Verified Documents</h3>'
       +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
       +(d.photo_headshot_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_headshot_url)+'\')"><img src="'+imgUrl(d.photo_headshot_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Headshot</div></div>':'')
-      +(d.photo_fullbody_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_fullbody_url)+'\')"><img src="'+imgUrl(d.photo_fullbody_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Full Body</div></div>':'')
-      +(d.photo_holding_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_holding_id_url)+'\')"><img src="'+imgUrl(d.photo_holding_id_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Holding ID</div></div>':'')
-      +(d.doc_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_id_url)+'\')"><img src="'+imgUrl(d.doc_id_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">ID Document</div></div>':'')
-      +(d.doc_license_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_license_url)+'\')"><img src="'+imgUrl(d.doc_license_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Licence</div></div>':'')
+      +(d.photo_fullbody_path?dthumbPrivate('driver-id-docs',d.photo_fullbody_path,'Full Body','matched_owner'):d.photo_fullbody_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_fullbody_url)+'\')"><img src="'+imgUrl(d.photo_fullbody_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Full Body</div></div>':'')
+      +(d.photo_holding_id_path?dthumbPrivate('driver-id-docs',d.photo_holding_id_path,'Holding ID','matched_owner'):d.photo_holding_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.photo_holding_id_url)+'\')"><img src="'+imgUrl(d.photo_holding_id_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Holding ID</div></div>':'')
+      +(d.doc_id_path?dthumbPrivate('driver-id-docs',d.doc_id_path,'ID Document','matched_owner'):d.doc_id_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_id_url)+'\')"><img src="'+imgUrl(d.doc_id_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">ID Document</div></div>':'')
+      +(d.doc_license_path?dthumbPrivate('driver-id-docs',d.doc_license_path,'Licence','matched_owner'):d.doc_license_url?'<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.doc_license_url)+'\')"><img src="'+imgUrl(d.doc_license_url,100,75)+'" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1.5px solid var(--border)"><div style="font-size:10px;color:var(--muted);margin-top:3px">Licence</div></div>':'')
       +'</div></div>'
       :'')
 
@@ -4593,6 +4593,7 @@ async function saveOwnerLater(){
     var lo=eid('o-lo')?eid('o-lo').value.trim():null;
     var wa=eid('o-wa')?eid('o-wa').value.trim():null;
     if(lo){await sb.from('profiles').update({location:lo,whatsapp:wa||null}).eq('id',U.id);}
+    _logFunnelEvent('registration_saved_for_later',{role:'owner'});
     toast('Progress saved! Log in anytime to continue your vehicle listing.');
     if(btn){btn.disabled=false;btn.textContent='&#128190; Save my progress & continue later';}
   }catch(e){toast('Error: '+e.message);if(btn){btn.disabled=false;btn.textContent='&#128190; Save my progress & continue later';}}
@@ -4656,8 +4657,9 @@ function mDoc(boxId,key,inp){
   if(clId){var cl=eid(clId);if(cl){cl.style.color='var(--gm)';cl.style.fontWeight='600';cl.innerHTML='&#10003; '+_oclabels[key];}}
 }
 // ── IMAGE VALIDATION & COMPRESSION ─────────────────────────
-var _BLOCKED_TYPES=['video/','image/heic','image/heif'];
-var _BLOCKED_EXTS=['heic','heif','mp4','mov','avi','mkv','webm','3gp'];
+// HEIC/HEIF are NOT blocked — they are converted via heic2any at upload time
+var _BLOCKED_TYPES=['video/'];
+var _BLOCKED_EXTS=['mp4','mov','avi','mkv','webm','3gp'];
 var _MAX_UPLOAD_MB=15;
 // Image-only buckets — PDFs not allowed here
 var _IMG_ONLY_BUCKETS=['car-photos','profile-photos','driver-photos'];
@@ -4666,7 +4668,7 @@ var _IMG_ONLY_FIELDS=['photo_front_url','photo_side_url','photo_back_url','photo
 function _validateUpload(file, bucket, field){
   var type=(file.type||'').toLowerCase();
   var ext=(file.name.split('.').pop()||'').toLowerCase();
-  for(var i=0;i<_BLOCKED_TYPES.length;i++){if(type.startsWith(_BLOCKED_TYPES[i])){return 'Videos and HEIC/HEIF images are not supported. Please convert to JPG or PNG first.';}}
+  for(var i=0;i<_BLOCKED_TYPES.length;i++){if(type.startsWith(_BLOCKED_TYPES[i])){return 'Video files are not supported. Please upload a JPG, PNG, or PDF.';}}
   if(_BLOCKED_EXTS.indexOf(ext)>=0){return 'File type .'+ext+' is not supported. Please upload a JPG or PNG image.';}
   if(file.size>_MAX_UPLOAD_MB*1024*1024){return 'File is too large ('+Math.round(file.size/1024/1024)+'MB). Maximum is '+_MAX_UPLOAD_MB+'MB.';}
   var isImgOnly=(_IMG_ONLY_BUCKETS.indexOf(bucket||'')>=0)||(_IMG_ONLY_FIELDS.indexOf(field||'')>=0);
@@ -4674,9 +4676,149 @@ function _validateUpload(file, bucket, field){
   return null;
 }
 
+// ── HEIC detection & lazy conversion ──────────────────────
+function _isHeic(file){
+  var type=(file.type||'').toLowerCase();
+  var ext=(file.name.split('.').pop()||'').toLowerCase();
+  return type==='image/heic'||type==='image/heif'||ext==='heic'||ext==='heif';
+}
+var _heic2anyLoading=null;
+function _loadHeic2Any(){
+  if(!_heic2anyLoading) _heic2anyLoading=new Promise(function(res,rej){
+    if(window.heic2any){res(window.heic2any);return;}
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js';
+    s.onload=function(){res(window.heic2any);};
+    s.onerror=function(){rej(new Error('heic2any failed to load'));};
+    document.head.appendChild(s);
+  });
+  return _heic2anyLoading;
+}
+
+// ── Upload telemetry (no sensitive data logged) ────────────
+function _logUploadEvent(event, context){
+  // event: 'file_rejected'|'heic_conversion_failed'|'storage_upload_failed'|'db_update_failed'|'upload_success'
+  // context: {role, field, fileType, fileSizeMb, attempt, errorCode} — NO urls, names, IDs
+  try{
+    var payload=Object.assign({event:event,ts:new Date().toISOString()},context||{});
+    console.info('[upload]',JSON.stringify(payload));
+    // Extend here to POST to an analytics endpoint when one is available
+  }catch(e){}
+}
+
+function _logFunnelEvent(stage, context){
+  // stage: registration_started|personal_info_completed|photo_upload_started|photo_upload_succeeded|
+  //        id_upload_started|id_upload_succeeded|id_upload_failed|vehicle_started|vehicle_completed|
+  //        registration_submitted|registration_saved_for_later|owner_approved
+  // context: {role} — NO personal data
+  try{
+    var payload=Object.assign({stage:stage,ts:new Date().toISOString()},context||{});
+    console.info('[funnel]',JSON.stringify(payload));
+  }catch(e){}
+}
+
+function _setBoxStatus(boxId, state, msg){
+  // state: 'idle'|'converting'|'uploading'|'success'|'error'
+  var box=eid(boxId); if(!box) return;
+  var statusEl=box.querySelector('.box-status');
+  if(!statusEl){
+    statusEl=document.createElement('div');
+    statusEl.className='box-status';
+    statusEl.style.cssText='font-size:9px;font-weight:600;margin-top:2px;text-align:center;border-radius:4px;padding:1px 4px';
+    box.appendChild(statusEl);
+  }
+  var colors={idle:'',converting:'#7c5c00',uploading:'#1e3a5f',success:'var(--gm)',error:'#dc2626'};
+  var icons={idle:'',converting:'&#8635;',uploading:'&#8593;',success:'&#10003;',error:'&#10006;'};
+  if(state==='idle'){statusEl.style.display='none';box.style.opacity='';return;}
+  statusEl.style.display='';
+  statusEl.style.color=colors[state]||'';
+  statusEl.innerHTML=(icons[state]||'')+' '+(msg||state);
+  box.style.opacity=(state==='uploading'||state==='converting')?'0.6':'';
+}
+
+// --- Phase 3: Private storage helpers ---
+
+// Upload to a private bucket; returns storage path (NOT a public URL)
+async function _uploadPrivateDoc(bucket, path, file){
+  var err=_validateUpload(file,bucket,'');
+  if(err){toast(err);return null;}
+  var compressed=await _compressImage(file);
+  if(compressed!==file){
+    path=path.replace(/\.[^./]+$/,'')+'.jpg';
+  } else if(file.type==='application/pdf'||(file.name.split('.').pop()||'').toLowerCase()==='pdf'){
+    path=path.replace(/\.[^./]+$/,'')+'.pdf';
+  }
+  var r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:compressed.type||file.type||'image/jpeg'});
+  if(r.error||!r.data){console.error('[upload] private upload failed');return null;}
+  return path;
+}
+
+// Request a signed URL from the Netlify function
+async function _getSignedDocUrl(bucket, path, context){
+  try{
+    var session=await sb.auth.getSession();
+    var token=(session.data&&session.data.session&&session.data.session.access_token)||'';
+    if(!token) return null;
+    var resp=await fetch('/.netlify/functions/get-signed-url',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({bucket:bucket,path:path,context:context})
+    });
+    if(!resp.ok) return null;
+    var j=await resp.json();
+    return j.signedUrl||null;
+  }catch(e){return null;}
+}
+
+// Open a private document in the lightbox using a signed URL
+async function _openPrivDoc(bucket, path, context){
+  if(!path){toast('Document not available');return;}
+  toast('Loading…');
+  var url=await _getSignedDocUrl(bucket,path,context);
+  if(!url){toast('Could not load document — please try again');return;}
+  showLbox(url);
+}
+
+// Render a private-doc thumbnail that loads the signed URL on click
+// Returns HTML string
+function dthumbPrivate(bucket, path, label, context){
+  if(!path) return '';
+  var safeB=encodeURIComponent(bucket),safeP=encodeURIComponent(path),safeC=encodeURIComponent(context);
+  return '<div onclick="_openPrivDoc(decodeURIComponent(\''+safeB+'\'),decodeURIComponent(\''+safeP+'\'),decodeURIComponent(\''+safeC+'\'))" '
+    +'style="cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;gap:3px;padding:6px 10px;border-radius:8px;background:#f1f5f9;border:1px solid #e2e8f0;font-size:10px;color:#374151">'
+    +'<div style="font-size:18px">&#128274;</div>'
+    +'<div>'+label+'</div>'
+    +'</div>';
+}
+
+// Render a doc thumbnail: uses private path if available, falls back to public URL
+// For display-only (admin/matched-owner), context determines authorization
+function dthumbAuto(publicUrl, privateBucket, privatePath, label, context){
+  if(privatePath) return dthumbPrivate(privateBucket, privatePath, label, context);
+  if(publicUrl) return dthumb(publicUrl, label);  // legacy fallback during migration
+  return '';
+}
+
+// --- End Phase 3 helpers ---
+
 function _compressImage(file, maxPx, quality){
   maxPx=maxPx||2048; quality=quality||0.82;
   return new Promise(function(resolve){
+    // HEIC/HEIF: convert to JPEG first via heic2any (works on all browsers)
+    if(_isHeic(file)){
+      _loadHeic2Any().then(function(heic2any){
+        return heic2any({blob:file,toType:'image/jpeg',quality:quality});
+      }).then(function(jpegBlob){
+        var converted=new File([jpegBlob],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'});
+        // Re-enter compression with the now-JPEG file
+        resolve(_compressImage(converted,maxPx,quality));
+      }).catch(function(e){
+        console.error('[heic2any] conversion failed:',e);
+        _logUploadEvent('heic_conversion_failed',{fileType:file.type,fileSizeMb:Math.round(file.size/1024/1024*10)/10});
+        resolve(null); // null = caller must show error and not proceed
+      });
+      return;
+    }
     if(!file.type.startsWith('image/')||file.type==='image/gif'){resolve(file);return;}
     var url=URL.createObjectURL(file);
     var img=new Image();
@@ -4695,6 +4837,16 @@ function _compressImage(file, maxPx, quality){
     img.onerror=function(){URL.revokeObjectURL(url);resolve(file);};
     img.src=url;
   });
+}
+
+// ── Upload with one automatic retry on transient errors ────
+async function _uploadWithRetry(bucket,path,blob,opts){
+  var r=await sb.storage.from(bucket).upload(path,blob,opts);
+  if(r.error){
+    await new Promise(function(res){setTimeout(res,1500);});
+    r=await sb.storage.from(bucket).upload(path,blob,opts);
+  }
+  return r;
 }
 
 async function upFile(bucket,path,file,field){
@@ -4758,26 +4910,40 @@ async function doReg() {
   var lo=isD?eid('d-lo').value.trim():oCarData.lo;
   var wa=isD?(eid('d-wa').value.trim()||null):(oCarData.wa||null);
   var pc=isD?'whatsapp':(eid('o-pc')?eid('o-pc').value:null);
-  var ownerIdUrl=null,ownerHsUrl=null;
+  var ownerIdPath=null,ownerHsUrl=null;
   if(rRole==='owner'){
     var safeEmail=rEmail.replace(/[^a-z0-9]/gi,'_');
     var _ownerUploadFailed=[];
     if(docFiles.oid_f){
       _regProgress('Uploading ID…');
       var oidComp=await _compressImage(docFiles.oid_f);
-      var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
-      var prePath='pre-reg/'+safeEmail+'-id-'+Date.now()+'.'+preExt;
-      var preUp=await sb.storage.from('profile-photos').upload(prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
-      if(!preUp.error){ownerIdUrl=sb.storage.from('profile-photos').getPublicUrl(prePath).data.publicUrl;}
-      else{console.error('owner id upload failed:',preUp.error);_ownerUploadFailed.push('ID/Passport');}
+      if(oidComp===null){
+        // HEIC conversion failed
+        _logUploadEvent('heic_conversion_failed',{role:'owner',field:'doc_id_url',fileType:docFiles.oid_f.type});
+        _ownerUploadFailed.push('ID/Passport (could not convert — please retry with a JPG or PNG)');
+      } else {
+        var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
+        var prePath=uid+'/reg-id-'+Date.now()+'.'+preExt;
+        var preUp=await _uploadWithRetry('owner-id-docs',prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
+        if(!preUp.error){ownerIdPath=prePath;}
+        else{
+          console.error('owner id upload failed after retry:',preUp.error);
+          _logUploadEvent('storage_upload_failed',{role:'owner',field:'doc_id_url',fileType:oidComp.type,errorCode:preUp.error.statusCode||preUp.error.message});
+          _ownerUploadFailed.push('ID/Passport');
+        }
+      }
     }
     if(docFiles.o_selfie){
       _regProgress('Uploading selfie…');
       var selfieBlob=docFiles.o_selfie;
       var selfiePath='pre-reg/'+safeEmail+'-selfie-'+Date.now()+'.jpg';
-      var selfieUp=await sb.storage.from('profile-photos').upload(selfiePath,selfieBlob,{upsert:true,contentType:'image/jpeg'});
+      var selfieUp=await _uploadWithRetry('profile-photos',selfiePath,selfieBlob,{upsert:true,contentType:'image/jpeg'});
       if(!selfieUp.error){ownerHsUrl=sb.storage.from('profile-photos').getPublicUrl(selfiePath).data.publicUrl;}
-      else{console.error('owner selfie upload failed:',selfieUp.error);_ownerUploadFailed.push('Selfie photo');}
+      else{
+        console.error('owner selfie upload failed after retry:',selfieUp.error);
+        _logUploadEvent('storage_upload_failed',{role:'owner',field:'photo_headshot_url',fileType:'image/jpeg',errorCode:selfieUp.error.statusCode||selfieUp.error.message});
+        _ownerUploadFailed.push('Selfie photo');
+      }
     }
     if(_ownerUploadFailed.length){
       var btn2o=eid('o-reg-btn');if(btn2o){btn2o.textContent='Create Account';btn2o.disabled=false;}
@@ -4792,9 +4958,17 @@ async function doReg() {
   // Update profile with the full details now that we have them
   var _profPayload={id:uid,email:rEmail,full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',terms_accepted:true,popia_accepted:true,terms_accepted_at:now,popia_accepted_at:now,terms_version:'1.0',tc_accepted_at:now,tc_version:'July 2026',email_confirmed:true};
   if(ownerHsUrl)_profPayload.photo_headshot_url=ownerHsUrl;
-  if(ownerIdUrl)_profPayload.doc_id_url=ownerIdUrl;
+  if(ownerIdPath)_profPayload.doc_id_path=ownerIdPath;
   var _profR=await sb.from('profiles').upsert(_profPayload,{onConflict:'id'});
-  if(_profR.error){console.error('profile upsert error:',_profR.error);}
+  if(_profR.error){
+    console.error('profile upsert error:',_profR.error);
+    _logUploadEvent('db_update_failed',{role:rRole,field:'profiles',errorCode:_profR.error.code||_profR.error.message});
+    if(rRole==='owner'){
+      var btn2oP=eid('o-reg-btn');if(btn2oP){btn2oP.textContent='Create Account';btn2oP.disabled=false;}
+      showErr('reg-err','Your account was created but your profile could not be saved ('+_profR.error.message+'). Please email support@trustmate.co.za with your name and email address so we can complete your registration.');
+      return;
+    }
+  }
   var t=Date.now();
   if(isD){
     var u={};
@@ -4805,15 +4979,16 @@ async function doReg() {
     function _upd(){if(_totalUploads>0)_regProgress('Uploading '+_doneUploads+' of '+_totalUploads+'…');}
     _upd();
     var _failedDocs=[];
-    if(docFiles.df){var x=await upFile('driver-docs',uid+'/fullbody-'+t,docFiles.df,'photo_fullbody_url');if(x)u.photo_fullbody_url=x;else _failedDocs.push('Full Body photo');_doneUploads++;_upd();}
+    // Headshot stays public; all other identity docs go to private driver-id-docs bucket
     if(docFiles.dh){var x=await upFile('driver-docs',uid+'/headshot-'+t,docFiles.dh,'photo_headshot_url');if(x)u.photo_headshot_url=x;else _failedDocs.push('Headshot');_doneUploads++;_upd();}
-    if(docFiles.dhid){var x=await upFile('driver-docs',uid+'/holdingid-'+t,docFiles.dhid,'photo_holding_id_url');if(x)u.photo_holding_id_url=x;else _failedDocs.push('Holding ID photo');_doneUploads++;_upd();}
-    if(docFiles.dl){var x=await upFile('driver-docs',uid+'/license-front-'+t,docFiles.dl);if(x)u.doc_license_url=x;else _failedDocs.push('Licence Front');_doneUploads++;_upd();}
-    if(docFiles.dlb){var x=await upFile('driver-docs',uid+'/license-back-'+t,docFiles.dlb);if(x)u.doc_license_back_url=x;_doneUploads++;_upd();}
-    if(docFiles.did){var x=await upFile('driver-docs',uid+'/idcopy-'+t,docFiles.did);if(x)u.doc_id_url=x;else _failedDocs.push('ID/Passport');_doneUploads++;_upd();}
-    if(docFiles.por){var x=await upFile('driver-docs',uid+'/por-'+t,docFiles.por);if(x)u.proof_of_residence_url=x;else _failedDocs.push('Proof of Residence');_doneUploads++;_upd();}
-    if(docFiles.crim){var x=await upFile('driver-docs',uid+'/criminal-'+t,docFiles.crim);if(x){u.criminal_check_url=x;u.criminal_check_submitted=true;}_doneUploads++;_upd();}
-    if(docFiles.pdp){var x=await upFile('driver-docs',uid+'/pdp-'+t,docFiles.pdp);if(x){u.pdp_url=x;u.has_pdp=true;}_doneUploads++;_upd();}
+    if(docFiles.df){var xp=await _uploadPrivateDoc('driver-id-docs',uid+'/fullbody-'+t,docFiles.df);if(xp)u.photo_fullbody_path=xp;else _failedDocs.push('Full Body photo');_doneUploads++;_upd();}
+    if(docFiles.dhid){var xp=await _uploadPrivateDoc('driver-id-docs',uid+'/holdingid-'+t,docFiles.dhid);if(xp)u.photo_holding_id_path=xp;else _failedDocs.push('Holding ID photo');_doneUploads++;_upd();}
+    if(docFiles.dl){var xp=await _uploadPrivateDoc('driver-id-docs',uid+'/license-front-'+t,docFiles.dl);if(xp)u.doc_license_path=xp;else _failedDocs.push('Licence Front');_doneUploads++;_upd();}
+    if(docFiles.dlb){var xp=await _uploadPrivateDoc('driver-id-docs',uid+'/license-back-'+t,docFiles.dlb);if(xp)u.doc_license_back_path=xp;_doneUploads++;_upd();}
+    if(docFiles.did){var xp=await _uploadPrivateDoc('driver-id-docs',uid+'/idcopy-'+t,docFiles.did);if(xp)u.doc_id_path=xp;else _failedDocs.push('ID/Passport');_doneUploads++;_upd();}
+    if(docFiles.por){var xp=await _uploadPrivateDoc('driver-id-docs',uid+'/por-'+t,docFiles.por);if(xp)u.proof_of_residence_path=xp;else _failedDocs.push('Proof of Residence');_doneUploads++;_upd();}
+    if(docFiles.crim){var xp=await _uploadPrivateDoc('driver-id-docs',uid+'/criminal-'+t,docFiles.crim);if(xp){u.criminal_check_path=xp;u.criminal_check_submitted=true;}_doneUploads++;_upd();}
+    if(docFiles.pdp){var xp=await _uploadPrivateDoc('driver-id-docs',uid+'/pdp-'+t,docFiles.pdp);if(xp){u.pdp_path=xp;u.has_pdp=true;}_doneUploads++;_upd();}
     if(_failedDocs.length){
       var btn2=eid('d-reg-btn');if(btn2){btn2.textContent='Complete Registration';btn2.disabled=false;}
       showErr('reg-err','Upload failed for: '+_failedDocs.join(', ')+'. Please check your connection and try again.');return;
@@ -4897,8 +5072,10 @@ async function doReg() {
     } else {
       // Car saved — clear any stale pending-car localStorage entry
       try{localStorage.removeItem('tm_pending_car');}catch(e){}
+      _logFunnelEvent('vehicle_completed',{role:'owner'});
     }
   }
+  _logFunnelEvent('registration_submitted',{role:rRole});
   // Fire-and-forget admin notification — don't block or show errors to user
   (function(){try{fetch('/.netlify/functions/notify-docs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:rName,email:rEmail,role:rRole,uid:uid})});}catch(e){}})();
   // Sync new user to Brevo
@@ -5369,6 +5546,57 @@ async function pOv() {
         +'<button class="btn btn-gm" style="width:100%;padding:12px;font-size:14px;font-weight:800" onclick="completeOwnerReg()">&#128663; Complete My Vehicle Listing</button>'
         +'</div></div>';
       return;
+    }
+
+    // ── OWNER STATUS BANNER ──
+    var _ownerStatus=P&&P.admin_status;
+    var _ownerNote=P&&P.admin_note;
+    var _hasSelfie=P&&!!P.photo_headshot_url;
+    var _hasId=P&&!!(P.doc_id_url||P.doc_id_path);
+    var _hasCars=cars.length>0;
+    var _hasApprovedCar=cars.some(function(c){return c.admin_status==='approved';});
+    if(_ownerStatus==='approved'){
+      html+='<div style="background:#f0fdf4;border:1.5px solid var(--gm);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px">'
+        +'<div style="font-size:22px">&#9989;</div>'
+        +'<div><div style="font-size:13px;font-weight:800;color:var(--gm)">TrustMate Account Approved</div>'
+        +'<div style="font-size:11px;color:#166534;margin-top:2px">Your account is approved and your vehicle is available to drivers.</div>'
+        +'</div></div>';
+    } else if(_ownerStatus==='rejected'){
+      html+='<div style="background:#fff1f2;border:1.5px solid #dc2626;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">'
+        +'<div style="font-size:22px">&#10060;</div>'
+        +'<div style="font-size:13px;font-weight:800;color:#dc2626">Action Required</div>'
+        +'</div>'
+        +(_ownerNote?'<div style="font-size:12px;color:#7f1d1d;margin-bottom:10px">&#128221; Reason: '+esc(_ownerNote)+'</div>':'')
+        +'<button class="btn btn-gm" style="width:100%;padding:10px;font-size:13px;font-weight:700" onclick="dpanel(\'pr\')">&#9998; Fix &amp; Resubmit</button>'
+        +'</div>';
+    } else if(_ownerStatus!=='approved'){
+      // Pending or incomplete — show checklist
+      var _steps=[
+        {done:_hasSelfie,label:'Profile photo',action:"dpanel('pr')"},
+        {done:_hasId,label:'ID / Passport copy',action:"dpanel('pr')"},
+        {done:_hasCars,label:'Vehicle listing added',action:"completeOwnerReg()"},
+        {done:_hasApprovedCar,label:'Vehicle approved by TrustMate',action:null}
+      ];
+      var _allDone=_steps.every(function(s){return s.done;});
+      html+='<div style="background:#fff8e1;border:1.5px solid #E8A520;border-radius:12px;padding:14px 16px;margin-bottom:16px">'
+        +'<div style="font-size:13px;font-weight:800;color:#7a5200;margin-bottom:10px">'
+        +(_allDone?'&#127881; Registration submitted — under review':'&#9997;&#65039; Complete your registration')
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">'
+        +_steps.map(function(s){
+          return '<div style="display:flex;align-items:center;gap:8px">'
+            +'<span style="font-size:14px">'+(s.done?'&#9989;':'&#9711;')+'</span>'
+            +'<span style="font-size:12px;color:'+(s.done?'var(--gm)':'#92400e')+';font-weight:'+(s.done?'600':'400')+'">'+s.label+'</span>'
+            +(!s.done&&s.action?'&nbsp;<button class="btn btn-sm btn-amb" style="font-size:10px;padding:2px 8px" onclick="'+s.action+'">Fix</button>':'')
+            +'</div>';
+        }).join('')
+        +'</div>'
+        +(_allDone
+          ?'<div style="font-size:12px;color:#7a5200">&#9203; Your application is under review. We\'ll be in touch shortly.</div>'
+          :'<div style="font-size:11px;color:#92400e">Complete all steps above and our team will review your account.</div>'
+        )
+        +'</div>';
     }
 
     // ── STAT CARDS ──
@@ -6108,28 +6336,39 @@ async function pPr() {
     +'<div class="pf"><label>Location</label><span>'+(P.location||'Not set')+'</span></div>'
     +(isD&&DP?'<div class="pf"><label>Bio</label><span>'+(DP.bio||'Not set')+'</span></div>':'')
     +'</div></div>';
-  // Owner photo upload section
+  // Owner account status strip
   var isOwner=P&&(P.role==='owner'||P.role==='both');
+  if(isOwner){
+    var _aSt=P.admin_status||'pending';
+    var _statusCfg={
+      approved:{bg:'#f0fdf4',border:'var(--gm)',icon:'&#9989;',label:'Account Approved',msgColor:'#166534',msg:'Your account is approved. You\'re live on TrustMate.'},
+      pending:{bg:'#fff8e1',border:'#E8A520',icon:'&#9203;',label:'Under Review',msgColor:'#7a5200',msg:'Your account is being reviewed by our team.'},
+      rejected:{bg:'#fff1f2',border:'#dc2626',icon:'&#10060;',label:'Action Required',msgColor:'#7f1d1d',msg:P.admin_note?'Reason: '+esc(P.admin_note):'Please check your documents and resubmit.'},
+      incomplete:{bg:'#fff8e1',border:'#E8A520',icon:'&#9997;&#65039;',label:'Incomplete',msgColor:'#7a5200',msg:P.admin_note?'Required: '+esc(P.admin_note):'Some documents or details are missing.'}
+    };
+    var _sc=_statusCfg[_aSt]||_statusCfg['pending'];
+    html+='<div style="background:'+_sc.bg+';border:1.5px solid '+_sc.border+';border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px">'
+      +'<span style="font-size:18px">'+_sc.icon+'</span>'
+      +'<div><div style="font-size:12px;font-weight:800;color:'+_sc.msgColor+'">'+_sc.label+'</div>'
+      +'<div style="font-size:11px;color:'+_sc.msgColor+'">'+_sc.msg+'</div>'
+      +'</div></div>';
+  }
   if(isOwner){
     html+='<div class="tbox" style="margin-bottom:14px">'
       +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#128247; My Photos</div>'
-      +'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Update your headshot below. To update verification documents, contact support.</p>'
+      +'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Update your profile photo or ID document below.</p>'
       +'<div class="doc-grid">'
-      +'<div class="dbox '+(P.photo_headshot_url?'up':'')+'" id="ow-hs">'
-        +'<input type="file" accept="image/*" onchange="upOwnerPhoto(\'ow-hs\',\'photo_headshot_url\',this)"/>'
-        +(P.photo_headshot_url?'<img src="'+imgUrl(P.photo_headshot_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+P.photo_headshot_url+'\')"/>':'<div style="font-size:18px">&#128247;</div>')
-        +'<div style="font-size:10px;font-weight:600">Headshot</div>'
-        +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_headshot_url?'Uploaded — click to replace':'Click to upload')+'</div>'
+      +'<div class="dbox '+(P.photo_headshot_url?'up':'')+'" id="ow-hs" style="position:relative">'
+        +'<input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%" onchange="upOwnerPhoto(\'ow-hs\',\'photo_headshot_url\',this)"/>'
+        +(P.photo_headshot_url?'<img src="'+imgUrl(P.photo_headshot_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px;pointer-events:none"/>':'<div style="font-size:18px">&#128247;</div>')
+        +'<div style="font-size:10px;font-weight:600">Profile Photo</div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_headshot_url?'Tap to replace':'Tap to upload')+'</div>'
       +'</div>'
-      +'<div class="dbox '+(P.photo_holding_id_url?'up':'')+'" id="ow-hid" style="cursor:'+(P.photo_holding_id_url?'pointer':'default')+'" onclick="'+(P.photo_holding_id_url?'showLbox(\''+P.photo_holding_id_url+'\')':'')+'">'
-        +(P.photo_holding_id_url?'<img src="'+imgUrl(P.photo_holding_id_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px"/>':'<div style="font-size:18px">&#129091;</div>')
-        +'<div style="font-size:10px;font-weight:600">Holding ID</div>'
-        +'<div style="font-size:9px;color:var(--muted)">'+(P.photo_holding_id_url?'Uploaded — tap to view':'Not uploaded')+'</div>'
-      +'</div>'
-      +'<div class="dbox '+(P.doc_id_url?'up':'')+'" id="ow-idoc" style="cursor:'+(P.doc_id_url?'pointer':'default')+'" onclick="'+(P.doc_id_url?'showLbox(\''+P.doc_id_url+'\')':'')+'">'
-        +(P.doc_id_url?'<img src="'+imgUrl(P.doc_id_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px"/>':'<div style="font-size:18px">&#128196;</div>')
+      +'<div class="dbox '+(P.doc_id_path||P.doc_id_url?'up':'')+'" id="ow-idoc" style="position:relative">'
+        +(P.doc_id_path?'<div style="font-size:22px">&#128274;</div>':P.doc_id_url?'<img src="'+imgUrl(P.doc_id_url,80,80)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px;pointer-events:none"/>':'<div style="font-size:18px">&#128196;</div>')
+        +'<input type="file" accept="image/*,.pdf" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%" onchange="ownerSelfUploadId(this)"/>'
         +'<div style="font-size:10px;font-weight:600">ID / Passport</div>'
-        +'<div style="font-size:9px;color:var(--muted)">'+(P.doc_id_url?'Uploaded — tap to view':'Not uploaded')+'</div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(P.doc_id_path||P.doc_id_url?'Tap to replace':'Tap to upload — required')+'</div>'
       +'</div>'
       +'</div>'
     +'</div>';
@@ -6225,32 +6464,41 @@ async function pDc() {
   var fresh=await sb.from('driver_profiles').select('*').eq('id',DP.id).maybeSingle();
   if(fresh.data)DP=fresh.data;
   var docs=[
-    {k:'photo_fullbody_url',l:'Full Body',n:'fb',icon:'&#127947;',cam:false},
-    {k:'photo_headshot_url',l:'Headshot',n:'hs',icon:'&#129334;',cam:true},
-    {k:'photo_holding_id_url',l:'Holding ID',n:'hid',icon:'&#129334;',cam:true},
-    {k:'doc_license_url',l:'Licence Front',n:'lic',icon:'&#128203;',cam:true},
-    {k:'doc_license_back_url',l:'Licence Back',n:'licb',icon:'&#128203;',cam:true},
-    {k:'doc_id_url',l:'ID/Passport',n:'id',icon:'&#128196;',cam:false},
-    {k:'proof_of_residence_url',l:'Proof of Residence',n:'por',icon:'&#127968;',cam:false},
-    {k:'criminal_check_url',l:'Criminal Check',n:'crim',icon:'&#128373;',cam:false},
-    {k:'pdp_url',l:'PDP Certificate',n:'pdp',icon:'&#128203;',cam:false}
+    {k:'photo_fullbody_url',pk:'photo_fullbody_path',l:'Full Body',n:'fb',icon:'&#127947;',cam:false},
+    {k:'photo_headshot_url',pk:'',l:'Headshot',n:'hs',icon:'&#129334;',cam:true},
+    {k:'photo_holding_id_url',pk:'photo_holding_id_path',l:'Holding ID',n:'hid',icon:'&#129334;',cam:true},
+    {k:'doc_license_url',pk:'doc_license_path',l:'Licence Front',n:'lic',icon:'&#128203;',cam:true},
+    {k:'doc_license_back_url',pk:'doc_license_back_path',l:'Licence Back',n:'licb',icon:'&#128203;',cam:true},
+    {k:'doc_id_url',pk:'doc_id_path',l:'ID/Passport',n:'id',icon:'&#128196;',cam:false},
+    {k:'proof_of_residence_url',pk:'proof_of_residence_path',l:'Proof of Residence',n:'por',icon:'&#127968;',cam:false},
+    {k:'criminal_check_url',pk:'criminal_check_path',l:'Criminal Check',n:'crim',icon:'&#128373;',cam:false},
+    {k:'pdp_url',pk:'pdp_path',l:'PDP Certificate',n:'pdp',icon:'&#128203;',cam:false}
   ];
   el.innerHTML='<div class="shd">Documents</div>'
-    +(!DP.proof_of_residence_url?'<div style="background:#fef2f2;border:1.5px solid #dc2626;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><span style="font-size:18px;flex-shrink:0">&#127968;</span><div><div style="font-size:12px;font-weight:700;color:#dc2626">Proof of Residence required</div><div style="font-size:11px;color:#7f1d1d;margin-top:2px">Your application cannot be reviewed until you upload a bank statement or utility bill.</div></div></div>':'')
+    +(!(DP.proof_of_residence_url||DP.proof_of_residence_path)?'<div style="background:#fef2f2;border:1.5px solid #dc2626;border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px"><span style="font-size:18px;flex-shrink:0">&#127968;</span><div><div style="font-size:12px;font-weight:700;color:#dc2626">Proof of Residence required</div><div style="font-size:11px;color:#7f1d1d;margin-top:2px">Your application cannot be reviewed until you upload a bank statement or utility bill.</div></div></div>':'')
     +'<div style="font-size:11px;color:#1a5c28;background:#f0faf2;border-radius:8px;padding:8px 10px;margin-bottom:10px">&#128247; Headshot, Holding ID, and Licence photos will open your camera directly. Upload front and back of your licence.</div>'
     +'<div class="doc-grid">'+docs.map(function(d){
-    var hasFile=!!DP[d.k];
+    var privPath=d.pk?DP[d.pk]:'';
+    var hasFile=!!(DP[d.k]||privPath);
     if(d.cam){
       // Camera-only: button triggers captureDocPhoto()
+      var camPreview=privPath
+        ?'<div onclick="event.stopPropagation();_openPrivDoc(\'driver-id-docs\',\''+privPath+'\',\'driver_self\')" style="cursor:pointer;font-size:18px">&#128274;</div>'
+        :(DP[d.k]?'<img src="'+imgUrl(DP[d.k],120,75)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="event.stopPropagation();showLbox(\''+DP[d.k]+'\')"/>'
+          :'<div style="font-size:18px">'+d.icon+'</div>');
       return '<div class="dbox '+(hasFile?'up':'')+'" id="dc-'+d.n+'" onclick="captureDocPhoto(\''+d.n+'\',\''+d.k+'\')" style="cursor:pointer">'
-        +(hasFile?'<img src="'+imgUrl(DP[d.k],120,75)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="event.stopPropagation();showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">'+d.icon+'</div>')
+        +camPreview
         +'<div style="font-size:10px;font-weight:600">'+d.l+'</div>'
         +'<div style="font-size:9px;color:var(--muted)">'+(hasFile?'Tap to retake':'&#128247; Tap to open camera')+'</div></div>';
     } else {
       var isPor=d.k==='proof_of_residence_url';
       var reqStyle=(!hasFile&&isPor)?';border-color:#dc2626;background:#fff8f8':'';
+      var nonCamPreview=privPath
+        ?'<div onclick="event.stopPropagation();_openPrivDoc(\'driver-id-docs\',\''+privPath+'\',\'driver_self\')" style="cursor:pointer;font-size:18px">&#128274;</div>'
+        :(DP[d.k]?'<img src="'+imgUrl(DP[d.k],120,75)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="event.stopPropagation();showLbox(\''+DP[d.k]+'\')"/>'
+          :'<div style="font-size:18px">'+d.icon+'</div>');
       return '<div class="dbox '+(hasFile?'up':'')+'" id="dc-'+d.n+'" style="position:relative'+reqStyle+'"><input type="file" accept="image/*,.pdf" onchange="upDocItem(\''+d.n+'\',\''+d.k+'\',this)"/>'
-        +(hasFile?'<img src="'+imgUrl(DP[d.k],120,75)+'" loading="lazy" style="width:52px;height:42px;object-fit:cover;border-radius:5px" onclick="showLbox(\''+DP[d.k]+'\')"/>':'<div style="font-size:18px">'+d.icon+'</div>')
+        +nonCamPreview
         +'<div style="font-size:10px;font-weight:600;'+(isPor&&!hasFile?'color:#dc2626':'')+'">'+d.l+(isPor?' &#10033;':'')+'</div>'
         +'<div style="font-size:9px;color:var(--muted)">'+(hasFile?'Uploaded':'Click to upload')+'</div></div>';
     }
@@ -6258,7 +6506,7 @@ async function pDc() {
   +'<div id="dc-cam-wrap"></div>'
   // Show "Submit for Review" if driver is incomplete but has all required docs
   +(DP.status==='incomplete'?(function(){
-    var hasRequired=!!(DP.photo_headshot_url&&DP.photo_holding_id_url&&DP.doc_license_url&&DP.doc_id_url&&DP.proof_of_residence_url);
+    var hasRequired=!!(DP.photo_headshot_url&&(DP.photo_holding_id_url||DP.photo_holding_id_path)&&(DP.doc_license_url||DP.doc_license_path)&&(DP.doc_id_url||DP.doc_id_path)&&(DP.proof_of_residence_url||DP.proof_of_residence_path));
     if(hasRequired){return '<div style="margin-top:16px;background:#f0faf2;border:1.5px solid var(--gm);border-radius:10px;padding:14px 16px">'
       +'<div style="font-size:13px;font-weight:700;color:var(--gm);margin-bottom:4px">&#127881; All required documents uploaded!</div>'
       +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">You\'re ready to submit your profile for admin review. Once approved you\'ll be able to apply for vehicles.</div>'
@@ -6279,13 +6527,27 @@ async function submitDriverForReview(){
 }
 async function upDocItem(n,col,inp) {
   var file=inp.files[0];if(!file)return;
-  var url=await upFile('driver-docs',U.id+'/'+n,file,col);
-  if(!url){toast('Upload failed — please check your connection and try again.');return;}
-  var upd={};upd[col]=url;
-  if(col==='criminal_check_url')upd.criminal_check_submitted=true;
-  if(col==='pdp_url')upd.has_pdp=true;
-  await sb.from('driver_profiles').update(upd).eq('id',DP.id);
-  DP[col]=url;
+  // Identity/verification docs go to private bucket; headshot stays public
+  var PRIVATE_DOC_COLS=['doc_id_url','doc_license_url','doc_license_back_url','proof_of_residence_url',
+    'criminal_check_url','pdp_url','photo_holding_id_url','photo_fullbody_url'];
+  var isPrivate=PRIVATE_DOC_COLS.indexOf(col)>=0;
+  var upd={};
+  if(isPrivate){
+    var pathCol=col.replace('_url','_path');
+    var storagePath=await _uploadPrivateDoc('driver-id-docs',U.id+'/'+n,file);
+    if(!storagePath){toast('Upload failed — please check your connection and try again.');return;}
+    upd[pathCol]=storagePath;
+    if(col==='criminal_check_url')upd.criminal_check_submitted=true;
+    if(col==='pdp_url')upd.has_pdp=true;
+    await sb.from('driver_profiles').update(upd).eq('id',DP.id);
+    DP[pathCol]=storagePath;
+  } else {
+    var url=await upFile('driver-docs',U.id+'/'+n,file,col);
+    if(!url){toast('Upload failed — please check your connection and try again.');return;}
+    upd[col]=url;
+    await sb.from('driver_profiles').update(upd).eq('id',DP.id);
+    DP[col]=url;
+  }
   if(col==='criminal_check_url')DP.criminal_check_submitted=true;
   if(col==='pdp_url')DP.has_pdp=true;
   toast('Uploaded!'); pDc();
@@ -6340,14 +6602,58 @@ async function snapDocPhoto(n, col) {
 
 async function upOwnerPhoto(boxId,col,inp){
   var file=inp.files[0];if(!file)return;
-  var box=eid(boxId);if(box)box.style.opacity='0.5';
+  _logFunnelEvent('photo_upload_started',{role:'owner'});
+  _setBoxStatus(boxId,'uploading','Uploading…');
   var url=await upFile('profile-photos',U.id+'/owner-'+col,file);
-  if(box)box.style.opacity='';
-  if(!url){toast('Upload failed');return;}
+  if(!url){_setBoxStatus(boxId,'error','Upload failed');toast('Upload failed');return;}
   var upd={};upd[col]=url;
   var r=await sb.from('profiles').update(upd).eq('id',U.id);
-  if(r.error){toast('Error: '+r.error.message);return;}
+  if(r.error){_setBoxStatus(boxId,'error','Save failed');toast('Error: '+r.error.message);return;}
+  _logFunnelEvent('photo_upload_succeeded',{role:'owner'});
+  _setBoxStatus(boxId,'success','Saved!');
   P[col]=url; toast('Photo updated!'); pPr();
+}
+
+async function ownerSelfUploadId(inp){
+  var file=inp.files[0]; if(!file) return;
+  var verr=_validateUpload(file,'profile-photos','doc_id_url');
+  if(verr){
+    _logUploadEvent('file_rejected',{role:'owner',field:'doc_id_url',fileType:file.type,fileSizeMb:Math.round(file.size/1024/1024*10)/10});
+    toast(verr); return;
+  }
+  _logFunnelEvent('id_upload_started',{role:'owner'});
+  _setBoxStatus('ow-idoc','converting','Converting…');
+  var comp=await _compressImage(file);
+  if(comp===null){
+    _setBoxStatus('ow-idoc','error','Convert failed');
+    _logUploadEvent('heic_conversion_failed',{role:'owner',field:'doc_id_url',fileType:file.type});
+    _logFunnelEvent('id_upload_failed',{role:'owner',reason:'heic_conversion_failed'});
+    toast("Couldn't convert this photo. Please try a JPG or PNG, or take the photo again and share as JPEG.");
+    return;
+  }
+  _setBoxStatus('ow-idoc','uploading','Uploading…');
+  var ext=comp!==file?'jpg':(file.name.split('.').pop()||'jpg').toLowerCase();
+  var storagePath=U.id+'/id-'+Date.now()+'.'+ext;
+  var up=await _uploadWithRetry('owner-id-docs',storagePath,comp,{upsert:true,contentType:comp.type||file.type});
+  if(up.error){
+    _setBoxStatus('ow-idoc','error','Upload failed');
+    _logUploadEvent('storage_upload_failed',{role:'owner',field:'doc_id_url',errorCode:up.error.statusCode||up.error.message});
+    _logFunnelEvent('id_upload_failed',{role:'owner',reason:'storage_upload_failed'});
+    toast('Upload failed — please check your connection and try again. ('+up.error.message+')');
+    return;
+  }
+  var dbR=await sb.from('profiles').update({doc_id_path:storagePath}).eq('id',U.id).select();
+  if(dbR.error){
+    _setBoxStatus('ow-idoc','error','Save failed');
+    _logUploadEvent('db_update_failed',{role:'owner',field:'doc_id_url',errorCode:dbR.error.code||dbR.error.message});
+    _logFunnelEvent('id_upload_failed',{role:'owner',reason:'db_update_failed'});
+    toast('File uploaded but could not save — please try again. ('+dbR.error.message+')');
+    return;
+  }
+  _logUploadEvent('upload_success',{role:'owner',field:'doc_id_url'});
+  _logFunnelEvent('id_upload_succeeded',{role:'owner'});
+  _setBoxStatus('ow-idoc','success','Saved!');
+  P.doc_id_path=storagePath; toast('ID document updated successfully!'); pPr();
 }
 // ── CHAT ───────────────────────────────────────────────
 var _chatAppId=null, _chatSub=null, _chatIsDriver=false, _chatOtherName='', _chatCar=null;
@@ -6401,8 +6707,8 @@ async function pChat(){
     sb.from('profiles').select('id,full_name,phone,whatsapp,location,photo_headshot_url,photo_holding_id_url,photo_fullbody_url').eq('id',otherId).maybeSingle(),
     app.car_id?sb.from('cars').select('id,make,model,year,price_per_week,deposit,location').eq('id',app.car_id).maybeSingle():{data:null},
     sb.from('messages').select('*').eq('application_id',app.id).order('created_at',{ascending:true}),
-    // Owner fetches driver docs from driver_profiles
-    !isD?sb.from('driver_profiles').select('doc_id_url,doc_license_url,doc_license_back_url,photo_holding_id_url,photo_fullbody_url').eq('user_id',app.driver_id).maybeSingle():{data:null}
+    // Owner fetches driver docs from driver_profiles (path columns for private docs, url for headshot)
+    !isD?sb.from('driver_profiles').select('doc_id_url,doc_id_path,doc_license_url,doc_license_path,doc_license_back_url,doc_license_back_path,photo_holding_id_url,photo_holding_id_path,photo_fullbody_url,photo_fullbody_path').eq('user_id',app.driver_id).maybeSingle():{data:null}
   ]);
   var other=otherR.data||{};
   var driverDocs=(!isD&&driverDocR&&driverDocR.data)||null;
@@ -6501,32 +6807,46 @@ async function pChat(){
       +'</div>'
       +'</div>';
   }
-  // Driver docs block (owner only)
+  // Driver docs block (owner only, uses private signed URLs for identity docs)
   var docsHtml='';
   if(!isD){
     var dd=driverDocs||{};
-    var docItems=[
-      {url:other.photo_headshot_url,label:'Headshot'},
-      {url:other.photo_fullbody_url||dd.photo_fullbody_url,label:'Full Body'},
-      {url:dd.photo_holding_id_url,label:'Holding ID'},
-      {url:dd.doc_id_url,label:'ID Document'},
-      {url:dd.doc_license_url,label:'Licence Front'},
-      {url:dd.doc_license_back_url,label:'Licence Back'}
-    ].filter(function(d){return !!d.url;});
-    if(docItems.length){
+    // Build doc items: headshot is public; identity docs use private path with matched_owner context
+    var docItemsHtml='';
+    var docCount=0;
+    if(other.photo_headshot_url){
+      docItemsHtml+='<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(other.photo_headshot_url)+'\')">'
+        +'<img src="'+imgUrl(other.photo_headshot_url,140,75)+'" loading="lazy" style="width:60px;height:44px;object-fit:cover;border-radius:7px;border:1.5px solid var(--border)">'
+        +'<div style="font-size:9px;color:var(--muted);margin-top:3px">Headshot</div></div>';
+      docCount++;
+    }
+    var privDocs=[
+      {path:dd.photo_fullbody_path,url:dd.photo_fullbody_url,label:'Full Body'},
+      {path:dd.photo_holding_id_path,url:dd.photo_holding_id_url,label:'Holding ID'},
+      {path:dd.doc_id_path,url:dd.doc_id_url,label:'ID Document'},
+      {path:dd.doc_license_path,url:dd.doc_license_url,label:'Licence Front'},
+      {path:dd.doc_license_back_path,url:dd.doc_license_back_url,label:'Licence Back'}
+    ];
+    privDocs.forEach(function(d){
+      if(d.path){
+        docItemsHtml+=dthumbPrivate('driver-id-docs',d.path,d.label,'matched_owner');
+        docCount++;
+      } else if(d.url){
+        docItemsHtml+='<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.url)+'\')">'
+          +'<img src="'+imgUrl(d.url,140,75)+'" loading="lazy" style="width:60px;height:44px;object-fit:cover;border-radius:7px;border:1.5px solid var(--border)">'
+          +'<div style="font-size:9px;color:var(--muted);margin-top:3px">'+d.label+'</div></div>';
+        docCount++;
+      }
+    });
+    if(docCount){
       var docGridId='chat-docs-'+Date.now();
       docsHtml='<div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px">'
         +'<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="var g=eid(\''+docGridId+'\');g.style.display=g.style.display===\'none\'?\'flex\':\'none\';this.querySelector(\'.doc-toggle\').textContent=g.style.display===\'none\'?\'View Documents &#8250;\':\'Hide Documents &#8249;\'">'
-        +'<div style="font-size:12px;font-weight:700;color:var(--g)">&#128196; Driver Documents ('+docItems.length+')</div>'
+        +'<div style="font-size:12px;font-weight:700;color:var(--g)">&#128274; Driver Documents ('+docCount+')</div>'
         +'<span class="doc-toggle" style="font-size:12px;color:var(--gm);font-weight:600">View Documents &#8250;</span>'
         +'</div>'
         +'<div id="'+docGridId+'" style="display:none;gap:10px;flex-wrap:wrap;margin-top:10px">'
-        +docItems.map(function(d){
-          return '<div style="text-align:center;cursor:pointer" onclick="showLbox(\''+esc(d.url)+'\')">'
-            +'<img src="'+imgUrl(d.url,140,75)+'" loading="lazy" style="width:60px;height:44px;object-fit:cover;border-radius:7px;border:1.5px solid var(--border)">'
-            +'<div style="font-size:9px;color:var(--muted);margin-top:3px">'+d.label+'</div>'
-            +'</div>';
-        }).join('')
+        +docItemsHtml
         +'</div></div>';
     }
   }
@@ -7707,7 +8027,7 @@ function _msRatings(d){
   return{s:Math.min(1,avg/5),met:avg>=4,val:Math.round(avg*10)/10};
 }
 function _msVerif(d){
-  var hasId=!!(d.doc_id_url),hasLic=!!(d.doc_license_url);
+  var hasId=!!(d.doc_id_url||d.doc_id_path),hasLic=!!(d.doc_license_url||d.doc_license_path);
   if(hasId&&hasLic)return{s:1,met:true,val:'Full'};
   if(hasId||hasLic)return{s:.6,met:false,val:'Partial'};
   return{s:.3,met:false,val:'None'};
@@ -7859,7 +8179,7 @@ async function pAp() {
 
     // Fetch driver profiles and their profile info in parallel
     var [dpRes, pfRes, carRes] = await Promise.all([
-      dIds.length ? sb.from('driver_profiles').select('id,user_id,trust_score,photo_headshot_url,platforms,years_driving,late_payments,missed_payments,accidents,damage_incidents,rentals_completed,doc_id_url,doc_license_url,proof_of_residence_url,photo_holding_id_url,photo_fullbody_url,pdp_url,has_pdp,uber_rating,uber_trips,bolt_rating,bolt_trips,indrive_rating,indrive_trips,age,date_of_birth,license_date,gender,citizenship').in('user_id',dIds) : {data:[]},
+      dIds.length ? sb.from('driver_profiles').select('id,user_id,trust_score,photo_headshot_url,platforms,years_driving,late_payments,missed_payments,accidents,damage_incidents,rentals_completed,doc_id_url,doc_id_path,doc_license_url,doc_license_path,proof_of_residence_url,proof_of_residence_path,photo_holding_id_url,photo_holding_id_path,photo_fullbody_url,photo_fullbody_path,pdp_url,pdp_path,has_pdp,uber_rating,uber_trips,bolt_rating,bolt_trips,indrive_rating,indrive_trips,age,date_of_birth,license_date,gender,citizenship').in('user_id',dIds) : {data:[]},
       dIds.length ? sb.from('profiles').select('id,full_name,location,phone,whatsapp,email').in('id',dIds) : {data:[]},
       carIds.length ? sb.from('cars').select('id,make,model,year,photo_front_url,location,price_per_week,transmission,ideal_driver_prefs').in('id',carIds) : {data:[]}
     ]);
@@ -7968,12 +8288,11 @@ async function pAp() {
       var docRow='';
       if(docsVisible){
         docRow='<div style="margin-bottom:8px"><div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px">DOCUMENTS</div><div style="display:flex;gap:5px;flex-wrap:wrap">';
-        if(dp.doc_id_url) docRow+='<a href="'+dp.doc_id_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; ID</a>';
-        if(dp.doc_license_url) docRow+='<a href="'+dp.doc_license_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; Licence</a>';
-        if(dp.proof_of_residence_url) docRow+='<a href="'+dp.proof_of_residence_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128196; Proof of Residence</a>';
-        if(dp.photo_holding_id_url) docRow+='<a href="'+dp.photo_holding_id_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#129091; Holding ID</a>';
-        if(dp.photo_fullbody_url) docRow+='<a href="'+dp.photo_fullbody_url+'" target="_blank" style="font-size:11px;padding:2px 8px;background:var(--cream);border-radius:5px;color:var(--g);text-decoration:none">&#128100; Full Body Photo</a>';
-        if(dp.pdp_url||dp.has_pdp) docRow+='<a href="'+(dp.pdp_url?dp.pdp_url:'#')+'" target="_blank" style="font-size:11px;padding:2px 8px;background:#d4edd8;border-radius:5px;color:var(--gm);text-decoration:none">&#128203; PDP</a>';
+        if(dp.doc_id_url||dp.doc_id_path) docRow+=dthumbAuto(dp.doc_id_url,'driver-id-docs',dp.doc_id_path,'ID','matched_owner');
+        if(dp.doc_license_url||dp.doc_license_path) docRow+=dthumbAuto(dp.doc_license_url,'driver-id-docs',dp.doc_license_path,'Licence','matched_owner');
+        if(dp.photo_holding_id_url||dp.photo_holding_id_path) docRow+=dthumbAuto(dp.photo_holding_id_url,'driver-id-docs',dp.photo_holding_id_path,'Holding ID','matched_owner');
+        if(dp.photo_fullbody_url||dp.photo_fullbody_path) docRow+=dthumbAuto(dp.photo_fullbody_url,'driver-id-docs',dp.photo_fullbody_path,'Full Body','matched_owner');
+        if(dp.pdp_url||dp.pdp_path||dp.has_pdp) docRow+=dthumbAuto(dp.pdp_url,'driver-id-docs',dp.pdp_path,'PDP','matched_owner');
         docRow+='</div></div>';
       } else {
         docRow='<div style="padding:6px 10px;background:var(--cream);border-radius:7px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-bottom:8px">'
@@ -8960,7 +9279,7 @@ async function adDrvJourney(){
 
   var [profR, dpR, appR, leR] = await Promise.all([
     sb.from('profiles').select('id,full_name,email,phone,created_at,admin_status').eq('role','driver').limit(2000),
-    sb.from('driver_profiles').select('user_id,status,trust_score,platforms,suspended,approved_at,removed_at,rejection_reason,doc_license_url,doc_id_url,doc_selfie_url,proof_of_residence_url,criminal_check_url,docs_verified,profile_views,years_driving,applications_paused').limit(2000),
+    sb.from('driver_profiles').select('user_id,status,trust_score,platforms,suspended,approved_at,removed_at,rejection_reason,doc_license_url,doc_license_path,doc_id_url,doc_id_path,doc_selfie_url,proof_of_residence_url,proof_of_residence_path,criminal_check_url,criminal_check_path,docs_verified,profile_views,years_driving,applications_paused').limit(2000),
     sb.from('applications').select('id,driver_id,status,matched_at,unmatched_at').limit(5000),
     sb.from('login_events').select('user_id,created_at').eq('role','driver').limit(10000)
   ]);
@@ -8990,7 +9309,7 @@ async function adDrvJourney(){
   var drivers=(profR.data||[]).map(function(p){
     var dp=dpMap[p.id]||{};
     var am=appMap[p.id]||{total:0,approved:0,rejected:0,pending:0,matches:0,active:0,lastMatched:null,lastUnmatched:null};
-    var docs=[dp.doc_license_url,dp.doc_id_url,dp.doc_selfie_url,dp.proof_of_residence_url,dp.criminal_check_url].filter(Boolean).length;
+    var docs=[dp.doc_license_url||dp.doc_license_path,dp.doc_id_url||dp.doc_id_path,dp.doc_selfie_url,dp.proof_of_residence_url||dp.proof_of_residence_path,dp.criminal_check_url||dp.criminal_check_path].filter(Boolean).length;
     return {
       id:p.id,name:p.full_name||'Unknown',email:p.email||'',phone:p.phone||'',
       registered:fmtDate(p.created_at),regDays:daysAgo(p.created_at),
@@ -9955,10 +10274,10 @@ async function adPendingDocs(){
     var p=dpm[d.user_id]||{};
     var missing=[];
     if(!d.photo_headshot_url)missing.push('Headshot photo');
-    if(!d.photo_fullbody_url)missing.push('Full-body photo');
-    if(!d.photo_holding_id_url)missing.push('Photo holding ID');
-    if(!d.doc_id_url)missing.push('ID document');
-    if(!d.doc_license_url)missing.push('Driver\'s licence');
+    if(!(d.photo_fullbody_url||d.photo_fullbody_path))missing.push('Full-body photo');
+    if(!(d.photo_holding_id_url||d.photo_holding_id_path))missing.push('Photo holding ID');
+    if(!(d.doc_id_url||d.doc_id_path))missing.push('ID document');
+    if(!(d.doc_license_url||d.doc_license_path))missing.push('Driver\'s licence');
     return '<div class="rcard" id="pdoc-'+d.id+'">'
       +'<div class="rcard-head"><div style="display:flex;align-items:center;gap:10px">'
       +(d.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+d.photo_headshot_url+'\')"><img src="'+imgUrl(d.photo_headshot_url,120,80)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(p.full_name)+'</div>')
@@ -9969,7 +10288,7 @@ async function adPendingDocs(){
         +'<ul style="margin:0;padding-left:18px;font-size:12px;color:#7a5200;line-height:2">'+missing.map(function(m){return '<li>'+m+'</li>';}).join('')+'</ul>'
         +'</div>':'')
       +igrid(['Email: <strong>'+(p.email||'-')+'</strong>','Phone: <strong>'+(p.phone||'-')+'</strong>','Location: <strong>'+(p.location||'-')+'</strong>','ID No: <strong>'+(d.id_number||'-')+'</strong>','Licence: <strong>'+(d.license_number||'-')+'</strong>'])
-      +'<div class="rcard-docs"><span class="dl">Docs uploaded:</span>'+dthumb(d.photo_headshot_url,'Headshot')+dthumb(d.photo_fullbody_url,'Full Body')+dthumb(d.photo_holding_id_url,'Holding ID')+dthumb(d.doc_license_url,'Licence')+dthumb(d.doc_id_url,'ID/Passport')+'</div>'
+      +'<div class="rcard-docs"><span class="dl">Docs uploaded:</span>'+dthumb(d.photo_headshot_url,'Headshot')+dthumbAuto(d.photo_fullbody_url,'driver-id-docs',d.photo_fullbody_path,'Full Body','admin')+dthumbAuto(d.photo_holding_id_url,'driver-id-docs',d.photo_holding_id_path,'Holding ID','admin')+dthumbAuto(d.doc_license_url,'driver-id-docs',d.doc_license_path,'Licence','admin')+dthumbAuto(d.doc_id_url,'driver-id-docs',d.doc_id_path,'ID/Passport','admin')+'</div>'
       +adDocUploads(d.id,d)
       +'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Rejection reason (required when declining):</label><textarea id="rej-reason-'+d.id+'" placeholder="e.g. Blurry ID photo, expired licence..." style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;height:48px;resize:vertical"></textarea></div>'
       +'</div>'
@@ -10161,11 +10480,21 @@ async function incUploadDoc(inp){
   if(box){box.style.opacity='.5';}
   var comp=await _compressImage(file);
   var ext=comp!==file?'jpg':(file.name.split('.').pop()||'jpg');
-  var path='driver-docs-admin/'+dpId+'/'+field+'.'+ext;
-  var up=await sb.storage.from('driver-docs').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
-  if(up.error){toast('Upload error: '+up.error.message);if(box)box.style.opacity='1';return;}
-  var url=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
-  var upd={};upd[field]=url;
+  var PRIVATE_FIELDS=['doc_id_url','doc_license_url','doc_license_back_url','proof_of_residence_url',
+    'criminal_check_url','pdp_url','photo_holding_id_url','photo_fullbody_url'];
+  var isPrivate=PRIVATE_FIELDS.indexOf(field)>=0;
+  var upd={};
+  if(isPrivate){
+    var privPath=dpId+'/'+field+'-admin.'+ext;
+    var up=await sb.storage.from('driver-id-docs').upload(privPath,comp,{upsert:true,contentType:comp.type||file.type});
+    if(up.error){toast('Upload error: '+up.error.message);if(box)box.style.opacity='1';return;}
+    upd[field.replace('_url','_path')]=privPath;
+  } else {
+    var path='driver-docs-admin/'+dpId+'/'+field+'.'+ext;
+    var up=await sb.storage.from('driver-docs').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
+    if(up.error){toast('Upload error: '+up.error.message);if(box)box.style.opacity='1';return;}
+    upd[field]=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
+  }
   await sb.from('driver_profiles').update(upd).eq('id',dpId);
   if(box){box.classList.add('up');box.style.opacity='1';}
   toast('Document uploaded!');
@@ -10215,7 +10544,7 @@ async function adReg(){
         +'<div><div style="font-size:15px;font-weight:700">'+( p.full_name||'Unknown')+'</div><div style="font-size:11px;color:var(--muted)">Driver / '+fmtD(p.created_at)+'</div></div></div>'+adPill('pending')+'</div>'
         +'<div class="rcard-body">'+igrid(['Email: <strong>'+(p.email||'-')+'</strong>','Phone: <strong>'+(p.phone||'-')+'</strong>',p.whatsapp?'WhatsApp: <strong>'+p.whatsapp+'</strong>':'','Location: <strong>'+(p.location||'-')+'</strong>','ID No: <strong>'+(d.id_number||'-')+'</strong>','Licence: <strong>'+(d.license_number||'-')+'</strong>','Driving: <strong>'+d.years_driving+'+ yrs</strong>',d.date_of_birth?'DOB: <strong>'+d.date_of_birth+'</strong>':(d.age?'Age: <strong>'+d.age+'</strong>':''),'Lic. Obtained: <strong>'+(d.license_date||'-')+'</strong>','Lic. Expiry: <strong style="color:'+(d.license_expiry_date?'inherit':'var(--muted)')+'">'+(d.license_expiry_date||'Not provided')+'</strong>','PDP Expiry: <strong style="color:'+(d.pdp_expiry_date?'inherit':'var(--muted)')+'">'+(d.pdp_expiry_date||'Not provided')+'</strong>','Platforms: <strong>'+((d.platforms||[]).join(', ')||'-')+'</strong>','Score: <strong style="color:'+adSc(d.trust_score||0)+'">'+(d.trust_score||0)+' - '+adSl(d.trust_score||0)+'</strong>','Docs: <strong style="color:'+(docValid?'var(--gm)':'#dc2626')+'">'+(docValid?'Valid to '+fmtD(d.doc_expires_at):d.doc_uploaded_at?'EXPIRED':'Not uploaded')+'</strong>','PDP: <strong style="color:'+(d.has_pdp?'var(--gm)':'#dc2626')+'">'+(d.has_pdp===true?'Yes ✓':d.has_pdp===false?'No ✗':'Not answered')+'</strong>','1yr Experience: <strong style="color:'+(d.has_1yr_experience?'var(--gm)':'#dc2626')+'">'+(d.has_1yr_experience===true?'Yes ✓':d.has_1yr_experience===false?'No ✗':'Not answered')+'</strong>',(d.self_uber_trips||d.self_uber_rating)?'Uber (self): <strong>'+(d.self_uber_trips?d.self_uber_trips+' trips':'')+' '+(d.self_uber_rating?'/ '+d.self_uber_rating+' ★':'')+'</strong>':'',(d.self_bolt_trips||d.self_bolt_rating)?'Bolt (self): <strong>'+(d.self_bolt_trips?d.self_bolt_trips+' trips':'')+' '+(d.self_bolt_rating?'/ '+d.self_bolt_rating+' ★':'')+'</strong>':'',(d.self_indrive_trips||d.self_indrive_rating)?'inDrive (self): <strong>'+(d.self_indrive_trips?d.self_indrive_trips+' trips':'')+' '+(d.self_indrive_rating?'/ '+d.self_indrive_rating+' ★':'')+'</strong>':''])
         +(d.bio?'<div style="margin-top:8px;font-size:12px;color:#555;background:var(--cream);padding:7px 9px;border-radius:6px">'+d.bio+'</div>':'')+'</div>'
-        +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumb(d.photo_fullbody_url,'Full Body')+dthumb(d.photo_headshot_url,'Headshot')+dthumb(d.photo_holding_id_url,'Holding ID')+dthumb(d.doc_license_url,'Licence Front')+dthumb(d.doc_license_back_url,'Licence Back')+dthumb(d.doc_id_url,'ID/Passport')+dthumb(d.proof_of_residence_url,'Proof of Residence')+dthumb(d.criminal_check_url,'Criminal Check')+dthumb(d.pdp_url,'PDP')+'</div>'
+        +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumbAuto(d.photo_fullbody_url,'driver-id-docs',d.photo_fullbody_path,'Full Body','admin')+dthumb(d.photo_headshot_url,'Headshot')+dthumbAuto(d.photo_holding_id_url,'driver-id-docs',d.photo_holding_id_path,'Holding ID','admin')+dthumbAuto(d.doc_license_url,'driver-id-docs',d.doc_license_path,'Licence Front','admin')+dthumbAuto(d.doc_license_back_url,'driver-id-docs',d.doc_license_back_path,'Licence Back','admin')+dthumbAuto(d.doc_id_url,'driver-id-docs',d.doc_id_path,'ID/Passport','admin')+dthumbAuto(d.proof_of_residence_url,'driver-id-docs',d.proof_of_residence_path,'Proof of Residence','admin')+dthumbAuto(d.criminal_check_url,'driver-id-docs',d.criminal_check_path,'Criminal Check','admin')+dthumbAuto(d.pdp_url,'driver-id-docs',d.pdp_path,'PDP','admin')+'</div>'
         +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+parseShotUrls(d.screenshot_uber_url).map(function(u,i){return dthumb(u,'Uber '+(i+1));}).join('')+parseShotUrls(d.screenshot_bolt_url).map(function(u,i){return dthumb(u,'Bolt '+(i+1));}).join('')+parseShotUrls(d.screenshot_indrive_url).map(function(u,i){return dthumb(u,'inDrive '+(i+1));}).join('')+'</div>':'')
         +adDocUploads(d.id,d)
         +'<div style="padding:10px 14px;border-top:1px solid var(--border);background:#fafaf8">'
@@ -10265,7 +10594,7 @@ async function adReg(){
       return '<div class="rcard" id="ro-'+o.id+'">'
         +'<div class="rcard-head"><div style="display:flex;align-items:center;gap:10px">'+(o.photo_headshot_url?'<div class="av" style="cursor:pointer" onclick="showLbox(\''+o.photo_headshot_url+'\')"><img src="'+o.photo_headshot_url+'" style="width:100%;height:100%;object-fit:cover;object-position:top"/></div>':'<div class="av">'+adIni(o.full_name)+'</div>')+'<div><div style="font-size:15px;font-weight:700">'+(o.full_name||'Unknown')+'</div><div style="font-size:11px;color:var(--muted)">Owner / '+fmtD(o.created_at)+'</div></div></div>'+adPill('pending')+'</div>'
         +'<div class="rcard-body">'+igrid(['Email: <strong>'+(o.email||'-')+'</strong>','Phone: <strong>'+(o.phone||'-')+'</strong>',o.whatsapp?'WhatsApp: <strong>'+o.whatsapp+'</strong>':'','Location: <strong>'+(o.location||'-')+'</strong>'])
-        +((o.photo_headshot_url||o.photo_holding_id_url||o.doc_id_url)?'<div style="margin-top:8px"><span class="dl" style="color:var(--muted)">Photos &amp; ID:</span> '+dthumb(o.photo_headshot_url,'Headshot')+dthumb(o.photo_holding_id_url,'Holding ID')+dthumb(o.doc_id_url,'ID/Passport')+'</div>':'')
+        +((o.photo_headshot_url||o.photo_holding_id_url||o.doc_id_url||o.doc_id_path)?'<div style="margin-top:8px"><span class="dl" style="color:var(--muted)">Photos &amp; ID:</span> '+dthumb(o.photo_headshot_url,'Headshot')+dthumb(o.photo_holding_id_url,'Holding ID')+dthumbAuto(o.doc_id_url,'owner-id-docs',o.doc_id_path,'ID/Passport','admin')+'</div>':'')
         +(oCars.length?'<div style="margin-top:10px"><div style="font-size:12px;font-weight:600;margin-bottom:6px">'+oCars.length+' car'+(oCars.length!==1?'s':'')+' listed</div>'
           +oCars.map(function(c){var photos=[c.photo_front_url,c.photo_side_url,c.photo_back_url,c.photo_interior_url].filter(Boolean);return '<div style="background:var(--cream);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:7px">'+(photos.length?'<div style="display:flex;gap:5px;padding:8px;border-bottom:1px solid var(--border)">'+photos.map(function(u,i){return dthumb(u,['Front','Side','Back','Interior'][i]||'Photo');}).join('')+'</div>':'')+'<div style="padding:7px 10px;font-size:12px"><strong>'+c.make+' '+c.model+' '+c.year+'</strong> / R'+c.price_per_week+'/wk / '+c.location+'</div></div>';}).join('')+'</div>':'')
         +'</div>'
@@ -10387,22 +10716,29 @@ async function adUploadDoc(dpId,field,inp){
   var btn=inp.closest('.admin-doc-row');
   var status=btn?btn.querySelector('.ad-status'):null;
   if(status)status.textContent='Uploading...';
-  var up=await sb.storage.from('driver-docs').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
-  if(up.error){toast('Upload failed: '+up.error.message);return;}
-  var url=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
   var update={};
-  // For screenshot fields: merge with existing array (keep previous screenshots)
+  // Screenshot fields stay public; identity/verification docs go to private bucket
   var screenshotFields=['screenshot_uber_url','screenshot_bolt_url','screenshot_indrive_url'];
+  var PRIVATE_FIELDS=['doc_id_url','doc_license_url','doc_license_back_url','proof_of_residence_url',
+    'criminal_check_url','pdp_url','photo_holding_id_url','photo_fullbody_url'];
   if(screenshotFields.indexOf(field)>-1){
+    var up=await sb.storage.from('driver-docs').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
+    if(up.error){toast('Upload failed: '+up.error.message);return;}
+    var url=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
     var existR=await sb.from('driver_profiles').select(field).eq('id',dpId).maybeSingle();
     var existVal=(existR.data||{})[field]||null;
     var existing=parseShotUrls(existVal);
     existing.push(url);
-    // keep max 2 screenshots per platform
     if(existing.length>2)existing=existing.slice(existing.length-2);
     update[field]=JSON.stringify(existing);
+  } else if(PRIVATE_FIELDS.indexOf(field)>-1){
+    var up=await sb.storage.from('driver-id-docs').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
+    if(up.error){toast('Upload failed: '+up.error.message);return;}
+    update[field.replace('_url','_path')]=path;
   } else {
-    update[field]=url;
+    var up=await sb.storage.from('driver-docs').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
+    if(up.error){toast('Upload failed: '+up.error.message);return;}
+    update[field]=sb.storage.from('driver-docs').getPublicUrl(path).data.publicUrl;
   }
   var r=await sb.from('driver_profiles').update(update).eq('id',dpId);
   if(r.error){toast('Save failed: '+r.error.message);return;}
@@ -10455,7 +10791,14 @@ async function adSetOwner(pid,status){
   var r=await sb.from('profiles').update({admin_status:status,admin_note:n?n.value.trim()||null:null,admin_reviewed_at:new Date().toISOString()}).eq('id',pid).select();
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
-  toast(status==='approved'?'Owner approved!':'Owner declined');
+  // When approving, also approve all pending cars for this owner in the same action
+  if(status==='approved'){
+    var carR=await sb.from('cars').update({admin_status:'approved'}).eq('owner_id',pid).eq('admin_status','pending');
+    if(carR.error){console.error('Car approval error (non-blocking):',carR.error);}
+    toast('Owner and vehicles approved!');
+  } else {
+    toast('Owner declined');
+  }
   _brevoSync(pid, 'owner_status_change');
   adReg();adOv();adOwn();
 }
@@ -10521,16 +10864,40 @@ async function ownUploadId(inp){
   var box=document.getElementById('oe-idbox-'+oid);
   if(box) box.classList.add('up');
   var comp=await _compressImage(file);
+  if(comp===null){
+    if(box)box.classList.remove('up');
+    toast("Couldn't convert this photo format. Please try a JPG or PNG file.");
+    _logUploadEvent('heic_conversion_failed',{role:'admin_upload',field:'doc_id_url',fileType:file.type});
+    return;
+  }
   var ext=comp!==file?'jpg':(file.name.split('.').pop()||'jpg');
-  var path='owner-id/'+oid+'/id-'+Date.now()+'.'+ext;
-  var up=await sb.storage.from('profile-photos').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
-  if(up.error){toast('Upload error: '+up.error.message);return;}
-  var url=sb.storage.from('profile-photos').getPublicUrl(path).data.publicUrl;
-  await sb.from('profiles').update({doc_id_url:url}).eq('id',oid);
-  toast('ID uploaded!'); adOwn();
+  var path=oid+'/id-'+Date.now()+'.'+ext;
+  var up=await sb.storage.from('owner-id-docs').upload(path,comp,{upsert:true,contentType:comp.type||file.type});
+  if(up.error){
+    if(box)box.classList.remove('up');
+    _logUploadEvent('storage_upload_failed',{role:'admin_upload',field:'doc_id_url',errorCode:up.error.statusCode||up.error.message});
+    toast('Upload error: '+up.error.message);
+    return;
+  }
+  var dbR=await sb.from('profiles').update({doc_id_path:path}).eq('id',oid).select();
+  if(dbR.error){
+    if(box)box.classList.remove('up');
+    _logUploadEvent('db_update_failed',{role:'admin_upload',field:'doc_id_url',errorCode:dbR.error.code||dbR.error.message});
+    toast('File uploaded but could not save to profile — please try again. ('+dbR.error.message+')');
+    return;
+  }
+  if(!dbR.data||!dbR.data.length){
+    if(box)box.classList.remove('up');
+    toast('Save blocked — check admin permissions.');
+    return;
+  }
+  _logUploadEvent('upload_success',{role:'admin_upload',field:'doc_id_url'});
+  toast('ID uploaded and saved!'); adOwn();
 }
 async function ownApprove(oid){
-  await sb.from('profiles').update({admin_status:'approved'}).eq('id',oid);
+  var now=new Date().toISOString();
+  await sb.from('profiles').update({admin_status:'approved',admin_reviewed_at:now}).eq('id',oid);
+  await sb.from('cars').update({admin_status:'approved'}).eq('owner_id',oid).eq('admin_status','pending');
   toast('Owner approved!'); _brevoSync(oid,'owner_status_change'); adOwn();
 }
 async function ownDecline(oid){
@@ -10651,7 +11018,7 @@ async function adDrv(){
         +'</div>'
         +'</div></div>'
         +'<div style="font-size:11px"><span style="color:'+(docValid?'var(--gm)':'#dc2626')+'">Docs: '+(docValid?'Valid to '+fmtD(d.doc_expires_at):d.doc_uploaded_at?'EXPIRED':'None')+'</span></div></div>'
-        +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumb(d.photo_fullbody_url,'Full Body')+dthumb(d.photo_headshot_url,'Headshot')+dthumb(d.photo_holding_id_url,'Holding ID')+dthumb(d.doc_license_url,'Licence Front')+dthumb(d.doc_license_back_url,'Licence Back')+dthumb(d.doc_id_url,'ID/Passport')+dthumb(d.proof_of_residence_url,'Proof of Res.')+dthumb(d.criminal_check_url,'Criminal Chk')+(d.pdp_url?dthumb(d.pdp_url,'PDP ✓'):'')+'</div>'
+        +'<div class="rcard-docs"><span class="dl">Docs:</span>'+dthumbAuto(d.photo_fullbody_url,'driver-id-docs',d.photo_fullbody_path,'Full Body','admin')+dthumb(d.photo_headshot_url,'Headshot')+dthumbAuto(d.photo_holding_id_url,'driver-id-docs',d.photo_holding_id_path,'Holding ID','admin')+dthumbAuto(d.doc_license_url,'driver-id-docs',d.doc_license_path,'Licence Front','admin')+dthumbAuto(d.doc_license_back_url,'driver-id-docs',d.doc_license_back_path,'Licence Back','admin')+dthumbAuto(d.doc_id_url,'driver-id-docs',d.doc_id_path,'ID/Passport','admin')+dthumbAuto(d.proof_of_residence_url,'driver-id-docs',d.proof_of_residence_path,'Proof of Res.','admin')+dthumbAuto(d.criminal_check_url,'driver-id-docs',d.criminal_check_path,'Criminal Chk','admin')+(d.pdp_path||d.pdp_url?dthumbAuto(d.pdp_url,'driver-id-docs',d.pdp_path,'PDP ✓','admin'):'')+'</div>'
         +(d.screenshot_uber_url||d.screenshot_bolt_url||d.screenshot_indrive_url?'<div class="rcard-docs"><span class="dl">Platform screenshots:</span>'+parseShotUrls(d.screenshot_uber_url).map(function(u,i){return dthumb(u,'Uber '+(i+1));}).join('')+parseShotUrls(d.screenshot_bolt_url).map(function(u,i){return dthumb(u,'Bolt '+(i+1));}).join('')+parseShotUrls(d.screenshot_indrive_url).map(function(u,i){return dthumb(u,'inDrive '+(i+1));}).join('')+'</div>':'')
         +adDocUploads(d.id,d)
         +(d.status!=='rejected'?'<div style="padding:8px 14px;border-top:1px solid var(--border);background:#fff8f8">'
@@ -10888,7 +11255,7 @@ async function adSaveStats(dpId,userId){
 async function adOwn(){
   var el=document.getElementById('ap-own');
   el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Owners</div></div>'+adSpin();
-  var r=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,admin_status,admin_note,created_at,admin_reviewed_at,doc_id_url,photo_headshot_url,photo_holding_id_url,is_suspended,suspension_reason,applications_paused,is_removed,id_number').in('role',['owner','both']).order('created_at',{ascending:false});
+  var r=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,admin_status,admin_note,created_at,admin_reviewed_at,doc_id_url,doc_id_path,photo_headshot_url,photo_holding_id_url,is_suspended,suspension_reason,applications_paused,is_removed,id_number').in('role',['owner','both']).order('created_at',{ascending:false});
   var owners=r.data||[];
   if(!owners.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Owners</div>'+empty('&#127968;','No owners registered yet.')+'</div>';return;}
   var oids=owners.map(function(o){return o.id;});
@@ -10982,10 +11349,10 @@ async function adOwn(){
         // SA ID doc
         +'<div class="shd">SA ID Document</div>'
         +'<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px">'
-        +(o.doc_id_url?'<img src="'+imgUrl(o.doc_id_url,140,75)+'" loading="lazy" onclick="showLbox(\''+esc(o.doc_id_url)+'\')" style="width:60px;height:44px;object-fit:cover;border-radius:6px;border:1px solid var(--border);cursor:pointer" title="Click to view full ID"><button class="btn btn-out btn-sm" onclick="showLbox(\''+esc(o.doc_id_url)+'\')" style="font-size:11px">&#128196; View ID</button>':'<span style="font-size:12px;color:#dc2626;font-weight:600">&#9888; No ID uploaded</span>')
+        +(o.doc_id_path?'<button class="btn btn-out btn-sm" onclick="_openPrivDoc(\'owner-id-docs\',\''+esc(o.doc_id_path)+'\',\'admin\')" style="font-size:11px">&#128274; View ID (secure)</button>':o.doc_id_url?'<button class="btn btn-out btn-sm" onclick="showLbox(\''+esc(o.doc_id_url)+'\')" style="font-size:11px">&#128196; View ID</button>':'<span style="font-size:12px;color:#dc2626;font-weight:600">&#9888; No ID uploaded</span>')
         +'<div class="dbox" style="flex:1;min-height:50px" id="oe-idbox-'+o.id+'">'
         +'<input type="file" accept="image/*,.pdf" data-oid="'+o.id+'" onchange="ownUploadId(this)">'
-        +'<div style="font-size:11px;font-weight:600">&#128196; '+(o.doc_id_url?'Replace':'Upload')+' ID</div>'
+        +'<div style="font-size:11px;font-weight:600">&#128196; '+(o.doc_id_path||o.doc_id_url?'Replace':'Upload')+' ID</div>'
         +'</div></div>'
         // Car details (for each car) + Add Car form
         +'<div class="shd" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">Cars ('+oCars.length+')<button class="btn btn-gm btn-sm" style="font-size:10px" onclick="ownToggleAddCar(\''+o.id+'\')">&#43; Add Car</button></div>'
@@ -12325,8 +12692,8 @@ async function adDriver360(dpId,userId){
     +'<div class="d360-card-body">'
     +'<div class="d360-row"><span class="d360-lbl">Profile Status</span><span class="d360-val">'+(dp.status||'—')+'</span></div>'
     +'<div class="d360-row"><span class="d360-lbl">TrustScore</span><span class="d360-val" style="color:'+adSc(ts)+'">'+ts+' — '+adSl(ts)+'</span></div>'
-    +'<div class="d360-row"><span class="d360-lbl">Licence</span><span class="d360-val">'+(dp.doc_license_url?'<span class="sb sb-g">&#10003; Uploaded</span>':'<span class="sb sb-r">Missing</span>')+'</span></div>'
-    +'<div class="d360-row"><span class="d360-lbl">ID / Passport</span><span class="d360-val">'+(dp.doc_id_url?'<span class="sb sb-g">&#10003; Uploaded</span>':'<span class="sb sb-r">Missing</span>')+'</span></div>'
+    +'<div class="d360-row"><span class="d360-lbl">Licence</span><span class="d360-val">'+((dp.doc_license_url||dp.doc_license_path)?'<span class="sb sb-g">&#10003; Uploaded</span>':'<span class="sb sb-r">Missing</span>')+'</span></div>'
+    +'<div class="d360-row"><span class="d360-lbl">ID / Passport</span><span class="d360-val">'+((dp.doc_id_url||dp.doc_id_path)?'<span class="sb sb-g">&#10003; Uploaded</span>':'<span class="sb sb-r">Missing</span>')+'</span></div>'
     +(dp.license_expiry_date?'<div class="d360-row"><span class="d360-lbl">Lic. Expiry</span><span class="d360-val">'+esc(dp.license_expiry_date)+'</span></div>':'')
     +(dp.pdp_expiry_date?'<div class="d360-row"><span class="d360-lbl">PDP Expiry</span><span class="d360-val">'+esc(dp.pdp_expiry_date)+'</span></div>':'')
     +'</div></div>';
@@ -12450,10 +12817,10 @@ async function adDriver360(dpId,userId){
     +'<div class="d360-card-body">'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
     +dthumb(dp.photo_headshot_url,'Headshot')
-    +dthumb(dp.photo_fullbody_url,'Full Body')
-    +dthumb(dp.photo_holding_id_url,'Holding ID')
-    +dthumb(dp.doc_license_url,'Licence')
-    +dthumb(dp.doc_id_url,'ID/Passport')
+    +dthumbAuto(dp.photo_fullbody_url,'driver-id-docs',dp.photo_fullbody_path,'Full Body','admin')
+    +dthumbAuto(dp.photo_holding_id_url,'driver-id-docs',dp.photo_holding_id_path,'Holding ID','admin')
+    +dthumbAuto(dp.doc_license_url,'driver-id-docs',dp.doc_license_path,'Licence','admin')
+    +dthumbAuto(dp.doc_id_url,'driver-id-docs',dp.doc_id_path,'ID/Passport','admin')
     +'</div></div></div>';
 
   // Profile Viewers (admin only)
@@ -12639,11 +13006,11 @@ async function adOwner360(uid){
   }
 
   // ID document
-  if(prof.doc_id_url){
+  if(prof.doc_id_url||prof.doc_id_path){
     html+='<div class="d360-card">'
       +'<div class="d360-card-hdr">Identity Document</div>'
       +'<div class="d360-card-body"><div style="display:flex;gap:8px;flex-wrap:wrap">'
-      +dthumb(prof.doc_id_url,'SA ID')
+      +dthumbAuto(prof.doc_id_url,'owner-id-docs',prof.doc_id_path,'SA ID','admin')
       +(prof.photo_headshot_url?dthumb(prof.photo_headshot_url,'Headshot'):'')
       +'</div></div></div>';
   }
@@ -14233,7 +14600,7 @@ async function loadFeaturedDrivers(elId){
       +'</div>'
       +'<div style="display:flex;gap:5px" onclick="event.stopPropagation()">'
       +'<button class="btn btn-out btn-sm" style="flex:1;font-size:11px;padding:5px 4px" onclick="go(\'profile\',\''+esc(dpId)+'\')">View</button>'
-      +(isOwnerUser?'<button class="btn btn-sm" style="background:'+(slSet.has(id)?'#dcfce7':'#fee2e2')+';color:'+(slSet.has(id)?'var(--gm)':'#dc2626')+';border:1px solid '+(slSet.has(id)?'var(--gm)':'#fca5a5')+';font-size:14px;padding:5px 8px" onclick="toggleShortlist(\''+esc(id)+'\',this)" title="Like">'+(slSet.has(id)?'&#10084;&#65039;':'&#10084;')+'</button>':'')
+      +(isOwnerUser?'<button onclick="event.stopPropagation();toggleShortlist(\''+esc(id)+'\',this)" style="flex:1;padding:5px 0;font-size:11px;font-weight:700;background:#fff;color:'+(slSet.has(id)?'#e74c3c':'var(--muted)')+';border:1.5px solid '+(slSet.has(id)?'#e74c3c':'var(--border)')+';border-radius:7px;cursor:pointer;font-family:inherit">'+(slSet.has(id)?'&#10084;&#65039; Liked':'&#9825; Like')+'</button>':'')
       +'<button class="btn btn-gm btn-sm" style="flex:1;font-size:11px;padding:5px 4px" data-dpid="'+esc(dpId)+'" data-uid="'+esc(id)+'" data-dn="'+esc(nm)+'" onclick="'+(_bId?'sb.rpc(\'increment_boost_profile_views\',{p_boost_id:\''+_bId+'\'}).then(function(){});':'')+' ownerMatchBtn(this)">Apply</button>'
       +'</div>'
       +'</div></div>';

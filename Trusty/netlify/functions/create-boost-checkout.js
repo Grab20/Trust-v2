@@ -80,19 +80,19 @@ exports.handler = async function (event) {
   //   POST https://payments.yoco.com/api/checkouts
   //   { amount (cents), currency, successUrl, cancelUrl, failureUrl, metadata }
   // checkoutId appended after Yoco creates the session — placeholder replaced below
-  const cancelUrl  = `${site_url}?payment=cancelled`;
-  const failureUrl = `${site_url}?payment=failed`;
+  // successUrl routes through our function which verifies payment server-side before redirecting to app
+  const successUrl  = `${process.env.URL || site_url}/.netlify/functions/boost-payment-success?uid=${user_id}&bt=${boost_type}`;
+  const cancelUrl   = `${site_url}?payment=cancelled`;
+  const failureUrl  = `${site_url}?payment=failed`;
 
   let yocoCheckoutId, yocoRedirectUrl;
 
   if (existing && existing.yoco_checkout_id) {
     // Reuse existing checkout — do NOT create a new Yoco session
     yocoCheckoutId  = existing.yoco_checkout_id;
-    // Re-derive redirect URL (Yoco pay link format) [YOCO-VERIFY]
     yocoRedirectUrl = `https://pay.yoco.com/${yocoCheckoutId}`;
   } else {
-    // First create checkout with a temporary successUrl, then we'll reconstruct with the real checkoutId below
-    const tempSuccessUrl = `${site_url}?payment=success`;
+    const tempSuccessUrl = successUrl;
     const yocoRes = await fetch(`${YOCO_API_BASE}/checkouts`, {
       method: 'POST',
       headers: {
@@ -142,7 +142,7 @@ exports.handler = async function (event) {
 
     if (insertErr) {
       // Unique constraint violation = duplicate — safe to continue with existing record
-      if (!insertErr.code === '23505') {
+      if (insertErr.code !== '23505') {
         console.error('DB insert error:', insertErr);
         return { statusCode: 500, headers: cors(), body: JSON.stringify({ error: 'Failed to record payment' }) };
       }
