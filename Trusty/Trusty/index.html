@@ -15146,6 +15146,8 @@ async function approveBoostRequest(reqId,driverId){
   var r=await sb.from('boosts').insert({type:'driver',target_id:driverId,status:'active',test_mode:false,duration_days:dur,start_at:now.toISOString(),end_at:end.toISOString(),created_by:U.id});
   if(r.error){toast('Error: '+r.error.message);return;}
   await sb.from('boost_requests').update({status:'approved',updated_at:new Date().toISOString()}).eq('id',reqId);
+  // Supersede any pending payment records for this driver so they don't accumulate
+  await sb.from('boost_payments').update({payment_status:'superseded',updated_at:now.toISOString()}).eq('user_id',driverId).eq('boost_type','driver').eq('payment_status','pending');
   toast('&#11088; Boost activated for driver!');
   adBoost();
 }
