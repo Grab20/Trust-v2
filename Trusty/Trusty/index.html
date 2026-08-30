@@ -4368,6 +4368,12 @@ async function regVerifyOtp() {
       earlyUid=su.data&&su.data.user?su.data.user.id:null;
       // Set U immediately — don't wait for onAuthStateChange (async race)
       if(su.data&&su.data.user)U=su.data.user;
+      // If signUp returned no session (email confirmation required in Supabase settings),
+      // sign in immediately so the storage client has an auth token for uploads
+      if(earlyUid&&!su.data.session){
+        var si3=await sb.auth.signInWithPassword({email:rEmail,password:rPass});
+        if(!si3.error&&si3.data&&si3.data.user){U=si3.data.user;earlyUid=si3.data.user.id;}
+      }
     }
     if(earlyUid){
       var now2=new Date().toISOString();
