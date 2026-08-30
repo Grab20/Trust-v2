@@ -4368,6 +4368,12 @@ async function regVerifyOtp() {
       earlyUid=su.data&&su.data.user?su.data.user.id:null;
       // Set U immediately — don't wait for onAuthStateChange (async race)
       if(su.data&&su.data.user)U=su.data.user;
+      // If signUp returned no session (email confirmation required in Supabase settings),
+      // sign in immediately so the storage client has an auth token for uploads
+      if(earlyUid&&!su.data.session){
+        var si3=await sb.auth.signInWithPassword({email:rEmail,password:rPass});
+        if(!si3.error&&si3.data&&si3.data.user){U=si3.data.user;earlyUid=si3.data.user.id;}
+      }
     }
     if(earlyUid){
       var now2=new Date().toISOString();
@@ -4757,7 +4763,12 @@ async function _uploadPrivateDoc(bucket, path, file){
     await new Promise(function(res){setTimeout(res,1500);});
     r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:compressed.type||file.type||'image/jpeg'});
   }
-  if(r.error||!r.data){console.error('[upload] private upload failed after retry',r.error);return null;}
+  if(r.error||!r.data){
+    var _em=r.error?(r.error.message||r.error.error||JSON.stringify(r.error)):'no data';
+    console.error('[upload] private upload failed after retry — bucket:'+bucket+' error:'+_em);
+    window._lastUploadError=_em;
+    return null;
+  }
   return path;
 }
 
@@ -4940,8 +4951,10 @@ async function doReg() {
         var preUp=await _uploadWithRetry('owner-id-docs',prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
         if(!preUp.error){ownerIdPath=prePath;}
         else{
-          console.error('owner id upload failed after retry:',preUp.error);
-          _logUploadEvent('storage_upload_failed',{role:'owner',field:'doc_id_url',fileType:oidComp.type,errorCode:preUp.error.statusCode||preUp.error.message});
+          var _oem=preUp.error.message||preUp.error.error||JSON.stringify(preUp.error);
+          console.error('owner id upload failed after retry — error:'+_oem);
+          _logUploadEvent('storage_upload_failed',{role:'owner',field:'doc_id_url',fileType:oidComp.type,errorCode:_oem});
+          window._lastUploadError=_oem;
           _ownerUploadFailed.push('ID/Passport');
         }
       }
@@ -4960,7 +4973,8 @@ async function doReg() {
     }
     if(_ownerUploadFailed.length){
       var btn2o=eid('o-reg-btn');if(btn2o){btn2o.textContent='Create Account';btn2o.disabled=false;}
-      showErr('reg-err','Upload failed for: '+_ownerUploadFailed.join(', ')+'. Please check your connection and try again.');return;
+      var _oErrDetail=window._lastUploadError?' ('+window._lastUploadError+')':'';
+      showErr('reg-err','Upload failed for: '+_ownerUploadFailed.join(', ')+_oErrDetail+'. Please check your connection and try again.');return;
     }
   }
   var now=new Date().toISOString();
@@ -5000,7 +5014,8 @@ async function doReg() {
     if(docFiles.pdp){var xp=await _uploadPrivateDoc('driver-id-docs',uid+'/pdp-'+t,docFiles.pdp);if(xp){u.pdp_path=xp;u.has_pdp=true;}_doneUploads++;_upd();}
     if(_failedDocs.length){
       var btn2=eid('d-reg-btn');if(btn2){btn2.textContent='Complete Registration';btn2.disabled=false;}
-      showErr('reg-err','Upload failed for: '+_failedDocs.join(', ')+'. Please check your connection and try again.');return;
+      var _errDetail=window._lastUploadError?' ('+window._lastUploadError+')':'';
+      showErr('reg-err','Upload failed for: '+_failedDocs.join(', ')+_errDetail+'. Please check your connection and try again.');return;
     }
     var hasDoc=Object.keys(u).length>0;
     var shotUrls={uber:null,bolt:null,indrive:null};
