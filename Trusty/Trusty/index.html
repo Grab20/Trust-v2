@@ -4912,6 +4912,9 @@ function _regProgress(msg){
 async function doReg() {
   clearErr('reg-err');
   var isD=rRole==='driver';
+  // Resolve uid early — owner pre-uploads use it for the storage path before the later uid assignment
+  var uid=U?U.id:null;
+  if(!uid){showErr('reg-err','Session expired. Please refresh the page and try again.');return;}
   var ph=rPhone||(isD?eid('d-ph').value.trim():oCarData.ph)||'';
   var lo=isD?eid('d-lo').value.trim():oCarData.lo;
   var wa=isD?(eid('d-wa').value.trim()||null):(oCarData.wa||null);
@@ -4956,10 +4959,6 @@ async function doReg() {
       showErr('reg-err','Upload failed for: '+_ownerUploadFailed.join(', ')+'. Please check your connection and try again.');return;
     }
   }
-  // User was signed up right after OTP verify — U should already be set
-  var uid=U?U.id:null;
-  if(!uid){showErr('reg-err','Session expired. Please refresh the page and try again.');return;}
-
   var now=new Date().toISOString();
   // Update profile with the full details now that we have them
   var _profPayload={id:uid,email:rEmail,full_name:rName,role:rRole,phone:ph,location:lo,whatsapp:wa,preferred_contact:pc||'whatsapp',terms_accepted:true,popia_accepted:true,terms_accepted_at:now,popia_accepted_at:now,terms_version:'1.0',tc_accepted_at:now,tc_version:'July 2026',email_confirmed:true};
@@ -6622,7 +6621,7 @@ async function upOwnerPhoto(boxId,col,inp){
 
 async function ownerSelfUploadId(inp){
   var file=inp.files[0]; if(!file) return;
-  var verr=_validateUpload(file,'profile-photos','doc_id_url');
+  var verr=_validateUpload(file,'owner-id-docs','doc_id_url');
   if(verr){
     _logUploadEvent('file_rejected',{role:'owner',field:'doc_id_url',fileType:file.type,fileSizeMb:Math.round(file.size/1024/1024*10)/10});
     toast(verr); return;
@@ -8932,7 +8931,10 @@ async function subMatch() {
     var hasTripsOrRating=(DP.uber_trips||DP.uber_rating||DP.bolt_trips||DP.bolt_rating||DP.indrive_trips||DP.indrive_rating
       ||DP.self_uber_trips||DP.self_uber_rating||DP.self_bolt_trips||DP.self_bolt_rating||DP.self_indrive_trips||DP.self_indrive_rating);
     var noPlatforms=!DP.platforms||!DP.platforms.length||(DP.platforms.length===1&&(DP.platforms[0]||'').toLowerCase()==='none');
-    if(!noPlatforms&&!hasTripsOrRating&&!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
+    // Zero-trip drivers skip the screenshot requirement — they use free B N applications instead
+    var _anyTripsForCheck=parseInt(DP.uber_trips||0)||parseInt(DP.bolt_trips||0)||parseInt(DP.indrive_trips||0)||parseInt(DP.self_uber_trips||0)||parseInt(DP.self_bolt_trips||0)||parseInt(DP.self_indrive_trips||0)||0;
+    if(!_anyTripsForCheck){/* B N driver — no screenshots required */}
+    else if(!noPlatforms&&!hasTripsOrRating&&!DP.screenshot_uber_url&&!DP.screenshot_bolt_url&&!DP.screenshot_indrive_url){toast('You must upload at least one platform screenshot (Uber, Bolt or inDrive) before applying. Please update your profile.');btn.disabled=false;btn.textContent='Send Request';return;}
     // B/N limit enforced server-side in create-application.js; track isBN to route insert
     var _anyTrips=parseInt(DP.uber_trips||0)||parseInt(DP.bolt_trips||0)||parseInt(DP.indrive_trips||0)||parseInt(DP.self_uber_trips||0)||parseInt(DP.self_bolt_trips||0)||parseInt(DP.self_indrive_trips||0)||0;
     var _isBN=!_anyTrips;
@@ -10884,7 +10886,7 @@ async function ownSaveCar(cid){
 async function ownUploadId(inp){
   var oid=inp.dataset.oid;
   var file=inp.files[0]; if(!file) return;
-  var verr=_validateUpload(file,'profile-photos','doc_id_url');
+  var verr=_validateUpload(file,'owner-id-docs','doc_id_url');
   if(verr){toast(verr);return;}
   var box=document.getElementById('oe-idbox-'+oid);
   if(box) box.classList.add('up');
