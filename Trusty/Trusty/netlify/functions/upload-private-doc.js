@@ -24,16 +24,20 @@ exports.handler = async function (event) {
     return { statusCode: 401, body: JSON.stringify({ error: 'Missing auth token' }) };
   }
 
-  // Verify the caller's JWT by making a request as that user.
-  // Pass the token as Authorization header on a service-role client — Supabase
-  // will resolve auth.uid() from the token while the service key grants admin access.
-  const sbVerify = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: { Authorization: `Bearer ${token}` } }
-  });
-  const { data: { user }, error: userErr } = await sbVerify.auth.getUser();
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    console.error('[upload-private-doc] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars');
+    return { statusCode: 500, body: JSON.stringify({ error: 'Server configuration error' }) };
+  }
 
+  // Service-role client — auth.getUser(jwt) validates the token without needing SUPABASE_ANON_KEY
+  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false }
+  });
+
+  const { data: userData, error: userErr } = await sb.auth.getUser(token);
+  const user = userData && userData.user;
   if (userErr || !user) {
+    console.error('[upload-private-doc] token verification failed:', userErr && userErr.message);
     return { statusCode: 401, body: JSON.stringify({ error: 'Invalid or expired token' }) };
   }
 
@@ -56,17 +60,12 @@ exports.handler = async function (event) {
     return { statusCode: 403, body: JSON.stringify({ error: 'Path must be in your own folder' }) };
   }
 
-  // Service-role client for the actual signed URL generation (no user token header)
-  const sbAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  });
-
-  const { data: signedData, error: signErr } = await sbAdmin.storage
+  const { data: signedData, error: signErr } = await sb.storage
     .from(bucket)
     .createSignedUploadUrl(storagePath);
 
   if (signErr || !signedData) {
-    console.error('createSignedUploadUrl error:', signErr && signErr.message);
+    console.error('[upload-private-doc] createSignedUploadUrl error:', signErr && signErr.message);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: signErr ? signErr.message : 'Failed to create signed URL' })
