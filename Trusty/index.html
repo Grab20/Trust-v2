@@ -4366,11 +4366,17 @@ async function regVerifyOtp() {
       }
     } else {
       earlyUid=su.data&&su.data.user?su.data.user.id:null;
-      // Set U immediately — don't wait for onAuthStateChange (async race)
       if(su.data&&su.data.user)U=su.data.user;
-      // If signUp returned no session (email confirmation required in Supabase settings),
-      // sign in immediately so the storage client has an auth token for uploads
+      // If signUp returned no session (Supabase "Confirm email" is ON),
+      // confirm the email server-side via service role key, then sign in to get a real session
       if(earlyUid&&!su.data.session){
+        try{
+          await fetch('/.netlify/functions/confirm-user-email',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({userId:earlyUid})
+          });
+        }catch(e){console.warn('confirm-user-email error:',e);}
         var si3=await sb.auth.signInWithPassword({email:rEmail,password:rPass});
         if(!si3.error&&si3.data&&si3.data.user){U=si3.data.user;earlyUid=si3.data.user.id;}
       }
@@ -4757,11 +4763,43 @@ async function _uploadPrivateDoc(bucket, path, file){
   } else if(file.type==='application/pdf'||(file.name.split('.').pop()||'').toLowerCase()==='pdf'){
     path=path.replace(/\.[^./]+$/,'')+'.pdf';
   }
-  var r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:compressed.type||file.type||'image/jpeg'});
+  var contentType=compressed.type||file.type||'image/jpeg';
+
+  // Get auth token — needed to authenticate the Netlify function call
+  var _sess=await sb.auth.getSession();
+  var _token=(_sess.data&&_sess.data.session&&_sess.data.session.access_token)||'';
+  if(!_token){
+    // No session yet — try once more after short delay (race on new signUp)
+    await new Promise(function(res){setTimeout(res,1200);});
+    _sess=await sb.auth.getSession();
+    _token=(_sess.data&&_sess.data.session&&_sess.data.session.access_token)||'';
+  }
+
+  if(_token){
+    // Use backend-issued signed upload URL so RLS is bypassed server-side
+    try{
+      var _sigResp=await fetch('/.netlify/functions/upload-private-doc',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_token},
+        body:JSON.stringify({bucket:bucket,path:path})
+      });
+      if(_sigResp.ok){
+        var _sigData=await _sigResp.json();
+        if(_sigData.token&&_sigData.path){
+          var _up=await sb.storage.from(bucket).uploadToSignedUrl(_sigData.path,_sigData.token,compressed,{contentType:contentType,upsert:true});
+          if(!_up.error&&_up.data){return _sigData.path;}
+          // Fall through to direct upload on signed-URL upload failure
+          console.warn('[upload] signed URL upload failed, falling back:',_up.error&&_up.error.message);
+        }
+      }
+    }catch(e){console.warn('[upload] signed URL request failed, falling back:',e);}
+  }
+
+  // Fallback: direct Supabase client upload (works when user has a valid session)
+  var r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:contentType});
   if(r.error){
-    // Retry once after short delay on transient storage errors
     await new Promise(function(res){setTimeout(res,1500);});
-    r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:compressed.type||file.type||'image/jpeg'});
+    r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:contentType});
   }
   if(r.error||!r.data){
     var _em=r.error?(r.error.message||r.error.error||JSON.stringify(r.error)):'no data';
@@ -4948,14 +4986,34 @@ async function doReg() {
       } else {
         var preExt=oidComp!==docFiles.oid_f?'jpg':(docFiles.oid_f.name.split('.').pop()||'jpg').toLowerCase();
         var prePath=uid+'/reg-id-'+Date.now()+'.'+preExt;
-        var preUp=await _uploadWithRetry('owner-id-docs',prePath,oidComp,{upsert:true,contentType:oidComp.type||docFiles.oid_f.type});
-        if(!preUp.error){ownerIdPath=prePath;}
-        else{
-          var _oem=preUp.error.message||preUp.error.error||JSON.stringify(preUp.error);
-          console.error('owner id upload failed after retry — error:'+_oem);
-          _logUploadEvent('storage_upload_failed',{role:'owner',field:'doc_id_url',fileType:oidComp.type,errorCode:_oem});
-          window._lastUploadError=_oem;
-          _ownerUploadFailed.push('ID/Passport');
+        var _oidCt=oidComp.type||docFiles.oid_f.type||'image/jpeg';
+        var _oidUploaded=false;
+        // Try signed URL upload (bypasses RLS — service role key used server-side)
+        try{
+          var _oidSess=await sb.auth.getSession();
+          var _oidTok=(_oidSess.data&&_oidSess.data.session&&_oidSess.data.session.access_token)||'';
+          if(_oidTok){
+            var _oidSigR=await fetch('/.netlify/functions/upload-private-doc',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+_oidTok},body:JSON.stringify({bucket:'owner-id-docs',path:prePath})});
+            if(_oidSigR.ok){
+              var _oidSigD=await _oidSigR.json();
+              if(_oidSigD.token&&_oidSigD.path){
+                var _oidUp2=await sb.storage.from('owner-id-docs').uploadToSignedUrl(_oidSigD.path,_oidSigD.token,oidComp,{contentType:_oidCt,upsert:true});
+                if(!_oidUp2.error&&_oidUp2.data){ownerIdPath=_oidSigD.path;_oidUploaded=true;}
+              }
+            }
+          }
+        }catch(e){console.warn('owner id signed upload error:',e);}
+        if(!_oidUploaded){
+          // Fallback: direct upload
+          var preUp=await _uploadWithRetry('owner-id-docs',prePath,oidComp,{upsert:true,contentType:_oidCt});
+          if(!preUp.error){ownerIdPath=prePath;}
+          else{
+            var _oem=preUp.error.message||preUp.error.error||JSON.stringify(preUp.error);
+            console.error('owner id upload failed after retry — error:'+_oem);
+            _logUploadEvent('storage_upload_failed',{role:'owner',field:'doc_id_url',fileType:oidComp.type,errorCode:_oem});
+            window._lastUploadError=_oem;
+            _ownerUploadFailed.push('ID/Passport');
+          }
         }
       }
     }
