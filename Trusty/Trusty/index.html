@@ -4813,6 +4813,12 @@ async function _uploadPrivateDoc(bucket, path, file){
 // Request a signed URL from the Netlify function
 async function _getSignedDocUrl(bucket, path, context){
   try{
+    // Try direct Supabase client first (works when caller has SELECT RLS on bucket)
+    var directR=await sb.storage.from(bucket).createSignedUrl(path,300);
+    if(directR.data&&directR.data.signedUrl) return directR.data.signedUrl;
+  }catch(e){}
+  try{
+    // Fallback: Netlify function (uses service role key, bypasses RLS)
     var session=await sb.auth.getSession();
     var token=(session.data&&session.data.session&&session.data.session.access_token)||'';
     if(!token) return null;
