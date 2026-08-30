@@ -4366,11 +4366,17 @@ async function regVerifyOtp() {
       }
     } else {
       earlyUid=su.data&&su.data.user?su.data.user.id:null;
-      // Set U immediately — don't wait for onAuthStateChange (async race)
       if(su.data&&su.data.user)U=su.data.user;
-      // If signUp returned no session (email confirmation required in Supabase settings),
-      // sign in immediately so the storage client has an auth token for uploads
+      // If signUp returned no session (Supabase "Confirm email" is ON),
+      // confirm the email server-side via service role key, then sign in to get a real session
       if(earlyUid&&!su.data.session){
+        try{
+          await fetch('/.netlify/functions/confirm-user-email',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({userId:earlyUid})
+          });
+        }catch(e){console.warn('confirm-user-email error:',e);}
         var si3=await sb.auth.signInWithPassword({email:rEmail,password:rPass});
         if(!si3.error&&si3.data&&si3.data.user){U=si3.data.user;earlyUid=si3.data.user.id;}
       }
