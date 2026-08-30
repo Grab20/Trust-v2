@@ -1374,7 +1374,7 @@ nav div::-webkit-scrollbar{display:none}
           <option value="5000">5,000+</option>
           <option value="10000">10,000+</option>
         </select>
-        <div id="d-trips-block" style="display:none;margin-top:8px;padding:10px 13px;background:#fff8e1;border:1.5px solid #E8A520;border-radius:8px;font-size:12px;color:#7a5200;font-weight:600">TrustMate currently requires drivers to have at least 50 verified e-hailing trips before joining the platform. Once you reach 50 verified trips, you&rsquo;re welcome to register.</div>
+        <div id="d-trips-block" style="display:none"></div>
       </div>
 
       <!-- 7. Safe Parking -->
@@ -1457,7 +1457,7 @@ nav div::-webkit-scrollbar{display:none}
         <div class="dbox" id="ddf"><input type="file" accept="image/*" onchange="mDoc('ddf','df',this)"><div style="font-size:18px">&#127947;</div><div style="font-size:10px;font-weight:600">Full Body *</div></div>
         <div class="dbox" id="ddh"><input type="file" accept="image/*" onchange="mDoc('ddh','dh',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Headshot *</div><div style="font-size:9px;color:var(--muted);margin-top:2px">&#128247; Photo or gallery</div></div>
         <div class="dbox" id="ddhid"><input type="file" accept="image/*" onchange="mDoc('ddhid','dhid',this)"><div style="font-size:18px">&#129334;</div><div style="font-size:10px;font-weight:600">Holding ID *</div><div style="font-size:9px;color:var(--muted);margin-top:3px;text-align:center">&#128247; Photo holding your ID</div></div>
-        <div class="dbox" id="ddl"><input type="file" accept="image/*,.pdf" onchange="mDoc('ddl','dl',this)"><div style="font-size:18px">&#128203;</div><div style="font-size:10px;font-weight:600">Licence *</div></div>
+        <div class="dbox" id="ddl"><input type="file" accept="image/*,.pdf" onchange="mDoc('ddl','dl',this)"><div style="font-size:18px">&#128203;</div><div style="font-size:10px;font-weight:600">Licence with PDP *</div></div>
         <div class="dbox" id="ddid"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddid','did',this)"><div style="font-size:18px">&#128196;</div><div style="font-size:10px;font-weight:600">ID/Passport *</div></div>
         <div class="dbox" id="ddpor" style="border-color:#dc2626;background:#fff8f8"><input type="file" accept="image/*,.pdf,application/pdf" onchange="mDoc('ddpor','por',this)"><div style="font-size:18px">&#127968;</div><div style="font-size:10px;font-weight:600;color:#dc2626">Proof of Residence &#10033; Required</div><div style="font-size:9px;color:#dc2626;margin-top:3px;text-align:center">Bank statement or utility bill</div></div>
       </div>
@@ -4640,7 +4640,7 @@ function reg2d() {
   }
   // Trips gate
   if(!tripsVal){showErr('reg-err','Please select your verified e-hailing trips.');return;}
-  if(tripsVal==='0'){showErr('reg-err','TrustMate requires at least 50 verified e-hailing trips to register.');return;}
+  // All e-hailing drivers accepted regardless of trip count
   eid('reg-s2-d').style.display='none'; eid('reg-s3').style.display='block';
   eid('rs2').className='sbi done'; eid('rs3').className='sbi on';
 }
@@ -4743,13 +4743,19 @@ async function _uploadPrivateDoc(bucket, path, file){
   var err=_validateUpload(file,bucket,'');
   if(err){toast(err);return null;}
   var compressed=await _compressImage(file);
+  if(compressed===null){return null;} // HEIC conversion failed
   if(compressed!==file){
     path=path.replace(/\.[^./]+$/,'')+'.jpg';
   } else if(file.type==='application/pdf'||(file.name.split('.').pop()||'').toLowerCase()==='pdf'){
     path=path.replace(/\.[^./]+$/,'')+'.pdf';
   }
   var r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:compressed.type||file.type||'image/jpeg'});
-  if(r.error||!r.data){console.error('[upload] private upload failed');return null;}
+  if(r.error){
+    // Retry once after short delay on transient storage errors
+    await new Promise(function(res){setTimeout(res,1500);});
+    r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:compressed.type||file.type||'image/jpeg'});
+  }
+  if(r.error||!r.data){console.error('[upload] private upload failed after retry',r.error);return null;}
   return path;
 }
 
@@ -14820,12 +14826,18 @@ async function adBoost(){
   var driverLikesMap={};
   var vehicleLikesMap={};
   if(driverBoostTargetIds.length){
-    var dlRes=await sb.from('shortlisted_drivers').select('driver_id,created_at,profiles!owner_id(full_name)').in('driver_id',driverBoostTargetIds).order('created_at',{ascending:false});
-    (dlRes.data||[]).forEach(function(l){if(!driverLikesMap[l.driver_id])driverLikesMap[l.driver_id]=[];driverLikesMap[l.driver_id].push((l.profiles&&l.profiles.full_name)||'Owner');});
+    var dlRes=await sb.from('shortlisted_drivers').select('driver_id,owner_id,created_at').in('driver_id',driverBoostTargetIds).order('created_at',{ascending:false});
+    var dlOwnerIds=Array.from(new Set((dlRes.data||[]).map(function(l){return l.owner_id;}).filter(Boolean)));
+    var dlOwnerMap={};
+    if(dlOwnerIds.length){var dlOpR=await sb.from('profiles').select('id,full_name').in('id',dlOwnerIds);(dlOpR.data||[]).forEach(function(p){dlOwnerMap[p.id]=p.full_name;});}
+    (dlRes.data||[]).forEach(function(l){if(!driverLikesMap[l.driver_id])driverLikesMap[l.driver_id]=[];driverLikesMap[l.driver_id].push(dlOwnerMap[l.owner_id]||'Owner');});
   }
   if(vehicleBoostTargetIds.length){
-    var vlRes=await sb.from('shortlisted_cars').select('car_id,driver_id,created_at,profiles!driver_id(full_name)').in('car_id',vehicleBoostTargetIds).order('created_at',{ascending:false});
-    (vlRes.data||[]).forEach(function(l){if(!vehicleLikesMap[l.car_id])vehicleLikesMap[l.car_id]=[];vehicleLikesMap[l.car_id].push((l.profiles&&l.profiles.full_name)||'Driver');});
+    var vlRes=await sb.from('shortlisted_cars').select('car_id,driver_id,created_at').in('car_id',vehicleBoostTargetIds).order('created_at',{ascending:false});
+    var vlDriverIds=Array.from(new Set((vlRes.data||[]).map(function(l){return l.driver_id;}).filter(Boolean)));
+    var vlDriverMap={};
+    if(vlDriverIds.length){var vlDrR=await sb.from('profiles').select('id,full_name').in('id',vlDriverIds);(vlDrR.data||[]).forEach(function(p){vlDriverMap[p.id]=p.full_name;});}
+    (vlRes.data||[]).forEach(function(l){if(!vehicleLikesMap[l.car_id])vehicleLikesMap[l.car_id]=[];vehicleLikesMap[l.car_id].push(vlDriverMap[l.driver_id]||'Driver');});
   }
   // Build payment lookup by boost_id
   var payByBoostId={};
