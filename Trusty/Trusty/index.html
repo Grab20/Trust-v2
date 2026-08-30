@@ -4360,16 +4360,18 @@ async function regVerifyOtp() {
         var si2=await sb.auth.signInWithPassword({email:rEmail,password:rPass});
         if(si2.error){showErr('reg-err','An account with this email already exists. Please <a href="#" onclick="showLogin();return false" style="color:var(--gm)">sign in</a> or <a href="#" onclick="showResetPw();return false" style="color:var(--gm)">reset your password</a>.');btn.textContent='Verify & Continue';btn.disabled=false;return;}
         earlyUid=si2.data&&si2.data.user?si2.data.user.id:null;
+        if(si2.data&&si2.data.user)U=si2.data.user;
       } else if(/rate.limit|too.many/i.test(su.error.message||'')){
         showErr('reg-err','Too many signup attempts. Please wait a few minutes and try again.');btn.textContent='Verify & Continue';btn.disabled=false;return;
       }
     } else {
       earlyUid=su.data&&su.data.user?su.data.user.id:null;
+      // Set U immediately — don't wait for onAuthStateChange (async race)
+      if(su.data&&su.data.user)U=su.data.user;
     }
     if(earlyUid){
       var now2=new Date().toISOString();
       await sb.from('profiles').upsert({id:earlyUid,email:rEmail,full_name:rName,role:rRole,phone:rPhone,terms_accepted:true,popia_accepted:true,terms_accepted_at:now2,popia_accepted_at:now2,terms_version:'1.0',tc_accepted_at:now2,tc_version:'July 2026',email_confirmed:true},{onConflict:'id'});
-      // Reload auth state so U is populated and saveRegLater() works
       await loadP();setNav();
     }
   }catch(earlyErr){console.warn('early signup error:',earlyErr);}
@@ -4912,8 +4914,10 @@ function _regProgress(msg){
 async function doReg() {
   clearErr('reg-err');
   var isD=rRole==='driver';
-  // Resolve uid early — owner pre-uploads use it for the storage path before the later uid assignment
+  // Resolve uid early — owner pre-uploads use it for the storage path
+  // Fall back to live session if U hasn't been set yet by onAuthStateChange (async race)
   var uid=U?U.id:null;
+  if(!uid){var _sess=await sb.auth.getSession();uid=_sess.data&&_sess.data.session?_sess.data.session.user.id:null;if(uid&&_sess.data.session)U=_sess.data.session.user;}
   if(!uid){showErr('reg-err','Session expired. Please refresh the page and try again.');return;}
   var ph=rPhone||(isD?eid('d-ph').value.trim():oCarData.ph)||'';
   var lo=isD?eid('d-lo').value.trim():oCarData.lo;
