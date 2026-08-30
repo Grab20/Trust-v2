@@ -9384,7 +9384,7 @@ async function adDrvJourney(){
 
   var [profR, dpR, appR, leR] = await Promise.all([
     sb.from('profiles').select('id,full_name,email,phone,created_at,admin_status').eq('role','driver').limit(2000),
-    sb.from('driver_profiles').select('user_id,status,trust_score,platforms,suspended,approved_at,removed_at,rejection_reason,doc_license_url,doc_license_path,doc_id_url,doc_id_path,doc_selfie_url,proof_of_residence_url,proof_of_residence_path,criminal_check_url,criminal_check_path,docs_verified,profile_views,years_driving,applications_paused').limit(2000),
+    sb.from('driver_profiles').select('user_id,status,trust_score,platforms,suspended,approved_at,removed_at,rejection_reason,doc_license_url,doc_license_path,doc_id_url,doc_id_path,doc_selfie_url,proof_of_residence_url,proof_of_residence_path,criminal_check_url,criminal_check_path,docs_verified,profile_views,years_driving,applications_paused,photo_headshot_url,photo_fullbody_url,photo_fullbody_path,photo_holding_id_url,photo_holding_id_path,id_number,license_number').limit(2000),
     sb.from('applications').select('id,driver_id,status,matched_at,unmatched_at').limit(5000),
     sb.from('login_events').select('user_id,created_at').eq('role','driver').limit(10000)
   ]);
@@ -10393,7 +10393,7 @@ async function adPendingDocs(){
         +'<ul style="margin:0;padding-left:18px;font-size:12px;color:#7a5200;line-height:2">'+missing.map(function(m){return '<li>'+m+'</li>';}).join('')+'</ul>'
         +'</div>':'')
       +igrid(['Email: <strong>'+(p.email||'-')+'</strong>','Phone: <strong>'+(p.phone||'-')+'</strong>','Location: <strong>'+(p.location||'-')+'</strong>','ID No: <strong>'+(d.id_number||'-')+'</strong>','Licence: <strong>'+(d.license_number||'-')+'</strong>'])
-      +'<div class="rcard-docs"><span class="dl">Docs uploaded:</span>'+dthumb(d.photo_headshot_url,'Headshot')+dthumbAuto(d.photo_fullbody_url,'driver-id-docs',d.photo_fullbody_path,'Full Body','admin')+dthumbAuto(d.photo_holding_id_url,'driver-id-docs',d.photo_holding_id_path,'Holding ID','admin')+dthumbAuto(d.doc_license_url,'driver-id-docs',d.doc_license_path,'Licence','admin')+dthumbAuto(d.doc_id_url,'driver-id-docs',d.doc_id_path,'ID/Passport','admin')+'</div>'
+      +'<div class="rcard-docs"><span class="dl">Docs uploaded:</span>'+dthumb(d.photo_headshot_url,'Headshot')+dthumbAuto(d.photo_fullbody_url,'driver-id-docs',d.photo_fullbody_path,'Full Body','admin')+dthumbAuto(d.photo_holding_id_url,'driver-id-docs',d.photo_holding_id_path,'Holding ID','admin')+dthumbAuto(d.doc_license_url,'driver-id-docs',d.doc_license_path,'Licence Front','admin')+dthumbAuto(d.doc_license_back_url,'driver-id-docs',d.doc_license_back_path,'Licence Back','admin')+dthumbAuto(d.doc_id_url,'driver-id-docs',d.doc_id_path,'ID/Passport','admin')+dthumbAuto(d.proof_of_residence_url,'driver-id-docs',d.proof_of_residence_path,'Proof of Residence','admin')+'</div>'
       +adDocUploads(d.id,d)
       +'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">Rejection reason (required when declining):</label><textarea id="rej-reason-'+d.id+'" placeholder="e.g. Blurry ID photo, expired licence..." style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;height:48px;resize:vertical"></textarea></div>'
       +'</div>'
@@ -12979,8 +12979,11 @@ async function adDriver360(dpId,userId){
     +dthumb(dp.photo_headshot_url,'Headshot')
     +dthumbAuto(dp.photo_fullbody_url,'driver-id-docs',dp.photo_fullbody_path,'Full Body','admin')
     +dthumbAuto(dp.photo_holding_id_url,'driver-id-docs',dp.photo_holding_id_path,'Holding ID','admin')
-    +dthumbAuto(dp.doc_license_url,'driver-id-docs',dp.doc_license_path,'Licence','admin')
+    +dthumbAuto(dp.doc_license_url,'driver-id-docs',dp.doc_license_path,'Licence Front','admin')
+    +dthumbAuto(dp.doc_license_back_url,'driver-id-docs',dp.doc_license_back_path,'Licence Back','admin')
     +dthumbAuto(dp.doc_id_url,'driver-id-docs',dp.doc_id_path,'ID/Passport','admin')
+    +dthumbAuto(dp.proof_of_residence_url,'driver-id-docs',dp.proof_of_residence_path,'Proof of Residence','admin')
+    +dthumbAuto(dp.criminal_check_url,'driver-id-docs',dp.criminal_check_path,'Criminal Check','admin')
     +'</div></div></div>';
 
   // Profile Viewers (admin only)

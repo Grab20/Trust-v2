@@ -9,8 +9,8 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const SUPABASE_URL        = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_URL         = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -75,10 +75,13 @@ exports.handler = async function (event) {
   }
 
   const sbService = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
-  const sbUser    = createClient(SUPABASE_URL, process.env.SUPABASE_ANON_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 
-  // Verify JWT and get caller identity
-  const { data: { user }, error: authErr } = await sbUser.auth.getUser(token);
+  // Verify JWT using service role client with user token — no SUPABASE_ANON_KEY needed
+  const sbVerify = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } }
+  });
+  const { data: { user }, error: authErr } = await sbVerify.auth.getUser();
   if (authErr || !user) return err(401, 'Unauthorized', 'invalid_token');
 
   const callerId = user.id;
