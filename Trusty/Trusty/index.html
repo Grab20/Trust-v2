@@ -4916,13 +4916,15 @@ async function upFile(bucket,path,file,field){
   var err=_validateUpload(file,bucket,field||'');
   if(err){toast(err);return null;}
   var compressed=await _compressImage(file);
+  if(compressed===null){return null;} // HEIC conversion failed
   if(compressed!==file){
     // compressed to jpeg — strip any existing extension and use .jpg
     path=path.replace(/\.[^./]+$/,'')+'.jpg';
   } else if(file.type==='application/pdf'||(file.name.split('.').pop()||'').toLowerCase()==='pdf'){
     path=path.replace(/\.[^./]+$/,'')+'.pdf';
   }
-  var r=await sb.storage.from(bucket).upload(path,compressed,{upsert:true,contentType:compressed.type||file.type||'image/jpeg'});
+  var ct=compressed.type||file.type||'image/jpeg';
+  var r=await _uploadWithRetry(bucket,path,compressed,{upsert:true,contentType:ct});
   if(r.error||!r.data){console.error('upload fail',r.error);return null;}
   return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
@@ -4971,9 +4973,18 @@ async function doReg() {
   var isD=rRole==='driver';
   // Resolve uid early — owner pre-uploads use it for the storage path
   // Fall back to live session if U hasn't been set yet by onAuthStateChange (async race)
-  var uid=U?U.id:null;
-  if(!uid){var _sess=await sb.auth.getSession();uid=_sess.data&&_sess.data.session?_sess.data.session.user.id:null;if(uid&&_sess.data.session)U=_sess.data.session.user;}
+  // Always verify there is a real active session — U.id alone is not enough (can be stale after signUp with no session)
+  var _activeSess=await sb.auth.getSession();
+  var uid=(_activeSess.data&&_activeSess.data.session)?_activeSess.data.session.user.id:(U?U.id:null);
+  if(_activeSess.data&&_activeSess.data.session)U=_activeSess.data.session.user;
   if(!uid){showErr('reg-err','Session expired. Please refresh the page and try again.');return;}
+  // If we have a uid from U but no live session, attempt sign-in to restore it
+  if(!(_activeSess.data&&_activeSess.data.session)&&uid){
+    try{
+      var _rsi=await sb.auth.signInWithPassword({email:rEmail,password:rPass});
+      if(!_rsi.error&&_rsi.data&&_rsi.data.session){U=_rsi.data.user;uid=_rsi.data.user.id;}
+    }catch(e){}
+  }
   var ph=rPhone||(isD?eid('d-ph').value.trim():oCarData.ph)||'';
   var lo=isD?eid('d-lo').value.trim():oCarData.lo;
   var wa=isD?(eid('d-wa').value.trim()||null):(oCarData.wa||null);
