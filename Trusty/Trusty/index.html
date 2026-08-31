@@ -10703,7 +10703,7 @@ async function adReg(){
         +'<label style="font-size:10px;font-weight:600;color:#dc2626;display:block;margin-bottom:4px">&#9888; Rejection reason (required to decline):</label>'
         +'<textarea id="rej-reason-'+d.id+'" placeholder="e.g. Blurry ID photo, expired licence..." style="width:100%;padding:7px 10px;border:1.5px solid #fca5a5;border-radius:6px;font-size:12px;font-family:inherit;height:52px;resize:vertical;box-sizing:border-box"></textarea>'
         +'</div>'
-        +'<div class="rcard-acts"><button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button><button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Decline</button><button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" onclick="adMoveToPendingDocs(\''+d.id+'\')">&#128196; Move to Pending Docs</button><button class="btn btn-out btn-sm" style="font-size:11px" onclick="adminBrevoSync(\''+d.user_id+'\',this)">&#128233; Sync to Brevo</button><input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
+        +'<div class="rcard-acts"><button class="btn btn-sm" style="background:#1d4ed8;color:#fff;border-color:#1d4ed8;font-weight:700" onclick="adMoveToBN(\''+d.id+'\')">&#127381; Approve to B/N</button><button class="btn btn-gm btn-sm" onclick="adSetDrv(\''+d.id+'\',\'approved\')">Approve</button><button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Decline</button><button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" onclick="adMoveToPendingDocs(\''+d.id+'\')">&#128196; Move to Pending Docs</button><button class="btn btn-out btn-sm" style="font-size:11px" onclick="adminBrevoSync(\''+d.user_id+'\',this)">&#128233; Sync to Brevo</button><input id="note-'+d.id+'" placeholder="Internal note..." style="flex:1;min-width:120px;padding:6px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit;outline:none"/></div></div>';
     }).join('');
   }
   if(pOwns.length){
@@ -10884,11 +10884,11 @@ async function adSetDrv(dpId,status){
   var r=await sb.from('driver_profiles').update(update).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
-  toast(status==='approved'?'Driver approved! Welcome email sent.':'Driver rejected. Rejection email sent.');
+  toast(status==='approved'?'Driver approved.':'Driver rejected. Rejection email sent.');
   // Sync to Brevo using user_id from the driver_profiles row
   var _drvUserId=(r.data[0]&&r.data[0].user_id)||null;
   if(_drvUserId) _brevoSync(_drvUserId, 'driver_status_change');
-  adReg();adPendingDocs();adOv();adDrv();
+  adReg();adPendingDocs();adOv();adDrv();adBnd();
 }
 async function adMoveToBN(dpId){
   var c=document.getElementById('rc-'+dpId);
