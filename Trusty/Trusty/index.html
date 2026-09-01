@@ -3294,6 +3294,7 @@ function applyForCar(btn) {
 
 function drvHTML(d) {
   var p=d.profile||{}, name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
+  var isBN=!parseInt(d.uber_trips||0)&&!parseInt(d.bolt_trips||0)&&!parseInt(d.indrive_trips||0);
   var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,300,85)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center top"/>':ini(name);
   var vbadge=((d.doc_id_url||d.doc_id_path)&&(d.doc_license_url||d.doc_license_path))?'<span class="vbadge">&#10003; Verified</span>':'';
   var plats=(d.platforms||[]).map(pb).join('')||'<span style="font-size:10px;color:var(--muted)">Not set</span>';
@@ -3322,11 +3323,11 @@ function drvHTML(d) {
       return inPlatforms||hasData;
     })
     .map(function(pl){
-      var t=d[pl.k+'_trips']||'N/V'; var r=d[pl.k+'_rating']||'N/V';
+      var r=d[pl.k+'_rating']||'N/V';
       return '<div style="flex:1;min-width:70px;padding:8px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);text-align:center">'
         +'<div style="display:inline-block;background:'+pl.bg+';color:#fff;font-size:9px;font-weight:800;padding:1px 7px;border-radius:4px;margin-bottom:5px">'+pl.n+'</div>'
         +'<div style="font-size:16px;font-weight:800;color:#1a1a18">'+r+' <span style="color:#E8A520;font-size:13px">&#11088;</span></div>'
-        +'<div style="font-size:10px;color:var(--muted)">'+t+' trips</div>'
+        +(isBN?'':'<div style="font-size:10px;color:var(--muted)">'+(d[pl.k+'_trips']||'N/V')+' trips</div>')
         +'</div>';
     }).join('');
   var scoreColour=si[1]==='sc-h'?'var(--gm)':si[1]==='sc-m'?'#7c5c00':si[1]==='sc-o'?'#9a3412':'#8b2020';
@@ -3360,13 +3361,13 @@ function drvHTML(d) {
     +(d.weekly_checkin_amount||d.deposit_amount!=null?'<div style="font-size:11px;font-weight:600;color:var(--g);margin-top:3px">&#128176; '+(d.weekly_checkin_amount?'R'+Number(d.weekly_checkin_amount).toLocaleString()+'/wk':'')+((d.weekly_checkin_amount&&d.deposit_amount!=null)?' · ':'')+( d.deposit_amount?'Deposit: R'+Number(d.deposit_amount).toLocaleString():d.deposit_amount===0?'No deposit':'')+'</div>':'')
     +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'+plats+'</div>'
     +'</div>'
-    // TrustScore pill — right aligned
-    +'<div style="flex-shrink:0;text-align:center;min-width:72px">'
+    // TrustScore pill — right aligned (hidden for B/N drivers)
+    +(isBN?'':'<div style="flex-shrink:0;text-align:center;min-width:72px">'
     +'<div style="font-size:24px;font-weight:900;color:'+scoreColour+';line-height:1">'+s+'</div>'
     +'<div style="font-size:9px;color:var(--muted);font-weight:600;line-height:1;margin-bottom:2px">/100</div>'
     +starRow(s)
     +'<div style="font-size:10px;font-weight:700;color:'+scoreColour+'">'+si[3]+'</div>'
-    +'</div>'
+    +'</div>')
     +'</div>'
     // Platform stats — inline row, compact
     +(platRow?'<div style="display:flex;gap:6px;margin-bottom:0;overflow-x:auto;padding-bottom:2px">'+platRow+'</div>':'')
@@ -3914,6 +3915,7 @@ async function loadProfPage(dpId) {
     var t=parseInt(d[pl.k+'_trips'])||0; totalTrips+=t;
     var r=parseFloat(d[pl.k+'_rating'])||0; if(r>0){ratingSum+=r;ratingCnt++;}
   });
+  var isBN=!parseInt(d.uber_trips||0)&&!parseInt(d.bolt_trips||0)&&!parseInt(d.indrive_trips||0);
   var tripsVerified=totalTrips>0;
   if(!totalTrips)totalTrips=parseInt(d.declared_trips||0)||0;
   var avgPlatRating=ratingCnt>0?(ratingSum/ratingCnt).toFixed(2):null;
@@ -3968,18 +3970,21 @@ async function loadProfPage(dpId) {
 
   // ── Platform cards (enhanced) ──
   var platCardsHTML=(function(){
-    var cards=platDefs.filter(function(pl){return d[pl.k+'_trips']||d[pl.k+'_rating'];}).map(function(pl){
+    var cards=platDefs.filter(function(pl){
+      var inPlatforms=(d.platforms||[]).some(function(pp){return pp.toLowerCase()===pl.n.toLowerCase()||(pp==='inDrive'&&pl.k==='indrive');});
+      return isBN?inPlatforms:!!(d[pl.k+'_trips']||d[pl.k+'_rating']);
+    }).map(function(pl){
       var trips=d[pl.k+'_trips']?parseInt(d[pl.k+'_trips']):null;
       var rating=d[pl.k+'_rating']?parseFloat(d[pl.k+'_rating']):null;
-      var sinceYr=null; // e_hailing_registration_date removed
+      var sinceYr=null;
       return '<div style="display:flex;align-items:stretch;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'
         +'<div style="background:'+pl.bg+';padding:12px 16px;min-width:88px;text-align:center;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">'
         +'<div style="font-size:14px;font-weight:800;color:'+pl.col+'">'+pl.n+'</div>'
-        +'<div style="font-size:9px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 6px">&#10003; Verified</div>'
+        +'<div style="font-size:9px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 6px">&#10003; Registered</div>'
         +'</div>'
         +'<div style="padding:12px 16px;flex:1;display:flex;flex-direction:column;gap:5px;justify-content:center">'
         +(rating!==null?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">&#11088;</span><span style="font-size:13px;font-weight:700;color:#1a1a18">'+rating.toFixed(2)+'</span><span style="font-size:11px;color:var(--muted)">avg rating</span></div>':'')
-        +(trips!==null?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">&#128663;</span><span style="font-size:13px;font-weight:700;color:#1a1a18">'+trips.toLocaleString()+'</span><span style="font-size:11px;color:var(--muted)">verified trips</span></div>':'')
+        +(!isBN&&trips!==null?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">&#128663;</span><span style="font-size:13px;font-weight:700;color:#1a1a18">'+trips.toLocaleString()+'</span><span style="font-size:11px;color:var(--muted)">verified trips</span></div>':'')
         +(sinceYr?'<div style="font-size:11px;color:var(--muted);margin-top:2px">Since '+sinceYr+'</div>':'')
         +'</div>'
         +'</div>';
@@ -4050,8 +4055,8 @@ async function loadProfPage(dpId) {
     +'<p style="font-size:12px;color:var(--muted);margin-bottom:'+(isMatchedWithDriver?'4':'10')+'px">&#128205; '+(function(){var loc=p.location||'';if(!loc)return'Not set';var parts=loc.split(',').map(function(s){return s.trim();}).filter(Boolean);return parts.length>=2?parts[parts.length-2]+', '+parts[parts.length-1]:parts[parts.length-1]||'Not set';})()+'</p>'
     +(isMatchedWithDriver&&(p.phone||p.whatsapp||p.email)?'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(p.phone?'&#128222; '+p.phone+' ':'')+( p.whatsapp?'&nbsp;&middot; &#128241; '+p.whatsapp+' ':'')+( p.email?'&nbsp;&middot; &#9993; '+p.email:'')+'</p>':'')
     +(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after matching</p>':'')
-    +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>'
-    +tsBreakLink
+    +(isBN?'':'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>')
+    +(isBN?'':tsBreakLink)
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+btns+'</div></div></div>'
 
     +summaryHTML
