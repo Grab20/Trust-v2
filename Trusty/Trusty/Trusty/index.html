@@ -1633,6 +1633,7 @@ nav div::-webkit-scrollbar{display:none}
       <button class="atab" id="atab-mkt" onclick="adNav('mkt')">&#127981; Health</button>
       <button class="atab" id="atab-reg" onclick="adNav('reg')">&#128226; New Regs</button>
       <button class="atab" id="atab-inc" onclick="adNav('inc')">&#9888; Incomplete</button>
+      <button class="atab" id="atab-dorm" onclick="adNav('dorm')">&#128564; Dormant</button>
       <button class="atab" id="atab-bnd" onclick="adNav('bnd')">&#127381; B/N</button>
       <button class="atab" id="atab-pdoc" onclick="adNav('pdoc')">&#128196; Docs</button>
       <button class="atab" id="atab-drv" onclick="adNav('drv')">&#128100; Drivers</button>
@@ -1680,6 +1681,10 @@ nav div::-webkit-scrollbar{display:none}
       <div class="adm-nav" id="an-inc" onclick="adNav('inc')">
         <span class="adm-nav-icon">&#9888;</span> Incomplete Profiles
         <span class="adm-nav-badge amber" id="ibadge2" style="display:none">0</span>
+      </div>
+      <div class="adm-nav" id="an-dorm" onclick="adNav('dorm')">
+        <span class="adm-nav-icon">&#128564;</span> Dormant Drivers
+        <span class="adm-nav-badge" id="dormbadge" style="display:none;background:#6b7280">0</span>
       </div>
       <div class="adm-nav" id="an-bnd" onclick="adNav('bnd')">
         <span class="adm-nav-icon">&#127381;</span> B N Drivers
@@ -1762,6 +1767,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="adm-panel" id="ap-mkt"></div>
       <div class="adm-panel" id="ap-reg"></div>
       <div class="adm-panel" id="ap-inc"></div>
+      <div class="adm-panel" id="ap-dorm"></div>
       <div class="adm-panel" id="ap-bnd"></div>
       <div class="adm-panel" id="ap-pdoc"></div>
       <div class="adm-panel" id="ap-drv"></div>
@@ -3294,6 +3300,7 @@ function applyForCar(btn) {
 
 function drvHTML(d) {
   var p=d.profile||{}, name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
+  var isBN=!parseInt(d.uber_trips||0)&&!parseInt(d.bolt_trips||0)&&!parseInt(d.indrive_trips||0);
   var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,300,85)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center top"/>':ini(name);
   var vbadge=((d.doc_id_url||d.doc_id_path)&&(d.doc_license_url||d.doc_license_path))?'<span class="vbadge">&#10003; Verified</span>':'';
   var plats=(d.platforms||[]).map(pb).join('')||'<span style="font-size:10px;color:var(--muted)">Not set</span>';
@@ -3322,11 +3329,11 @@ function drvHTML(d) {
       return inPlatforms||hasData;
     })
     .map(function(pl){
-      var t=d[pl.k+'_trips']||'N/V'; var r=d[pl.k+'_rating']||'N/V';
+      var r=d[pl.k+'_rating']||'N/V';
       return '<div style="flex:1;min-width:70px;padding:8px;background:#f8f7f4;border-radius:8px;border:1px solid var(--border);text-align:center">'
         +'<div style="display:inline-block;background:'+pl.bg+';color:#fff;font-size:9px;font-weight:800;padding:1px 7px;border-radius:4px;margin-bottom:5px">'+pl.n+'</div>'
         +'<div style="font-size:16px;font-weight:800;color:#1a1a18">'+r+' <span style="color:#E8A520;font-size:13px">&#11088;</span></div>'
-        +'<div style="font-size:10px;color:var(--muted)">'+t+' trips</div>'
+        +(isBN?'':'<div style="font-size:10px;color:var(--muted)">'+(d[pl.k+'_trips']||'N/V')+' trips</div>')
         +'</div>';
     }).join('');
   var scoreColour=si[1]==='sc-h'?'var(--gm)':si[1]==='sc-m'?'#7c5c00':si[1]==='sc-o'?'#9a3412':'#8b2020';
@@ -3360,13 +3367,13 @@ function drvHTML(d) {
     +(d.weekly_checkin_amount||d.deposit_amount!=null?'<div style="font-size:11px;font-weight:600;color:var(--g);margin-top:3px">&#128176; '+(d.weekly_checkin_amount?'R'+Number(d.weekly_checkin_amount).toLocaleString()+'/wk':'')+((d.weekly_checkin_amount&&d.deposit_amount!=null)?' · ':'')+( d.deposit_amount?'Deposit: R'+Number(d.deposit_amount).toLocaleString():d.deposit_amount===0?'No deposit':'')+'</div>':'')
     +'<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'+plats+'</div>'
     +'</div>'
-    // TrustScore pill — right aligned
-    +'<div style="flex-shrink:0;text-align:center;min-width:72px">'
+    // TrustScore pill — right aligned (hidden for B/N drivers)
+    +(isBN?'':'<div style="flex-shrink:0;text-align:center;min-width:72px">'
     +'<div style="font-size:24px;font-weight:900;color:'+scoreColour+';line-height:1">'+s+'</div>'
     +'<div style="font-size:9px;color:var(--muted);font-weight:600;line-height:1;margin-bottom:2px">/100</div>'
     +starRow(s)
     +'<div style="font-size:10px;font-weight:700;color:'+scoreColour+'">'+si[3]+'</div>'
-    +'</div>'
+    +'</div>')
     +'</div>'
     // Platform stats — inline row, compact
     +(platRow?'<div style="display:flex;gap:6px;margin-bottom:0;overflow-x:auto;padding-bottom:2px">'+platRow+'</div>':'')
@@ -3914,6 +3921,7 @@ async function loadProfPage(dpId) {
     var t=parseInt(d[pl.k+'_trips'])||0; totalTrips+=t;
     var r=parseFloat(d[pl.k+'_rating'])||0; if(r>0){ratingSum+=r;ratingCnt++;}
   });
+  var isBN=!parseInt(d.uber_trips||0)&&!parseInt(d.bolt_trips||0)&&!parseInt(d.indrive_trips||0);
   var tripsVerified=totalTrips>0;
   if(!totalTrips)totalTrips=parseInt(d.declared_trips||0)||0;
   var avgPlatRating=ratingCnt>0?(ratingSum/ratingCnt).toFixed(2):null;
@@ -3968,18 +3976,21 @@ async function loadProfPage(dpId) {
 
   // ── Platform cards (enhanced) ──
   var platCardsHTML=(function(){
-    var cards=platDefs.filter(function(pl){return d[pl.k+'_trips']||d[pl.k+'_rating'];}).map(function(pl){
+    var cards=platDefs.filter(function(pl){
+      var inPlatforms=(d.platforms||[]).some(function(pp){return pp.toLowerCase()===pl.n.toLowerCase()||(pp==='inDrive'&&pl.k==='indrive');});
+      return isBN?inPlatforms:!!(d[pl.k+'_trips']||d[pl.k+'_rating']);
+    }).map(function(pl){
       var trips=d[pl.k+'_trips']?parseInt(d[pl.k+'_trips']):null;
       var rating=d[pl.k+'_rating']?parseFloat(d[pl.k+'_rating']):null;
-      var sinceYr=null; // e_hailing_registration_date removed
+      var sinceYr=null;
       return '<div style="display:flex;align-items:stretch;border-radius:10px;overflow:hidden;border:1px solid var(--border)">'
         +'<div style="background:'+pl.bg+';padding:12px 16px;min-width:88px;text-align:center;border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">'
         +'<div style="font-size:14px;font-weight:800;color:'+pl.col+'">'+pl.n+'</div>'
-        +'<div style="font-size:9px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 6px">&#10003; Verified</div>'
+        +'<div style="font-size:9px;font-weight:700;color:var(--gm);background:var(--gs);border:1px solid var(--gm);border-radius:999px;padding:1px 6px">&#10003; Registered</div>'
         +'</div>'
         +'<div style="padding:12px 16px;flex:1;display:flex;flex-direction:column;gap:5px;justify-content:center">'
         +(rating!==null?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">&#11088;</span><span style="font-size:13px;font-weight:700;color:#1a1a18">'+rating.toFixed(2)+'</span><span style="font-size:11px;color:var(--muted)">avg rating</span></div>':'')
-        +(trips!==null?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">&#128663;</span><span style="font-size:13px;font-weight:700;color:#1a1a18">'+trips.toLocaleString()+'</span><span style="font-size:11px;color:var(--muted)">verified trips</span></div>':'')
+        +(!isBN&&trips!==null?'<div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px">&#128663;</span><span style="font-size:13px;font-weight:700;color:#1a1a18">'+trips.toLocaleString()+'</span><span style="font-size:11px;color:var(--muted)">verified trips</span></div>':'')
         +(sinceYr?'<div style="font-size:11px;color:var(--muted);margin-top:2px">Since '+sinceYr+'</div>':'')
         +'</div>'
         +'</div>';
@@ -4050,8 +4061,8 @@ async function loadProfPage(dpId) {
     +'<p style="font-size:12px;color:var(--muted);margin-bottom:'+(isMatchedWithDriver?'4':'10')+'px">&#128205; '+(function(){var loc=p.location||'';if(!loc)return'Not set';var parts=loc.split(',').map(function(s){return s.trim();}).filter(Boolean);return parts.length>=2?parts[parts.length-2]+', '+parts[parts.length-1]:parts[parts.length-1]||'Not set';})()+'</p>'
     +(isMatchedWithDriver&&(p.phone||p.whatsapp||p.email)?'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(p.phone?'&#128222; '+p.phone+' ':'')+( p.whatsapp?'&nbsp;&middot; &#128241; '+p.whatsapp+' ':'')+( p.email?'&nbsp;&middot; &#9993; '+p.email:'')+'</p>':'')
     +(U&&!isMatchedWithDriver?'<p style="font-size:11px;background:#fff8e1;border:1px solid #E8A520;border-radius:6px;padding:5px 10px;color:#7a5200;margin-bottom:10px;display:inline-block">&#128274; Contact details visible after matching</p>':'')
-    +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>'
-    +tsBreakLink
+    +(isBN?'':'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px"><div class="tp '+si[0]+'" style="padding:4px 10px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;max-width:100%"><span class="tsc '+si[1]+'" style="font-size:16px">'+s+'/100</span>'+starRow(s,13)+'<span class="tlb '+si[2]+'" style="font-size:11px">'+si[3]+'</span></div>'+(avg?'<span style="font-size:13px;color:var(--muted);align-self:center">&#11088; '+avg+' ('+revs.length+')</span>':'')+'</div>')
+    +(isBN?'':tsBreakLink)
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+btns+'</div></div></div>'
 
     +summaryHTML
@@ -5520,6 +5531,11 @@ async function pOv() {
       +'<p style="font-size:13px;color:#7a5200;margin-bottom:12px">Your profile is missing required documents. Please upload all documents to complete your registration and submit for approval.</p>'
       +'<button class="btn btn-gm btn-sm" onclick="dpanel(\'dc\')">&#128196; Upload Documents Now</button>'
       +'</div>';
+    if(DP.status==='dormant')html+='<div style="background:#f8fafc;border:1.5px solid #6b7280;border-radius:10px;padding:16px 18px;margin-bottom:16px">'
+      +'<div style="font-weight:700;color:#374151;font-size:15px;margin-bottom:6px">&#128564; Account Paused</div>'
+      +'<p style="font-size:13px;color:#4b5563;margin-bottom:12px">Your application is currently on hold. Please upload your documents so we can continue processing your registration.</p>'
+      +'<button class="btn btn-gm btn-sm" onclick="dpanel(\'dc\')">&#128196; Upload Documents</button>'
+      +'</div>';
     if(DP.status==='rejected')html+='<div style="background:#fef2f2;border:1.5px solid #dc2626;border-radius:10px;padding:16px 18px;margin-bottom:16px">'
       +'<div style="font-weight:700;color:#dc2626;font-size:15px;margin-bottom:6px">&#10060; Application Declined</div>'
       +(DP.rejection_reason?'<div style="font-size:13px;color:#7f1d1d;background:#fff;border:1px solid #fca5a5;border-radius:6px;padding:10px 12px;margin-bottom:12px"><strong>Reason:</strong> '+esc(DP.rejection_reason)+'</div>':'')
@@ -6603,8 +6619,8 @@ async function pDc() {
     }
   }).join('')+'</div>'
   +'<div id="dc-cam-wrap"></div>'
-  // Show "Submit for Review" if driver is incomplete but has all required docs
-  +(DP.status==='incomplete'?(function(){
+  // Show "Submit for Review" if driver is incomplete/dormant but has all required docs
+  +(( DP.status==='incomplete'||DP.status==='dormant')?(function(){
     var hasRequired=!!(DP.photo_headshot_url&&(DP.photo_holding_id_url||DP.photo_holding_id_path)&&(DP.doc_license_url||DP.doc_license_path)&&(DP.doc_id_url||DP.doc_id_path)&&(DP.proof_of_residence_url||DP.proof_of_residence_path));
     if(hasRequired){return '<div style="margin-top:16px;background:#f0faf2;border:1.5px solid var(--gm);border-radius:10px;padding:14px 16px">'
       +'<div style="font-size:13px;font-weight:700;color:var(--gm);margin-bottom:4px">&#127881; All required documents uploaded!</div>'
@@ -9333,6 +9349,7 @@ function adNav(name) {
   if(name==='mkt')   adMarketplace();
   if(name==='reg')   adReg();
   if(name==='inc')   adInc();
+  if(name==='dorm')  adDorm();
   if(name==='bnd')   adBnd();
   if(name==='pdoc')  adPendingDocs();
   if(name==='drv')   adDrv();
@@ -10419,6 +10436,7 @@ async function adPendingDocs(){
       +'<button class="btn btn-sm" style="background:#1d4ed8;color:#fff;border-color:#1d4ed8" onclick="adMoveToBN(\''+d.id+'\')">&#127381; Move to B/N</button>'
       +'<button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Decline</button>'
       +'<button class="btn btn-out btn-sm" onclick="adPendingDocRemind(\''+d.id+'\')">&#128276; Remind</button>'
+      +'<button class="btn btn-out btn-sm" style="background:#f1f5f9;border-color:#6b7280;color:#374151" onclick="adMoveToDormant(\''+d.id+'\',\'pdoc\')">&#128564; Move to Dormant</button>'
       +'</div></div>';
   }).join('');
   html+='</div>';
@@ -10548,6 +10566,7 @@ async function adInc(){
         +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
         +'<button class="btn btn-g btn-sm" data-did="'+d.id+'" data-uid="'+d.user_id+'" onclick="incSave(this.dataset.did,this.dataset.uid)">&#128190; Save Changes</button>'
         +'<button class="btn btn-out btn-sm" data-did="'+d.id+'" onclick="incPromote(this.dataset.did)">&#8593; Move to New Registrations</button>'
+        +'<button class="btn btn-out btn-sm" style="background:#f1f5f9;border-color:#6b7280;color:#374151" data-did="'+d.id+'" onclick="adMoveToDormant(this.dataset.did,\'inc\')">&#128564; Move to Dormant</button>'
         +'<button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" data-did="'+d.id+'" onclick="adSendIncompleteReminder(this.dataset.did,this)">&#128140; Send Reminder Email</button>'
         +'</div>'
         +'<div class="shd" style="margin-top:4px">Internal Note</div>'
@@ -11616,6 +11635,67 @@ function adRegSearch(){
 function adIncSearch(){
   var q=((document.getElementById('adm-inc-q')||{}).value||'').toLowerCase();
   document.querySelectorAll('#ap-inc .rcard').forEach(function(card){
+    card.style.display=(!q||card.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
+  });
+}
+// ── DORMANT DRIVERS ─────────────────────────────────
+async function adMoveToDormant(dpId,from){
+  var c=document.getElementById('inc-edit-'+dpId)||document.getElementById('pdoc-'+dpId);
+  if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
+  var r=await sb.from('driver_profiles').update({status:'dormant'}).eq('id',dpId).select();
+  if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
+  toast('Driver moved to Dormant.');
+  if(from==='pdoc'){adPendingDocs();adOv();}
+  else{adInc();adOv();}
+}
+async function adMoveFromDormant(dpId,to){
+  var c=document.getElementById('dorm-'+dpId);
+  if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
+  var newStatus=to==='inc'?'incomplete':'pending_docs';
+  var r=await sb.from('driver_profiles').update({status:newStatus}).eq('id',dpId).select();
+  if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
+  toast('Driver moved back to '+(to==='inc'?'Incomplete':'Pending Documents')+'.');
+  adDorm();adOv();
+}
+async function adDorm(){
+  var el=document.getElementById('ap-dorm');
+  if(!el)return;
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">&#128564; Dormant Drivers</div></div>'+adSpin();
+  var dr=await sb.from('driver_profiles').select('*').eq('status','dormant').order('created_at',{ascending:false});
+  var dps=dr.data||[];
+  var badge=document.getElementById('dormbadge');
+  if(badge){badge.textContent=dps.length;badge.style.display=dps.length?'inline':'none';}
+  if(!dps.length){
+    el.innerHTML='<div class="adm-pg"><div class="ptitle">&#128564; Dormant Drivers</div>'+empty('&#128564;','No dormant drivers.')+'</div>';
+    return;
+  }
+  var uids=dps.map(function(d){return d.user_id;});
+  var pr=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location').in('id',uids);
+  var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
+  var html='<div class="adm-pg"><div class="ptitle">&#128564; Dormant Drivers</div>'
+    +'<div class="psub">'+dps.length+' driver'+(dps.length!==1?'s':'')+' moved to dormant &mdash; awaiting contact or document upload</div>'
+    +'<div style="margin-bottom:10px"><input id="adm-dorm-q" type="text" placeholder="&#128269; Search name, email..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adDormSearch()"/></div>';
+  html+=dps.map(function(d){
+    var p=pm[d.user_id]||{};
+    var daysSince=Math.floor((Date.now()-new Date(d.created_at).getTime())/864e5);
+    return '<div class="rcard" id="dorm-'+d.id+'" style="border-left:4px solid #6b7280">'
+      +'<div class="rcard-head">'
+      +'<div><div style="font-size:14px;font-weight:700">'+esc(p.full_name||'Unknown')+'</div>'
+      +'<div style="font-size:12px;color:var(--muted)">'+esc(p.email||'-')+(p.phone?' &middot; '+esc(p.phone):'')+(p.whatsapp?' &middot; &#128240; '+esc(p.whatsapp):'')+(p.location?' &middot; &#128205;'+esc(p.location):'')+'</div></div>'
+      +'<div style="text-align:right"><span class="pill" style="background:#6b728020;color:#374151;border:1px solid #6b7280">Dormant</span><div style="font-size:11px;color:var(--muted);margin-top:4px">'+daysSince+'d ago</div></div>'
+      +'</div>'
+      +'<div class="rcard-acts">'
+      +'<button class="btn btn-out btn-sm" data-did="'+d.id+'" onclick="adMoveFromDormant(this.dataset.did,\'inc\')">&#8593; Move to Incomplete</button>'
+      +'<button class="btn btn-out btn-sm" data-did="'+d.id+'" onclick="adMoveFromDormant(this.dataset.did,\'pdoc\')">&#128203; Move to Pending Docs</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  html+='</div>';
+  el.innerHTML=html;
+}
+function adDormSearch(){
+  var q=((document.getElementById('adm-dorm-q')||{}).value||'').toLowerCase();
+  document.querySelectorAll('#ap-dorm .rcard').forEach(function(card){
     card.style.display=(!q||card.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
   });
 }
