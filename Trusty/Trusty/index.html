@@ -3300,9 +3300,9 @@ function applyForCar(btn) {
 
 function drvHTML(d) {
   var p=d.profile||{}, name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
-  var isBN=!parseInt(d.uber_trips||0)&&!parseInt(d.bolt_trips||0)&&!parseInt(d.indrive_trips||0);
+  var isBN=!d.has_admin_trips;
   var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,300,85)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center top"/>':ini(name);
-  var vbadge=((d.doc_id_url||d.doc_id_path)&&(d.doc_license_url||d.doc_license_path))?'<span class="vbadge">&#10003; Verified</span>':'';
+  var vbadge='<span class="vbadge">&#10003; Verified</span>';
   var plats=(d.platforms||[]).map(pb).join('')||'<span style="font-size:10px;color:var(--muted)">Not set</span>';
   var mbadge=d.isMatched?'<span class="matched">Matched</span>':'<span class="avail">Available</span>';
   var isOwn=P&&(P.role==='owner'||P.role==='both')&&U&&U.id!==d.user_id;
@@ -3317,7 +3317,7 @@ function drvHTML(d) {
     acts+=' <button class="btn btn-g btn-sm" onclick="go(\'login\')">Sign in to Connect</button>';
   }
   // Rebuilt driver card - reference image style
-  var isVerif=!!((d.doc_id_url||d.doc_id_path)&&(d.doc_license_url||d.doc_license_path));
+  var isVerif=true; // all listing drivers are approved
   var lateP=(d.late_payments||0)+(d.missed_payments||0);
   var acc=(d.accidents||0)+(d.damage_incidents||0);
   var onTime=d.ontime_payments||0;
@@ -14755,8 +14755,9 @@ async function adSavePlatStats(dpId){
   var ir=g('ir-'+dpId);if(ir)u.indrive_rating=ir;
   var it=g('it-'+dpId);if(it)u.indrive_trips=it;
   if(!Object.keys(u).length){toast('Nothing to save.');return;}
-  var r=await sb.from('driver_profiles').update(u).eq('id',dpId);
+  var r=await sb.from('driver_profiles').update(u).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
+  if(!r.data||!r.data.length){toast('Save failed - check admin permissions');return;}
   toast('Platform stats saved!');
 }
 
@@ -14765,8 +14766,9 @@ async function adSaveTrustScore(dpId){
   if(!el){toast('Score input not found.');return;}
   var score=parseInt(el.value);
   if(isNaN(score)||score<0||score>100){toast('Trust score must be between 0 and 100.');return;}
-  var r=await sb.from('driver_profiles').update({trust_score:score}).eq('id',dpId);
+  var r=await sb.from('driver_profiles').update({trust_score:score}).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
+  if(!r.data||!r.data.length){toast('Save failed - check admin permissions');return;}
   toast('Trust score updated to '+score+'!');
 }
 var _unmatchAid=null,_unmatchRole=null;
