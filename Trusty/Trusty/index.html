@@ -1633,6 +1633,7 @@ nav div::-webkit-scrollbar{display:none}
       <button class="atab" id="atab-mkt" onclick="adNav('mkt')">&#127981; Health</button>
       <button class="atab" id="atab-reg" onclick="adNav('reg')">&#128226; New Regs</button>
       <button class="atab" id="atab-inc" onclick="adNav('inc')">&#9888; Incomplete</button>
+      <button class="atab" id="atab-dorm" onclick="adNav('dorm')">&#128564; Dormant</button>
       <button class="atab" id="atab-bnd" onclick="adNav('bnd')">&#127381; B/N</button>
       <button class="atab" id="atab-pdoc" onclick="adNav('pdoc')">&#128196; Docs</button>
       <button class="atab" id="atab-drv" onclick="adNav('drv')">&#128100; Drivers</button>
@@ -1680,6 +1681,10 @@ nav div::-webkit-scrollbar{display:none}
       <div class="adm-nav" id="an-inc" onclick="adNav('inc')">
         <span class="adm-nav-icon">&#9888;</span> Incomplete Profiles
         <span class="adm-nav-badge amber" id="ibadge2" style="display:none">0</span>
+      </div>
+      <div class="adm-nav" id="an-dorm" onclick="adNav('dorm')">
+        <span class="adm-nav-icon">&#128564;</span> Dormant Drivers
+        <span class="adm-nav-badge" id="dormbadge" style="display:none;background:#6b7280">0</span>
       </div>
       <div class="adm-nav" id="an-bnd" onclick="adNav('bnd')">
         <span class="adm-nav-icon">&#127381;</span> B N Drivers
@@ -1762,6 +1767,7 @@ nav div::-webkit-scrollbar{display:none}
       <div class="adm-panel" id="ap-mkt"></div>
       <div class="adm-panel" id="ap-reg"></div>
       <div class="adm-panel" id="ap-inc"></div>
+      <div class="adm-panel" id="ap-dorm"></div>
       <div class="adm-panel" id="ap-bnd"></div>
       <div class="adm-panel" id="ap-pdoc"></div>
       <div class="adm-panel" id="ap-drv"></div>
@@ -5525,6 +5531,11 @@ async function pOv() {
       +'<p style="font-size:13px;color:#7a5200;margin-bottom:12px">Your profile is missing required documents. Please upload all documents to complete your registration and submit for approval.</p>'
       +'<button class="btn btn-gm btn-sm" onclick="dpanel(\'dc\')">&#128196; Upload Documents Now</button>'
       +'</div>';
+    if(DP.status==='dormant')html+='<div style="background:#f8fafc;border:1.5px solid #6b7280;border-radius:10px;padding:16px 18px;margin-bottom:16px">'
+      +'<div style="font-weight:700;color:#374151;font-size:15px;margin-bottom:6px">&#128564; Account Paused</div>'
+      +'<p style="font-size:13px;color:#4b5563;margin-bottom:12px">Your application is currently on hold. Please upload your documents so we can continue processing your registration.</p>'
+      +'<button class="btn btn-gm btn-sm" onclick="dpanel(\'dc\')">&#128196; Upload Documents</button>'
+      +'</div>';
     if(DP.status==='rejected')html+='<div style="background:#fef2f2;border:1.5px solid #dc2626;border-radius:10px;padding:16px 18px;margin-bottom:16px">'
       +'<div style="font-weight:700;color:#dc2626;font-size:15px;margin-bottom:6px">&#10060; Application Declined</div>'
       +(DP.rejection_reason?'<div style="font-size:13px;color:#7f1d1d;background:#fff;border:1px solid #fca5a5;border-radius:6px;padding:10px 12px;margin-bottom:12px"><strong>Reason:</strong> '+esc(DP.rejection_reason)+'</div>':'')
@@ -6608,8 +6619,8 @@ async function pDc() {
     }
   }).join('')+'</div>'
   +'<div id="dc-cam-wrap"></div>'
-  // Show "Submit for Review" if driver is incomplete but has all required docs
-  +(DP.status==='incomplete'?(function(){
+  // Show "Submit for Review" if driver is incomplete/dormant but has all required docs
+  +(( DP.status==='incomplete'||DP.status==='dormant')?(function(){
     var hasRequired=!!(DP.photo_headshot_url&&(DP.photo_holding_id_url||DP.photo_holding_id_path)&&(DP.doc_license_url||DP.doc_license_path)&&(DP.doc_id_url||DP.doc_id_path)&&(DP.proof_of_residence_url||DP.proof_of_residence_path));
     if(hasRequired){return '<div style="margin-top:16px;background:#f0faf2;border:1.5px solid var(--gm);border-radius:10px;padding:14px 16px">'
       +'<div style="font-size:13px;font-weight:700;color:var(--gm);margin-bottom:4px">&#127881; All required documents uploaded!</div>'
@@ -9338,6 +9349,7 @@ function adNav(name) {
   if(name==='mkt')   adMarketplace();
   if(name==='reg')   adReg();
   if(name==='inc')   adInc();
+  if(name==='dorm')  adDorm();
   if(name==='bnd')   adBnd();
   if(name==='pdoc')  adPendingDocs();
   if(name==='drv')   adDrv();
@@ -10424,6 +10436,7 @@ async function adPendingDocs(){
       +'<button class="btn btn-sm" style="background:#1d4ed8;color:#fff;border-color:#1d4ed8" onclick="adMoveToBN(\''+d.id+'\')">&#127381; Move to B/N</button>'
       +'<button class="btn btn-red btn-sm" onclick="adSetDrv(\''+d.id+'\',\'rejected\')">Decline</button>'
       +'<button class="btn btn-out btn-sm" onclick="adPendingDocRemind(\''+d.id+'\')">&#128276; Remind</button>'
+      +'<button class="btn btn-out btn-sm" style="background:#f1f5f9;border-color:#6b7280;color:#374151" onclick="adMoveToDormant(\''+d.id+'\',\'pdoc\')">&#128564; Move to Dormant</button>'
       +'</div></div>';
   }).join('');
   html+='</div>';
@@ -10553,6 +10566,7 @@ async function adInc(){
         +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
         +'<button class="btn btn-g btn-sm" data-did="'+d.id+'" data-uid="'+d.user_id+'" onclick="incSave(this.dataset.did,this.dataset.uid)">&#128190; Save Changes</button>'
         +'<button class="btn btn-out btn-sm" data-did="'+d.id+'" onclick="incPromote(this.dataset.did)">&#8593; Move to New Registrations</button>'
+        +'<button class="btn btn-out btn-sm" style="background:#f1f5f9;border-color:#6b7280;color:#374151" data-did="'+d.id+'" onclick="adMoveToDormant(this.dataset.did,\'inc\')">&#128564; Move to Dormant</button>'
         +'<button class="btn btn-out btn-sm" style="background:#fff8e1;border-color:#E8A520;color:#7a5200" data-did="'+d.id+'" onclick="adSendIncompleteReminder(this.dataset.did,this)">&#128140; Send Reminder Email</button>'
         +'</div>'
         +'<div class="shd" style="margin-top:4px">Internal Note</div>'
@@ -11621,6 +11635,67 @@ function adRegSearch(){
 function adIncSearch(){
   var q=((document.getElementById('adm-inc-q')||{}).value||'').toLowerCase();
   document.querySelectorAll('#ap-inc .rcard').forEach(function(card){
+    card.style.display=(!q||card.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
+  });
+}
+// ── DORMANT DRIVERS ─────────────────────────────────
+async function adMoveToDormant(dpId,from){
+  var c=document.getElementById('inc-edit-'+dpId)||document.getElementById('pdoc-'+dpId);
+  if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
+  var r=await sb.from('driver_profiles').update({status:'dormant'}).eq('id',dpId).select();
+  if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
+  toast('Driver moved to Dormant.');
+  if(from==='pdoc'){adPendingDocs();adOv();}
+  else{adInc();adOv();}
+}
+async function adMoveFromDormant(dpId,to){
+  var c=document.getElementById('dorm-'+dpId);
+  if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
+  var newStatus=to==='inc'?'incomplete':'pending_docs';
+  var r=await sb.from('driver_profiles').update({status:newStatus}).eq('id',dpId).select();
+  if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
+  toast('Driver moved back to '+(to==='inc'?'Incomplete':'Pending Documents')+'.');
+  adDorm();adOv();
+}
+async function adDorm(){
+  var el=document.getElementById('ap-dorm');
+  if(!el)return;
+  el.innerHTML='<div class="adm-pg"><div class="ptitle">&#128564; Dormant Drivers</div></div>'+adSpin();
+  var dr=await sb.from('driver_profiles').select('*').eq('status','dormant').order('created_at',{ascending:false});
+  var dps=dr.data||[];
+  var badge=document.getElementById('dormbadge');
+  if(badge){badge.textContent=dps.length;badge.style.display=dps.length?'inline':'none';}
+  if(!dps.length){
+    el.innerHTML='<div class="adm-pg"><div class="ptitle">&#128564; Dormant Drivers</div>'+empty('&#128564;','No dormant drivers.')+'</div>';
+    return;
+  }
+  var uids=dps.map(function(d){return d.user_id;});
+  var pr=await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location').in('id',uids);
+  var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
+  var html='<div class="adm-pg"><div class="ptitle">&#128564; Dormant Drivers</div>'
+    +'<div class="psub">'+dps.length+' driver'+(dps.length!==1?'s':'')+' moved to dormant &mdash; awaiting contact or document upload</div>'
+    +'<div style="margin-bottom:10px"><input id="adm-dorm-q" type="text" placeholder="&#128269; Search name, email..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adDormSearch()"/></div>';
+  html+=dps.map(function(d){
+    var p=pm[d.user_id]||{};
+    var daysSince=Math.floor((Date.now()-new Date(d.created_at).getTime())/864e5);
+    return '<div class="rcard" id="dorm-'+d.id+'" style="border-left:4px solid #6b7280">'
+      +'<div class="rcard-head">'
+      +'<div><div style="font-size:14px;font-weight:700">'+esc(p.full_name||'Unknown')+'</div>'
+      +'<div style="font-size:12px;color:var(--muted)">'+esc(p.email||'-')+(p.phone?' &middot; '+esc(p.phone):'')+(p.whatsapp?' &middot; &#128240; '+esc(p.whatsapp):'')+(p.location?' &middot; &#128205;'+esc(p.location):'')+'</div></div>'
+      +'<div style="text-align:right"><span class="pill" style="background:#6b728020;color:#374151;border:1px solid #6b7280">Dormant</span><div style="font-size:11px;color:var(--muted);margin-top:4px">'+daysSince+'d ago</div></div>'
+      +'</div>'
+      +'<div class="rcard-acts">'
+      +'<button class="btn btn-out btn-sm" data-did="'+d.id+'" onclick="adMoveFromDormant(this.dataset.did,\'inc\')">&#8593; Move to Incomplete</button>'
+      +'<button class="btn btn-out btn-sm" data-did="'+d.id+'" onclick="adMoveFromDormant(this.dataset.did,\'pdoc\')">&#128203; Move to Pending Docs</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  html+='</div>';
+  el.innerHTML=html;
+}
+function adDormSearch(){
+  var q=((document.getElementById('adm-dorm-q')||{}).value||'').toLowerCase();
+  document.querySelectorAll('#ap-dorm .rcard').forEach(function(card){
     card.style.display=(!q||card.textContent.toLowerCase().indexOf(q)>-1)?'':'none';
   });
 }
