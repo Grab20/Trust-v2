@@ -4904,7 +4904,10 @@ function _compressImage(file, maxPx, quality){
       var canvas=document.createElement('canvas');
       canvas.width=cw; canvas.height=ch;
       canvas.getContext('2d').drawImage(img,0,0,cw,ch);
+      var _blobDone=false;
+      var _blobTimer=setTimeout(function(){if(!_blobDone){_blobDone=true;resolve(file);}},8000);
       canvas.toBlob(function(blob){
+        if(_blobDone)return; _blobDone=true; clearTimeout(_blobTimer);
         resolve(blob&&blob.size<file.size?new File([blob],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'}):file);
       },'image/jpeg',quality);
     };
@@ -4953,7 +4956,8 @@ async function reg2o() {
   if(!docFiles.cf||!docFiles.cs||!docFiles.cb){oErr('Front, Side and Back car photos are all required.');return;}
   oCarData={ph:ph,lo:lo,wa:eid('o-wa').value.trim(),mk:mk,mo:mo,yr:parseInt(yr),pr:parseInt(pr),cl:eid('o-cl').value.trim()||null,tr:eid('o-tr').value,dep:eid('o-dep').value.trim()||null,ins:eid('o-ins').value==='true',ci:eid('o-ci').value,ct:eid('o-ct').value,fp:eid('o-fp').value,plats:Array.from(document.querySelectorAll('.opc:checked')).map(function(c){return c.value;})};
   var btn=eid('o-reg-btn'); btn.textContent='Creating...'; btn.disabled=true;
-  await doReg(); btn.textContent='Create Account'; btn.disabled=false;
+  try{await doReg();}catch(e){console.error('[reg2o]',e);showErr('reg-err','Something went wrong. Please try again.');}
+  btn.textContent='Create Account'; btn.disabled=false;
 }
 async function reg3() {
   clearErr('reg-err');
@@ -4973,7 +4977,8 @@ async function reg3() {
   if(!docFiles.did){showErr('reg-err','ID/Passport copy is required.');return;}
   if(!docFiles.por){showErr('reg-err','Proof of residence is required (bank statement, utility bill, etc).');return;}
   var btn=eid('d-reg-btn'); btn.textContent='Creating...'; btn.disabled=true;
-  await doReg(); btn.textContent='Create Account'; btn.disabled=false;
+  try{await doReg();}catch(e){console.error('[reg3]',e);showErr('reg-err','Something went wrong. Please try again.');}
+  btn.textContent='Create Account'; btn.disabled=false;
 }
 function _regProgress(msg){
   var b=eid('d-reg-btn')||eid('o-reg-btn');
