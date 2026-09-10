@@ -3300,9 +3300,9 @@ function applyForCar(btn) {
 
 function drvHTML(d) {
   var p=d.profile||{}, name=p.full_name||'Driver', s=d.trust_score||0, si=scoreInfo(s);
-  var isBN=!parseInt(d.uber_trips||0)&&!parseInt(d.bolt_trips||0)&&!parseInt(d.indrive_trips||0);
+  var isBN=!d.has_admin_trips;
   var av=d.photo_headshot_url?'<img src="'+imgUrl(d.photo_headshot_url,300,85)+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center top"/>':ini(name);
-  var vbadge=((d.doc_id_url||d.doc_id_path)&&(d.doc_license_url||d.doc_license_path))?'<span class="vbadge">&#10003; Verified</span>':'';
+  var vbadge='<span class="vbadge">&#10003; Verified</span>';
   var plats=(d.platforms||[]).map(pb).join('')||'<span style="font-size:10px;color:var(--muted)">Not set</span>';
   var mbadge=d.isMatched?'<span class="matched">Matched</span>':'<span class="avail">Available</span>';
   var isOwn=P&&(P.role==='owner'||P.role==='both')&&U&&U.id!==d.user_id;
@@ -3317,7 +3317,7 @@ function drvHTML(d) {
     acts+=' <button class="btn btn-g btn-sm" onclick="go(\'login\')">Sign in to Connect</button>';
   }
   // Rebuilt driver card - reference image style
-  var isVerif=!!((d.doc_id_url||d.doc_id_path)&&(d.doc_license_url||d.doc_license_path));
+  var isVerif=true; // all listing drivers are approved
   var lateP=(d.late_payments||0)+(d.missed_payments||0);
   var acc=(d.accidents||0)+(d.damage_incidents||0);
   var onTime=d.ontime_payments||0;
@@ -4904,7 +4904,10 @@ function _compressImage(file, maxPx, quality){
       var canvas=document.createElement('canvas');
       canvas.width=cw; canvas.height=ch;
       canvas.getContext('2d').drawImage(img,0,0,cw,ch);
+      var _blobDone=false;
+      var _blobTimer=setTimeout(function(){if(!_blobDone){_blobDone=true;resolve(file);}},8000);
       canvas.toBlob(function(blob){
+        if(_blobDone)return; _blobDone=true; clearTimeout(_blobTimer);
         resolve(blob&&blob.size<file.size?new File([blob],file.name.replace(/\.[^.]+$/,'.jpg'),{type:'image/jpeg'}):file);
       },'image/jpeg',quality);
     };
@@ -4953,7 +4956,8 @@ async function reg2o() {
   if(!docFiles.cf||!docFiles.cs||!docFiles.cb){oErr('Front, Side and Back car photos are all required.');return;}
   oCarData={ph:ph,lo:lo,wa:eid('o-wa').value.trim(),mk:mk,mo:mo,yr:parseInt(yr),pr:parseInt(pr),cl:eid('o-cl').value.trim()||null,tr:eid('o-tr').value,dep:eid('o-dep').value.trim()||null,ins:eid('o-ins').value==='true',ci:eid('o-ci').value,ct:eid('o-ct').value,fp:eid('o-fp').value,plats:Array.from(document.querySelectorAll('.opc:checked')).map(function(c){return c.value;})};
   var btn=eid('o-reg-btn'); btn.textContent='Creating...'; btn.disabled=true;
-  await doReg(); btn.textContent='Create Account'; btn.disabled=false;
+  try{await doReg();}catch(e){console.error('[reg2o]',e);showErr('reg-err','Something went wrong. Please try again.');}
+  btn.textContent='Create Account'; btn.disabled=false;
 }
 async function reg3() {
   clearErr('reg-err');
@@ -4973,7 +4977,8 @@ async function reg3() {
   if(!docFiles.did){showErr('reg-err','ID/Passport copy is required.');return;}
   if(!docFiles.por){showErr('reg-err','Proof of residence is required (bank statement, utility bill, etc).');return;}
   var btn=eid('d-reg-btn'); btn.textContent='Creating...'; btn.disabled=true;
-  await doReg(); btn.textContent='Create Account'; btn.disabled=false;
+  try{await doReg();}catch(e){console.error('[reg3]',e);showErr('reg-err','Something went wrong. Please try again.');}
+  btn.textContent='Create Account'; btn.disabled=false;
 }
 function _regProgress(msg){
   var b=eid('d-reg-btn')||eid('o-reg-btn');
@@ -11048,8 +11053,16 @@ async function ownDecline(oid){
 async function adDrv(){
   var el=document.getElementById('ap-drv');
   el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Drivers</div></div>'+adSpin();
-  var r=await sb.from('driver_profiles').select('*').order('created_at',{ascending:false});
-  var allDps=r.data||[];
+  // Fetch all profiles in batches — Supabase default limit is 1000, total can exceed that
+  var allDps=[];
+  var _dpBatch=1000,_dpOffset=0,_dpDone=false;
+  while(!_dpDone){
+    var _dpR=await sb.from('driver_profiles').select('*').order('created_at',{ascending:false}).range(_dpOffset,_dpOffset+_dpBatch-1);
+    var _dpRows=_dpR.data||[];
+    allDps=allDps.concat(_dpRows);
+    if(_dpRows.length<_dpBatch)_dpDone=true;
+    else _dpOffset+=_dpBatch;
+  }
   if(!allDps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Drivers</div><div class="empty"><p>No drivers yet.</p></div></div>';return;}
   var adDrvFilter=window._adDrvFilter||'all';
   var removedDps=allDps.filter(function(d){return d.status==='removed';});
@@ -14755,8 +14768,9 @@ async function adSavePlatStats(dpId){
   var ir=g('ir-'+dpId);if(ir)u.indrive_rating=ir;
   var it=g('it-'+dpId);if(it)u.indrive_trips=it;
   if(!Object.keys(u).length){toast('Nothing to save.');return;}
-  var r=await sb.from('driver_profiles').update(u).eq('id',dpId);
+  var r=await sb.from('driver_profiles').update(u).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
+  if(!r.data||!r.data.length){toast('Save failed - check admin permissions');return;}
   toast('Platform stats saved!');
 }
 
@@ -14765,8 +14779,9 @@ async function adSaveTrustScore(dpId){
   if(!el){toast('Score input not found.');return;}
   var score=parseInt(el.value);
   if(isNaN(score)||score<0||score>100){toast('Trust score must be between 0 and 100.');return;}
-  var r=await sb.from('driver_profiles').update({trust_score:score}).eq('id',dpId);
+  var r=await sb.from('driver_profiles').update({trust_score:score}).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
+  if(!r.data||!r.data.length){toast('Save failed - check admin permissions');return;}
   toast('Trust score updated to '+score+'!');
 }
 var _unmatchAid=null,_unmatchRole=null;
