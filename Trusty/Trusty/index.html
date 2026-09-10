@@ -11053,8 +11053,16 @@ async function ownDecline(oid){
 async function adDrv(){
   var el=document.getElementById('ap-drv');
   el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Drivers</div></div>'+adSpin();
-  var r=await sb.from('driver_profiles').select('*').order('created_at',{ascending:false});
-  var allDps=r.data||[];
+  // Fetch all profiles in batches — Supabase default limit is 1000, total can exceed that
+  var allDps=[];
+  var _dpBatch=1000,_dpOffset=0,_dpDone=false;
+  while(!_dpDone){
+    var _dpR=await sb.from('driver_profiles').select('*').order('created_at',{ascending:false}).range(_dpOffset,_dpOffset+_dpBatch-1);
+    var _dpRows=_dpR.data||[];
+    allDps=allDps.concat(_dpRows);
+    if(_dpRows.length<_dpBatch)_dpDone=true;
+    else _dpOffset+=_dpBatch;
+  }
   if(!allDps.length){el.innerHTML='<div class="adm-pg"><div class="ptitle">Manage Drivers</div><div class="empty"><p>No drivers yet.</p></div></div>';return;}
   var adDrvFilter=window._adDrvFilter||'all';
   var removedDps=allDps.filter(function(d){return d.status==='removed';});
