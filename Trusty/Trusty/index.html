@@ -3511,6 +3511,8 @@ function _renderHomeGrid(){
     });
     if(_homeFilters.sort==='price_asc')items.sort(function(a,b){return (a.price_per_week||0)-(b.price_per_week||0);});
     else if(_homeFilters.sort==='price_desc')items.sort(function(a,b){return (b.price_per_week||0)-(a.price_per_week||0);});
+    // Available cars always before matched
+    items.sort(function(a,b){return (a.isMatched?1:0)-(b.isMatched?1:0);});
     var show=items.slice(0,limit);
     var signup=(!U&&items.length>limit)?_signupCard('&#128663;',items.length-limit):'';
     var html=show.map(carHTML).join('');
@@ -3527,6 +3529,8 @@ function _renderHomeGrid(){
     });
     if(_homeFilters.sort==='trust_desc')items2.sort(function(a,b){return ((b.trust_score||b.trustscore||0)-(a.trust_score||a.trustscore||0));});
     else if(_homeFilters.sort==='rentals_desc')items2.sort(function(a,b){return ((b.completed_rentals||b.rentals_completed||0)-(a.completed_rentals||a.rentals_completed||0));});
+    // Available drivers always before matched
+    items2.sort(function(a,b){return (a.isMatched?1:0)-(b.isMatched?1:0);});
     var show2=items2.slice(0,limit);
     var signup2=(!U&&items2.length>limit)?_signupCard('&#128100;',items2.length-limit):'';
     var html2=show2.map(drvHTML).join('');
@@ -3737,6 +3741,10 @@ async function _runCarsQuery(replace){
     try{res=await _execCarsQuery(0);}catch(e){console.error('cars fallback threw',e);}
     _carsQuery.sort=_savedCarsSort;
   }
+  // When showing all (no status filter), available cars come first, matched cars go to the bottom
+  if(!_carsQuery.status&&res.data.length){
+    res.data=res.data.slice().sort(function(a,b){return (a.isMatched?1:0)-(b.isMatched?1:0);});
+  }
   var grid=eid('cars-grid');
   var moreWrap=eid('cars-more-wrap');
   if(replace){
@@ -3825,6 +3833,10 @@ async function _runDriversQuery(replace){
     _drvsQuery.sort='score';
     try{res=await _execDriversQuery(0);}catch(e){console.error('drivers fallback query threw',e);}
     _drvsQuery.sort=_savedSort;
+  }
+  // When showing all (no status filter), available drivers come first, matched go to the bottom
+  if(!_drvsQuery.status&&res.data.length){
+    res.data=res.data.slice().sort(function(a,b){return (a.isMatched?1:0)-(b.isMatched?1:0);});
   }
   var grid=eid('drvs-grid');
   var moreWrap=eid('drvs-more-wrap');
