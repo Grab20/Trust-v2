@@ -1912,7 +1912,7 @@ nav div::-webkit-scrollbar{display:none}
     <div style="font-size:17px;font-weight:800;color:var(--g);text-align:center;margin-bottom:6px">Confirm Unmatch</div>
     <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px">Are you sure you want to end this rental match? This cannot be undone.</p>
     <div class="fg" style="margin-bottom:16px">
-      <label style="font-size:12px;font-weight:600;color:var(--muted)">Reason for unmatching (optional)</label>
+      <label id="unmatch-reason-label" style="font-size:12px;font-weight:600;color:var(--muted)">Reason for unmatching (optional)</label>
       <textarea id="unmatch-reason-input" placeholder="e.g. Driver found another car, owner sold vehicle..." style="height:70px;resize:none"></textarea>
     </div>
     <div style="display:flex;gap:10px">
@@ -12314,7 +12314,7 @@ async function adMatchDriverModal(driverUserId, driverName){
   try{
     var carsR=await sb.from('cars')
       .select('id,owner_id,make,model,year,color,location,price_per_week,photo_front_url,profiles(id,full_name,email,phone)')
-      .eq('admin_status','approved').eq('status','available').limit(200);
+      .eq('admin_status','approved').neq('status','removed').limit(200);
     var existAppR=await sb.from('applications').select('car_id,owner_id').eq('driver_id',driverUserId).in('status',['pending','approved']);
     var alreadyCarIds=new Set((existAppR.data||[]).map(function(a){return a.car_id;}));
     var alreadyOwnerIds=new Set((existAppR.data||[]).map(function(a){return a.owner_id;}));
@@ -12350,7 +12350,8 @@ async function adDoMatch(carId,ownerUserId,btn){
   try{
     var r=await sb.from('applications').insert({
       driver_id:_adMatchDrvUid,owner_id:ownerUserId,car_id:carId,
-      status:'approved',initiated_by:'admin',message:'Admin manual match'
+      status:'approved',initiated_by:'admin',message:'Admin manual match',
+      matched_at:new Date().toISOString()
     }).select('id').maybeSingle();
     if(r.error)throw r.error;
     toast('Matched! Refreshing…');
@@ -14784,29 +14785,49 @@ async function adSaveTrustScore(dpId){
   if(!r.data||!r.data.length){toast('Save failed - check admin permissions');return;}
   toast('Trust score updated to '+score+'!');
 }
-var _unmatchAid=null,_unmatchRole=null;
+var _unmatchAid=null,_unmatchRole=null,_unmatchReasonRequired=false;
 function ownerUnmatch(aidOrBtn){
   var aid=typeof aidOrBtn==='string'?aidOrBtn:(aidOrBtn&&aidOrBtn.dataset&&aidOrBtn.dataset.aid?aidOrBtn.dataset.aid:String(aidOrBtn));
   if(!aid||aid==='[object Object]'){toast('Could not identify application.');return;}
-  _unmatchAid=aid; _unmatchRole='owner';
+  _unmatchAid=aid; _unmatchRole='owner'; _unmatchReasonRequired=false;
   var inp=document.getElementById('unmatch-reason-input');if(inp)inp.value='';
+  var lbl=document.getElementById('unmatch-reason-label');if(lbl)lbl.textContent='Reason for unmatching (optional)';
   openModal('unmatch-modal');
 }
-function driverUnmatch(aid){
+async function driverUnmatch(aid){
   if(!aid){toast('Could not identify application.');return;}
-  _unmatchAid=aid; _unmatchRole='driver';
+  _unmatchAid=aid; _unmatchRole='driver'; _unmatchReasonRequired=false;
   var inp=document.getElementById('unmatch-reason-input');if(inp)inp.value='';
+  var lbl=document.getElementById('unmatch-reason-label');
+  if(lbl)lbl.textContent='Reason for unmatching (optional)';
   openModal('unmatch-modal');
+  // Check if match is older than 7 days — if so, reason becomes mandatory
+  try{
+    var appR=await sb.from('applications').select('matched_at,created_at').eq('id',aid).maybeSingle();
+    var matchDate=appR.data&&(appR.data.matched_at||appR.data.created_at);
+    if(matchDate){
+      var ageMs=Date.now()-new Date(matchDate).getTime();
+      if(ageMs>7*24*3600*1000){
+        _unmatchReasonRequired=true;
+        if(lbl)lbl.textContent='Reason for unmatching (required — match is over 7 days old)';
+        if(lbl)lbl.style.color='#dc2626';
+      }
+    }
+  }catch(e){}
 }
 async function execUnmatch(){
   var aid=_unmatchAid,role=_unmatchRole;
   if(!aid){toast('No application selected.');return;}
-  var reason=(document.getElementById('unmatch-reason-input')||{}).value||'';
+  var reason=((document.getElementById('unmatch-reason-input')||{}).value||'').trim();
+  if(_unmatchReasonRequired&&!reason){
+    toast('Please provide a reason — this match is over 7 days old.');
+    return;
+  }
   var btn=document.getElementById('unmatch-confirm-btn');
   if(btn){btn.disabled=true;btn.textContent='Unmatching...';}
   // Fetch driver_id before update for rentals counter
   var appR=await sb.from('applications').select('driver_id').eq('id',aid).maybeSingle();
-  var r=await sb.from('applications').update({unmatched_at:new Date().toISOString(),unmatched_by:role,unmatch_reason:reason.trim()||null}).eq('id',aid);
+  var r=await sb.from('applications').update({unmatched_at:new Date().toISOString(),unmatched_by:role,unmatch_reason:reason||null}).eq('id',aid);
   if(btn){btn.disabled=false;btn.textContent='&#128683; Unmatch';}
   if(r.error){toast('Error unmatching: '+r.error.message);return;}
   // Increment rentals_completed for driver
@@ -15250,12 +15271,18 @@ async function loadBoostPage(){
     +'<div style="font-size:12px;color:var(--muted)">Premium visibility for faster matches</div></div>'
     +'</div>';
   if(isD){
-    var [bR,likeR,appR,matchR]=await Promise.all([
+    var [bR,likeR,appR,matchR,dpBNR,entR,bnPayR]=await Promise.all([
       sb.from('boosts').select('id,start_at,end_at,profile_views,impressions').eq('type','driver').eq('target_id',U.id).eq('status','active').lte('start_at',now).gte('end_at',now).maybeSingle(),
       sb.from('shortlisted_drivers').select('id').eq('driver_id',U.id),
       sb.from('applications').select('id').eq('driver_id',U.id),
-      sb.from('applications').select('id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle()
+      sb.from('applications').select('id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle(),
+      sb.from('driver_profiles').select('uber_trips,bolt_trips,indrive_trips,self_uber_trips,self_bolt_trips,self_indride_trips').eq('user_id',U.id).maybeSingle(),
+      sb.from('bn_entitlements').select('id,expires_at').eq('driver_id',U.id).eq('status','active').gte('expires_at',now).order('expires_at',{ascending:false}).limit(1).maybeSingle(),
+      sb.from('boost_payments').select('id,paid_at,boost_expires_at,amount_cents').eq('user_id',U.id).eq('boost_type','bn_application').eq('payment_status','paid').order('paid_at',{ascending:false}).limit(1).maybeSingle()
     ]);
+    // Detect BN driver (no trip counts on any platform)
+    var dpBN=dpBNR.data||{};
+    var isBNDriver=!parseInt(dpBN.uber_trips||0)&&!parseInt(dpBN.bolt_trips||0)&&!parseInt(dpBN.indrive_trips||0)&&!parseInt(dpBN.self_uber_trips||0)&&!parseInt(dpBN.self_bolt_trips||0)&&!parseInt(dpBN.self_indride_trips||0);
     var b=bR.data;
     var likes=(likeR.data||[]).length, appsSent=(appR.data||[]).length, matches=matchR.data?1:0;
     html+='<div style="background:linear-gradient(135deg,#fffbef,#fff8e1);border:2px solid #f59e0b;border-radius:16px;padding:22px;margin-bottom:18px">'
@@ -15289,6 +15316,31 @@ async function loadBoostPage(){
         +'<button class="btn btn-gm" style="width:100%;padding:14px;font-size:15px;font-weight:800" onclick="startBoostCheckout(\'driver\',\''+esc(U.id)+'\')">&#128640; Boost My Profile — R49 / 7 days</button>';
     }
     html+='</div>';
+    // ── Extenda section (BN drivers only, internal — no B/N label shown) ─
+    if(isBNDriver){
+      var extActive=entR.data;
+      var extPay=bnPayR.data;
+      html+='<div style="background:linear-gradient(135deg,#eff6ff,#fff);border:2px solid #3b82f6;border-radius:16px;padding:22px;margin-bottom:18px">'
+        +'<div style="font-size:13px;font-weight:800;color:#1d4ed8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">&#128640; Extenda — Application Extender</div>'
+        +'<div style="font-size:13px;color:#374151;margin-bottom:14px">Send more applications per week to find your perfect match faster.</div>';
+      if(extActive){
+        var eDaysLeft=Math.max(0,Math.ceil((new Date(extActive.expires_at)-new Date())/86400000));
+        html+='<div style="background:#dbeafe;border-radius:10px;padding:12px 14px;margin-bottom:10px">'
+          +'<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:2px">&#10003; Extenda Active</div>'
+          +'<div style="font-size:12px;color:#1e40af">'+eDaysLeft+' day'+(eDaysLeft!==1?'s':'')+' remaining · Expires '+new Date(extActive.expires_at).toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'})+'</div>'
+          +'</div>';
+        if(extPay){
+          html+='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Last purchase: '+fmtD(extPay.paid_at)+' · R'+(extPay.amount_cents/100).toFixed(2)+'</div>';
+        }
+        html+='<button class="btn" style="width:100%;padding:11px;font-size:13px;font-weight:700;background:#3b82f6;color:#fff;border-color:#3b82f6" onclick="startBoostCheckout(\'bn_application\',\''+esc(U.id)+'\')">&#128640; Extend Again</button>';
+      } else {
+        html+='<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">'
+          +['&#128203; Send more applications per week','&#11088; Higher chance of finding the right match','&#9889; Get matched faster with more exposure'].map(function(f){return '<div style="display:flex;align-items:center;gap:10px"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#1d4ed8">&#10003;</span><span style="font-size:13px;color:var(--g)">'+f+'</span></div>';}).join('')
+          +'</div>'
+          +'<button class="btn" style="width:100%;padding:14px;font-size:15px;font-weight:800;background:#3b82f6;color:#fff;border-color:#3b82f6" onclick="startBoostCheckout(\'bn_application\',\''+esc(U.id)+'\')">&#128640; Get Extenda — R49 / 30 days</button>';
+      }
+      html+='</div>';
+    }
   }
   if(isO){
     var carsR=await sb.from('cars').select('id,make,model,year,photo_front_url').eq('owner_id',U.id).neq('status','removed');
