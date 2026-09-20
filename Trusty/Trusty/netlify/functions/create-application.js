@@ -20,22 +20,17 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Anon key used only to verify the caller's JWT
 const SUPABASE_ANON_KEY    = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
-const FREE_APPS_PER_WEEK   = 3;
-const BOOSTED_APPS_PER_WEEK = 15;
+const FREE_APPS_PER_WEEK  = 3;
+const BOOSTED_APPS_PER_DAY = 3;
 
-// Returns ISO string for Monday 00:00 SAST (UTC+2) of the current week
-function getWeekStartUTC(now) {
-  // Shift to SAST to find current day-of-week in SAST
+// Returns ISO string for today 00:00 SAST (UTC+2) — used for boosted daily reset
+function getDayStartUTC(now) {
   const sastMs = now.getTime() + 2 * 3600 * 1000;
-  const sastDate = new Date(sastMs);
-  const dayOfWeek = sastDate.getUTCDay(); // 0=Sun, 1=Mon…6=Sat
-  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  // Monday midnight SAST = subtract daysToMonday days and zero out time
-  const mondaySAST = new Date(sastMs);
-  mondaySAST.setUTCDate(mondaySAST.getUTCDate() - daysToMonday);
-  mondaySAST.setUTCHours(0, 0, 0, 0);
+  // Zero out the time component (midnight SAST)
+  const todaySAST = new Date(sastMs);
+  todaySAST.setUTCHours(0, 0, 0, 0);
   // Convert back to UTC: SAST midnight - 2h = UTC
-  return new Date(mondaySAST.getTime() - 2 * 3600 * 1000).toISOString();
+  return new Date(todaySAST.getTime() - 2 * 3600 * 1000).toISOString();
 }
 
 function cors() {
@@ -113,35 +108,35 @@ exports.handler = async function (event) {
       .limit(1)
       .maybeSingle();
 
-    const weekStart = getWeekStartUTC(now);
-
     if (ent) {
-      // Paid plan: 15 applications per Mon–Sun week (SAST)
-      const { count: weekCount } = await sb
+      // Paid plan: 3 applications per calendar day (SAST reset)
+      const dayStart = getDayStartUTC(now);
+      const { count: dayCount } = await sb
         .from('applications')
         .select('id', { count: 'exact', head: true })
         .eq('driver_id', callerId)
         .eq('initiated_by', 'driver')
-        .gte('created_at', weekStart);
+        .gte('created_at', dayStart);
 
-      if ((weekCount || 0) >= BOOSTED_APPS_PER_WEEK) {
+      if ((dayCount || 0) >= BOOSTED_APPS_PER_DAY) {
         return resp(429, {
-          error: 'You have reached your weekly application limit. Your limit resets every Monday.',
+          error: 'You have reached the daily application limit. Try again tomorrow.',
           code: 'BN_LIMIT_SPAM',
         });
       }
     } else {
-      // Free plan: 3 applications per Mon–Sun week (SAST)
+      // Free plan: 3 applications per 7-day rolling window
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
       const { count: weekCount } = await sb
         .from('applications')
         .select('id', { count: 'exact', head: true })
         .eq('driver_id', callerId)
         .eq('initiated_by', 'driver')
-        .gte('created_at', weekStart);
+        .gte('created_at', weekAgo);
 
       if ((weekCount || 0) >= FREE_APPS_PER_WEEK) {
         return resp(429, {
-          error: 'You have reached your weekly application limit. Your limit resets every Monday.',
+          error: 'You have reached your weekly application limit. Please try again next week.',
           code: 'BN_LIMIT_FREE',
         });
       }

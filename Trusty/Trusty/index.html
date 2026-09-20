@@ -4546,7 +4546,8 @@ async function _retryPendingCar(){
 }
 function completeOwnerReg(){
   // Pre-fill rRole and rEmail/rName/rPhone from current session so reg2o() can use them
-  rRole='owner';
+  // If already a driver → registering for both roles
+  rRole=(P&&(P.role==='driver'||P.role==='both'))?'both':'owner';
   if(P){rName=P.full_name||'';rEmail=P.email||'';rPhone=P.phone||rPhone;}
   go('register');
   setTimeout(function(){
@@ -4562,6 +4563,24 @@ function completeOwnerReg(){
     var waEl=eid('o-wa');if(waEl&&P&&P.whatsapp&&!waEl.value)waEl.value=P.whatsapp;
     var loEl=eid('o-lo');if(loEl&&P&&P.location&&!loEl.value)loEl.value=P.location;
     toast('Please complete your vehicle listing below.');
+  },200);
+}
+function completeDriverReg(){
+  // Allow an existing owner to add a driver account
+  if(P&&(P.role==='driver'||P.role==='both')){toast('You already have a driver account.');return;}
+  rRole=(P&&(P.role==='owner'||P.role==='both'))?'both':'driver';
+  if(P){rName=P.full_name||'';rEmail=P.email||'';rPhone=P.phone||rPhone;}
+  go('register');
+  setTimeout(function(){
+    setRole('driver');
+    eid('reg-s1')&&(eid('reg-s1').style.display='none');
+    eid('reg-s1-otp')&&(eid('reg-s1-otp').style.display='none');
+    eid('reg-s2-d')&&(eid('reg-s2-d').style.display='block');
+    eid('reg-s2-o')&&(eid('reg-s2-o').style.display='none');
+    var rs1=eid('rs1'),rs2=eid('rs2');
+    if(rs1){rs1.classList.remove('on');rs1.classList.add('done');}
+    if(rs2)rs2.classList.add('on');
+    toast('Please complete your driver registration below.');
   },200);
 }
 async function saveRegLater(){
@@ -5308,7 +5327,6 @@ async function initDash() {
   showMobNav();
   dpanel('ov');
   _idpOnboardingCheck();
-  dcpCheck();
 }
 function dpanel(name) {
   document.querySelectorAll('#page-dashboard .panel').forEach(function(p){p.classList.remove('on');});
@@ -6086,11 +6104,22 @@ async function pOv() {
     var settingsHtml='<div class="tbox" style="margin-top:14px">'
       +'<div class="shd">&#9881;&#65039; Settings</div>'
       +'<div style="display:flex;flex-direction:column;gap:8px">'
-      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'pr\')">&#128100; Edit My Profile &amp; Documents</button>'
+      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'pr\')">&#128100; My Profile &amp; Documents</button>'
       +(DP.status==='approved'?'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'ap\')">&#128203; View My Applications</button>':'')
+      +(P.role==='driver'?'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="completeOwnerReg()">&#127968; Register as Owner</button>':'')
       +'<button class="btn btn-red btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px;font-weight:600" onclick="doSignOut()">&#128682; Sign Out</button>'
       +'</div></div>';
     html+=settingsHtml;
+  }
+  // Owner-only settings (no driver account)
+  if(U&&P&&P.role==='owner'){
+    var ownerSettingsHtml='<div class="tbox" style="margin-top:14px">'
+      +'<div class="shd">&#9881;&#65039; Settings</div>'
+      +'<div style="display:flex;flex-direction:column;gap:8px">'
+      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="completeDriverReg()">&#128663; Register as Driver</button>'
+      +'<button class="btn btn-red btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px;font-weight:600" onclick="doSignOut()">&#128682; Sign Out</button>'
+      +'</div></div>';
+    html+=ownerSettingsHtml;
   }
   el.innerHTML=html;
   // Load recommended drivers for owner (location + TrustScore based)
@@ -6530,14 +6559,9 @@ async function pPr() {
         +'<button class="btn btn-gm btn-w" onclick="saveDriverAddress()">&#128190; Save Address &amp; Parking</button>'
         +'</div>'
         +'<div class="tbox">'
-        +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#9998; Request Contact Edit</div>'
-        +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Contact changes are reviewed by admin before going live. Your name can only be changed by admin.</p>'
-        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
-        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Phone</label><input id="pr-phone" value="'+esc(P.phone||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
-        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">WhatsApp</label><input id="pr-wa" value="'+esc(P.whatsapp||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
-        +'</div>'
-        +'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted)">Bio</label><textarea id="pr-bio" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;height:64px;resize:vertical">'+(DP&&DP.bio||'')+'</textarea></div>'
-        +'<button class="btn btn-gm btn-w" onclick="submitProfileEdit()">&#128190; Submit for Review</button>'
+        +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#128196; My Documents</div>'
+        +'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Upload or update your verification documents.</p>'
+        +'<button class="btn btn-gm btn-w" onclick="dpanel(\'dc\')">&#128196; Go to Documents</button>'
         +'</div>';
     } else {
       // Owners: can edit name (goes through admin approval)
@@ -6684,6 +6708,11 @@ async function upDocItem(n,col,inp) {
   if(col==='pdp_url')DP.has_pdp=true;
   toast('Uploaded!'); pDc();
   sendDriverEmail('doc_uploaded', DP.id);
+  if(DP.status==='incomplete'||DP.status==='dormant'){
+    await sb.from('driver_profiles').update({status:'pending_docs'}).eq('id',DP.id);
+    DP.status='pending_docs';
+    sendDriverEmail('pending_docs_reminder', DP.id);
+  }
 }
 // Camera capture for headshot / holding-ID in driver docs panel
 function captureDocPhoto(n, col) {
@@ -6729,6 +6758,11 @@ async function snapDocPhoto(n, col) {
     await sb.from('driver_profiles').update(upd).eq('id', DP.id);
     DP[col] = url; toast('Photo captured & uploaded!'); pDc();
     sendDriverEmail('doc_uploaded', DP.id);
+    if(DP.status==='incomplete'||DP.status==='dormant'){
+      await sb.from('driver_profiles').update({status:'pending_docs'}).eq('id',DP.id);
+      DP.status='pending_docs';
+      sendDriverEmail('pending_docs_reminder', DP.id);
+    }
   }, 'image/jpeg', 0.9);
 }
 
