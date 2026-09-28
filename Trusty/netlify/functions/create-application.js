@@ -20,8 +20,18 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Anon key used only to verify the caller's JWT
 const SUPABASE_ANON_KEY    = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
 
-const FREE_APPS_PER_WEEK = 3;
-const PAID_APPS_PER_DAY  = 4;
+const FREE_APPS_PER_WEEK  = 3;
+const BOOSTED_APPS_PER_DAY = 3;
+
+// Returns ISO string for today 00:00 SAST (UTC+2) — used for boosted daily reset
+function getDayStartUTC(now) {
+  const sastMs = now.getTime() + 2 * 3600 * 1000;
+  // Zero out the time component (midnight SAST)
+  const todaySAST = new Date(sastMs);
+  todaySAST.setUTCHours(0, 0, 0, 0);
+  // Convert back to UTC: SAST midnight - 2h = UTC
+  return new Date(todaySAST.getTime() - 2 * 3600 * 1000).toISOString();
+}
 
 function cors() {
   return {
@@ -99,23 +109,23 @@ exports.handler = async function (event) {
       .maybeSingle();
 
     if (ent) {
-      // Paid plan: enforce 4 applications/day anti-spam
-      const dayAgo = new Date(now.getTime() - 24 * 3600 * 1000).toISOString();
+      // Paid plan: 3 applications per calendar day (SAST reset)
+      const dayStart = getDayStartUTC(now);
       const { count: dayCount } = await sb
         .from('applications')
         .select('id', { count: 'exact', head: true })
         .eq('driver_id', callerId)
         .eq('initiated_by', 'driver')
-        .gte('created_at', dayAgo);
+        .gte('created_at', dayStart);
 
-      if ((dayCount || 0) >= PAID_APPS_PER_DAY) {
+      if ((dayCount || 0) >= BOOSTED_APPS_PER_DAY) {
         return resp(429, {
           error: 'You have reached the daily application limit. Try again tomorrow.',
           code: 'BN_LIMIT_SPAM',
         });
       }
     } else {
-      // Free plan: enforce 3 applications per 7-day rolling window
+      // Free plan: 3 applications per 7-day rolling window
       const weekAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000).toISOString();
       const { count: weekCount } = await sb
         .from('applications')
