@@ -22,12 +22,103 @@ function btn(url: string, label: string) {
   return `<p style="margin-top:20px"><a href="${url}" style="background:#1a5c28;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:700">${label}</a></p>`;
 }
 
+function docRow(label: string, uploaded: boolean) {
+  const icon = uploaded ? '✅' : '❌';
+  const color = uploaded ? '#166534' : '#dc2626';
+  return `<li style="padding:5px 0;color:${color}"><strong>${icon} ${label}</strong></li>`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
-  const { type, application_id } = await req.json();
+  const body = await req.json();
+  const { type, application_id, driver_profile_id } = body;
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+  // ── Doc reminder types (use driver_profile_id, not application_id) ──────
+  if (type === 'incomplete_reminder' || type === 'pending_docs_reminder') {
+    if (!driver_profile_id) {
+      return new Response(JSON.stringify({ error: 'Missing driver_profile_id' }), { status: 400, headers: CORS });
+    }
+
+    const { data: dp } = await sb
+      .from('driver_profiles')
+      .select('*')
+      .eq('id', driver_profile_id)
+      .maybeSingle();
+
+    if (!dp) {
+      return new Response(JSON.stringify({ error: 'Driver profile not found' }), { status: 404, headers: CORS });
+    }
+
+    const { data: prof } = await sb
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', dp.user_id)
+      .maybeSingle();
+
+    const driverName = prof?.full_name ?? 'Driver';
+    const driverEmail = prof?.email;
+
+    if (!driverEmail) {
+      return new Response(JSON.stringify({ ok: true, skipped: 'no_email' }), { headers: CORS });
+    }
+
+    if (type === 'incomplete_reminder') {
+      const docs = [
+        { label: 'Headshot photo', uploaded: !!dp.photo_headshot_url },
+        { label: 'Full-body photo', uploaded: !!(dp.photo_fullbody_url || dp.photo_fullbody_path) },
+        { label: 'Photo holding ID', uploaded: !!(dp.photo_holding_id_url || dp.photo_holding_id_path) },
+        { label: 'SA ID / Passport', uploaded: !!(dp.doc_id_url || dp.doc_id_path) },
+        { label: "Driver's Licence (front)", uploaded: !!(dp.doc_license_url || dp.doc_license_path) },
+        { label: "Driver's Licence (back)", uploaded: !!(dp.doc_license_back_url || dp.doc_license_back_path) },
+        { label: 'Proof of Residence', uploaded: !!(dp.proof_of_residence_url || dp.proof_of_residence_path) },
+      ];
+      const missing = docs.filter(d => !d.uploaded).length;
+      await sendEmail(
+        driverEmail,
+        'Action Required: Complete Your TrustMate Documents',
+        `<p>Hi ${driverName},</p>
+<p>Your TrustMate driver application is <strong>incomplete</strong>. Please upload the missing documents below so your profile can be reviewed.</p>
+<ul style="list-style:none;padding:0;margin:16px 0;font-size:14px;line-height:2">
+${docs.map(d => docRow(d.label, d.uploaded)).join('')}
+</ul>
+<p style="font-size:13px;color:#666">${missing} document${missing !== 1 ? 's' : ''} still needed.</p>
+${btn(site, 'Upload Documents Now')}${footer}`
+      );
+    } else {
+      // pending_docs_reminder — platform screenshots
+      const shots = [
+        { label: 'Uber screenshot (trips & rating)', uploaded: !!dp.screenshot_uber_url },
+        { label: 'Bolt screenshot (trips & rating)', uploaded: !!dp.screenshot_bolt_url },
+        { label: 'InDrive screenshot (trips & rating)', uploaded: !!dp.screenshot_indrive_url },
+      ];
+      const hasPlatform = dp.platforms && dp.platforms.length > 0;
+      const relevantShots = hasPlatform
+        ? shots.filter(s => {
+            const plat = s.label.split(' ')[0].toLowerCase();
+            return (dp.platforms as string[]).some((p: string) => p.toLowerCase().includes(plat));
+          })
+        : shots;
+      const missing = relevantShots.filter(s => !s.uploaded).length;
+      await sendEmail(
+        driverEmail,
+        'Action Required: Upload Your Platform Screenshots - TrustMate',
+        `<p>Hi ${driverName},</p>
+<p>You're almost there! To complete your TrustMate application we need <strong>screenshots from your e-hailing platform(s)</strong> showing your trip count and driver rating.</p>
+<ul style="list-style:none;padding:0;margin:16px 0;font-size:14px;line-height:2">
+${relevantShots.map(s => docRow(s.label, s.uploaded)).join('')}
+</ul>
+<p style="font-size:13px;color:#666">Each screenshot must clearly show your username, total trips completed, and your star rating.</p>
+${missing === 0 ? '<p style="color:#166534;font-weight:700">✅ All screenshots uploaded — your profile is under review!</p>' : `<p style="color:#dc2626"><strong>${missing} screenshot${missing !== 1 ? 's' : ''} still needed.</strong></p>`}
+${missing > 0 ? btn(site, 'Upload Screenshots Now') : ''}${footer}`
+      );
+    }
+
+    return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json', ...CORS } });
+  }
+
+  // ── Application-based types ──────────────────────────────────────────────
   const { data: app } = await sb
     .from('applications')
     .select('id, driver_id, owner_id, message, owner_notes, counter_price')
