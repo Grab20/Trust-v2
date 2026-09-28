@@ -12359,7 +12359,7 @@ async function adMatchDriverModal(driverUserId, driverName){
   document.getElementById('admin-match-modal').style.display='flex';
   try{
     var carsR=await sb.from('cars')
-      .select('id,owner_id,make,model,year,color,location,price_per_week,photo_front_url,profiles(id,full_name,email,phone)')
+      .select('id,owner_id,make,model,year,color,location,price_per_week,photo_front_url,profiles!owner_id(id,full_name,email,phone)')
       .eq('admin_status','approved').neq('status','removed').limit(200);
     var existAppR=await sb.from('applications').select('car_id,owner_id').eq('driver_id',driverUserId).in('status',['pending','approved']);
     var alreadyCarIds=new Set((existAppR.data||[]).map(function(a){return a.car_id;}));
@@ -12368,7 +12368,7 @@ async function adMatchDriverModal(driverUserId, driverName){
     if(!cars.length){listEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No available cars to match with.</div>';return;}
     listEl.innerHTML=cars.map(function(c){
       var owner=c.profiles||{};
-      return '<div class="rcard" style="margin:0;border-radius:10px" data-hay="'+(owner.full_name+' '+owner.email+' '+c.location).toLowerCase()+'">'
+      return '<div class="rcard" style="margin:0;border-radius:10px" data-hay="'+((owner.full_name||'')+' '+(owner.email||'')+' '+(c.location||'')).toLowerCase()+'">'
         +'<div style="display:flex;gap:10px;align-items:center;padding:10px 12px">'
         +(c.photo_front_url?'<img src="'+imgUrl(c.photo_front_url,80,60)+'" style="width:64px;height:48px;object-fit:cover;border-radius:7px"/>':'<div style="width:64px;height:48px;background:var(--cream);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:20px">&#128663;</div>')
         +'<div style="flex:1">'
