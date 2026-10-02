@@ -118,6 +118,52 @@ ${missing > 0 ? btn(site, 'Upload Screenshots Now') : ''}${footer}`
     return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json', ...CORS } });
   }
 
+  // ── Trust action (owner rates driver: payment, incidents, etc.) ──────────
+  if (type === 'trust_action') {
+    const { action_type, pts, owner_id, submitted_by, comment, application_id: appId } = body;
+
+    if (!driver_profile_id) {
+      return new Response(JSON.stringify({ error: 'Missing driver_profile_id' }), { status: 400, headers: CORS });
+    }
+
+    const { data: dp } = await sb
+      .from('driver_profiles')
+      .select('id, trust_score, ontime_payments, late_payments, missed_payments, accidents, damage_incidents, reckless_driving')
+      .eq('id', driver_profile_id)
+      .maybeSingle();
+
+    if (!dp) {
+      return new Response(JSON.stringify({ error: 'Driver profile not found' }), { status: 404, headers: CORS });
+    }
+
+    const currentScore = dp.trust_score ?? 50;
+    const newScore = Math.min(100, Math.max(0, currentScore + (pts ?? 0)));
+
+    // Build the driver_profiles update
+    const dpUpdate: Record<string, number> = { trust_score: newScore };
+    if (action_type === 'payment_ontime') dpUpdate.ontime_payments = (dp.ontime_payments ?? 0) + 1;
+    else if (action_type === 'late_payment') dpUpdate.late_payments = (dp.late_payments ?? 0) + 1;
+    else if (action_type === 'missed_payment') dpUpdate.missed_payments = (dp.missed_payments ?? 0) + 1;
+    else if (action_type === 'accident_minor' || action_type === 'accident_major') dpUpdate.accidents = (dp.accidents ?? 0) + 1;
+    else if (action_type === 'vehicle_abuse') dpUpdate.damage_incidents = (dp.damage_incidents ?? 0) + 1;
+    else if (action_type === 'reckless_driving') dpUpdate.reckless_driving = (dp.reckless_driving ?? 0) + 1;
+
+    await sb.from('driver_profiles').update(dpUpdate).eq('id', driver_profile_id);
+
+    // Log to trust_actions
+    await sb.from('trust_actions').insert({
+      driver_id: driver_profile_id,
+      action_type: action_type ?? 'unknown',
+      points: pts ?? 0,
+      owner_id: owner_id ?? null,
+      submitted_by: submitted_by ?? 'owner',
+      application_id: appId ?? null,
+      comment: comment ?? null,
+    });
+
+    return new Response(JSON.stringify({ ok: true, new_score: newScore }), { headers: { 'Content-Type': 'application/json', ...CORS } });
+  }
+
   // ── Application-based types ──────────────────────────────────────────────
   const { data: app } = await sb
     .from('applications')
