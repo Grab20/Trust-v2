@@ -9280,15 +9280,6 @@ async function subWeeklyUpdate() {
       });
       var _res=await _resp.json();
       if(!_resp.ok||_res.error)errors.push(checks[i].value);
-      // Directly increment payment counter if applicable (send-match-email doesn't handle trust_action type)
-      var _col=_paymentColMap[type];
-      if(_col&&_wuDpId){
-        var _dpRow=await sb.from('driver_profiles').select('id,'+_col).eq('id',_wuDpId).maybeSingle();
-        if(_dpRow.data){
-          var _upd={}; _upd[_col]=(_dpRow.data[_col]||0)+1;
-          await sb.from('driver_profiles').update(_upd).eq('id',_wuDpId);
-        }
-      }
     } catch(e){ errors.push(checks[i].value); }
   }
   if(errors.length){toast('Some updates failed. Please try again.');btn.disabled=false;btn.textContent='Submit Weekly Update';return;}
