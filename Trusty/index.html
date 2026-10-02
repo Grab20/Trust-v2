@@ -12361,10 +12361,9 @@ async function adMatchDriverModal(driverUserId, driverName){
     var carsR=await sb.from('cars')
       .select('id,owner_id,make,model,year,color,location,price_per_week,photo_front_url,profiles!owner_id(id,full_name,email,phone)')
       .eq('admin_status','approved').neq('status','removed').limit(200);
-    var existAppR=await sb.from('applications').select('car_id,owner_id').eq('driver_id',driverUserId).in('status',['pending','approved']);
-    var alreadyCarIds=new Set((existAppR.data||[]).map(function(a){return a.car_id;}));
-    var alreadyOwnerIds=new Set((existAppR.data||[]).map(function(a){return a.owner_id;}));
-    var cars=(carsR.data||[]).filter(function(c){return !alreadyCarIds.has(c.id)&&!alreadyOwnerIds.has(c.owner_id);});
+    // Admin override: show all approved available cars regardless of existing applications.
+    // Owner-level blocking was hiding cars when a driver had any pending request from that owner.
+    var cars=(carsR.data||[]);
     if(!cars.length){listEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No available cars to match with.</div>';return;}
     listEl.innerHTML=cars.map(function(c){
       var owner=c.profiles||{};
