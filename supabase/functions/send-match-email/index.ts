@@ -3,10 +3,25 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+const NETLIFY_SITE_URL = Deno.env.get('NETLIFY_SITE_URL') ?? 'https://trustmatefleet.co.za';
 const FROM = 'TrustMate <noreply@trustmatefleet.co.za>';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type' };
 const site = 'https://trustmatefleet.co.za';
 const footer = '<p style="margin-top:24px;font-size:12px;color:#888">TrustMate Fleet - SA E-Hailing Driver-Owner Marketplace</p>';
+
+// Send a Web Push notification via the Netlify send-push function
+async function sendPush(sb: ReturnType<typeof createClient>, userIds: string[], title: string, body: string, url = '/') {
+  if (!userIds.length) return;
+  try {
+    await fetch(`${NETLIFY_SITE_URL}/.netlify/functions/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_ids: userIds, title, body, url }),
+    });
+  } catch (e) {
+    console.warn('Push delivery failed (non-fatal):', e);
+  }
+}
 
 async function sendEmail(to: string, subject: string, html: string) {
   if (!RESEND_API_KEY || !to) return;
@@ -196,6 +211,7 @@ ${app.message ? `<p>Their message: <em>"${app.message}"</em></p>` : ''}
 ${btn(site, 'View Request')}${footer}`
       );
     }
+    await sendPush(sb, [app.driver_id], '📩 New Vehicle Request', `${ownerName} has sent you a rental request. Tap to review.`, '/');
 
   // match confirmed (owner accepted driver application, or driver accepted owner request)
   } else if (type === 'match_approved') {
@@ -220,6 +236,8 @@ ${btn(site, 'View Match')}${footer}`
 ${btn(site, 'View Match')}${footer}`
       );
     }
+    await sendPush(sb, [app.driver_id], '🎉 You\'re Matched!', `Congratulations! You've been matched with ${ownerName}. Tap to view details.`, '/');
+    await sendPush(sb, [app.owner_id], '✅ Match Confirmed', `${driverName} is now matched with your vehicle. Tap to view driver details.`, '/');
 
   // owner declined a driver's application
   } else if (type === 'application_rejected') {
@@ -237,6 +255,7 @@ ${reasonBlock}
 ${btn(site, 'Browse Vehicles')}${footer}`
       );
     }
+    await sendPush(sb, [app.driver_id], 'Application Update', `${ownerName} has reviewed your application. Tap for details.`, '/');
 
   // driver declined an owner's request
   } else if (type === 'driver_rejected') {
@@ -250,6 +269,7 @@ ${btn(site, 'Browse Vehicles')}${footer}`
 ${btn(site, 'Browse Drivers')}${footer}`
       );
     }
+    await sendPush(sb, [app.owner_id], 'Request Declined', `${driverName} has declined your rental request. Browse more drivers.`, '/');
   }
 
   return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json', ...CORS } });
