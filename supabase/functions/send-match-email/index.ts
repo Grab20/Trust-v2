@@ -3,10 +3,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') ?? '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-const NETLIFY_SITE_URL = Deno.env.get('NETLIFY_SITE_URL') ?? 'https://trustmatefleet.co.za';
-const FROM = 'TrustMate <noreply@trustmatefleet.co.za>';
+const NETLIFY_SITE_URL = Deno.env.get('NETLIFY_SITE_URL') ?? 'https://trustmate.co.za';
+const FROM = 'TrustMate <noreply@trustmate.co.za>';
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, content-type' };
-const site = 'https://trustmatefleet.co.za';
+const site = 'https://trustmate.co.za';
 const footer = '<p style="margin-top:24px;font-size:12px;color:#888">TrustMate Fleet - SA E-Hailing Driver-Owner Marketplace</p>';
 
 // Send a Web Push notification via the Netlify send-push function
