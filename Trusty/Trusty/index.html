@@ -4,6 +4,17 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
 <title>TrustMate - Driver & Owner Marketplace</title>
+
+<!-- PWA manifest & theme -->
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#1a5c28"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="TrustMate"/>
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png"/>
+<link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png"/>
 <!-- Google Analytics (GA4) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-43Y9FW8FMP"></script>
 <script>
@@ -15832,6 +15843,16 @@ function mobActive(id){}
   var _waPoll=setInterval(function(){if(window.P){toggleWaBtn();clearInterval(_waPoll);}},2000);
   document.addEventListener('trustmate-auth',toggleWaBtn);
 })();
+</script>
+<script>
+// PWA — register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js').catch(function (e) {
+      console.warn('SW registration failed:', e);
+    });
+  });
+}
 </script>
 </body>
 </html>
