@@ -23,7 +23,7 @@
   gtag('js', new Date());
   gtag('config', 'G-43Y9FW8FMP');
 </script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/js/supabase.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
@@ -651,6 +651,17 @@ nav div::-webkit-scrollbar{display:none}
 </head>
 <body>
 <div id="toast"></div>
+
+<!-- PWA Install Banner -->
+<div id="pwa-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1a5c28;color:#fff;padding:14px 16px;display:none;align-items:center;gap:12px;box-shadow:0 -2px 12px rgba(0,0,0,.18)">
+  <img src="/icons/icon-192.png" style="width:40px;height:40px;border-radius:10px;flex-shrink:0" alt=""/>
+  <div style="flex:1;min-width:0">
+    <div style="font-weight:700;font-size:14px;line-height:1.3">Install TrustMate</div>
+    <div style="font-size:12px;opacity:.85;line-height:1.3">Add to home screen for faster access</div>
+  </div>
+  <button id="pwa-install-btn" style="background:#fff;color:#1a5c28;border:none;border-radius:7px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0;font-family:inherit">Install</button>
+  <button id="pwa-dismiss-btn" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;opacity:.7;line-height:1" aria-label="Dismiss">✕</button>
+</div>
 
 <!-- LIGHTBOX -->
 <div class="lbox" id="lbox" onclick="this.classList.remove('on')">
@@ -15845,7 +15856,119 @@ function mobActive(id){}
 })();
 </script>
 <script>
-// PWA — register service worker
+// ── PWA: Install prompt ───────────────────────────────────────────────────────
+(function () {
+  var deferredPrompt = null;
+  var banner = document.getElementById('pwa-install-banner');
+  var installBtn = document.getElementById('pwa-install-btn');
+  var dismissBtn = document.getElementById('pwa-dismiss-btn');
+
+  // Don't show if already installed or user dismissed within 7 days
+  function shouldShow() {
+    if (window.matchMedia('(display-mode: standalone)').matches) return false;
+    if (window.navigator.standalone) return false; // iOS standalone
+    try {
+      var last = localStorage.getItem('pwa_banner_dismissed');
+      if (last && Date.now() - parseInt(last) < 7 * 86400000) return false;
+    } catch (e) {}
+    return true;
+  }
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (shouldShow() && banner) {
+      banner.style.display = 'flex';
+    }
+  });
+
+  if (installBtn) {
+    installBtn.addEventListener('click', function () {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function (result) {
+        if (result.outcome === 'accepted') {
+          banner.style.display = 'none';
+          try { localStorage.setItem('pwa_installed', '1'); } catch(e) {}
+        }
+        deferredPrompt = null;
+      });
+    });
+  }
+
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', function () {
+      banner.style.display = 'none';
+      try { localStorage.setItem('pwa_banner_dismissed', Date.now().toString()); } catch(e) {}
+    });
+  }
+
+  // Handle navigation messages from SW (push notification click)
+  navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', function (e) {
+    if (e.data && e.data.type === 'PUSH_NAV' && e.data.url) {
+      var hash = e.data.url.replace(/^.*#/, '');
+      if (hash && typeof go === 'function') go(hash);
+    }
+  });
+})();
+
+// ── PWA: Push notification subscription ──────────────────────────────────────
+var VAPID_PUBLIC_KEY = 'BEDIiI4ADCH2HGAy7utz4K6bgiNO4djlcauCr9D0Jmytoh1xFHhUroEiK1ewzYYEBeMEAsJitGmHqLz_b40lTBY';
+
+function urlBase64ToUint8Array(base64String) {
+  var padding = '='.repeat((4 - base64String.length % 4) % 4);
+  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  var rawData = window.atob(base64);
+  var arr = new Uint8Array(rawData.length);
+  for (var i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
+  return arr;
+}
+
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!window.U || !window.sb) return; // not logged in yet
+
+  try {
+    var reg = await navigator.serviceWorker.ready;
+    var existing = await reg.pushManager.getSubscription();
+
+    // Save subscription to Supabase (upsert by endpoint)
+    async function saveSubscription(sub) {
+      var json = sub.toJSON();
+      var ua = navigator.userAgent.slice(0, 200);
+      await window.sb.from('push_subscriptions').upsert({
+        user_id:   window.U.id,
+        endpoint:  json.endpoint,
+        p256dh:    json.keys.p256dh,
+        auth:      json.keys.auth,
+        user_agent: ua,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'endpoint' });
+    }
+
+    if (existing) { await saveSubscription(existing); return; }
+
+    // Request permission then subscribe
+    var perm = await Notification.requestPermission();
+    if (perm !== 'granted') return;
+
+    var sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+    await saveSubscription(sub);
+  } catch (e) {
+    console.warn('Push subscription failed:', e);
+  }
+}
+
+// Trigger push subscription after login
+document.addEventListener('trustmate-auth', function () {
+  // Small delay so U and sb are definitely set
+  setTimeout(subscribeToPush, 2000);
+});
+
+// ── PWA: Service worker registration ─────────────────────────────────────────
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('/sw.js').catch(function (e) {
