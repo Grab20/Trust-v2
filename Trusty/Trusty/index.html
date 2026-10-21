@@ -15890,6 +15890,21 @@ function mobActive(id){}
         if (result.outcome === 'accepted') {
           banner.style.display = 'none';
           try { localStorage.setItem('pwa_installed', '1'); } catch(e) {}
+          // Log install to Supabase
+          try {
+            var ua = navigator.userAgent;
+            var platform = /android/i.test(ua) ? 'android' : /iphone|ipad/i.test(ua) ? 'ios' : /windows/i.test(ua) ? 'windows' : /mac/i.test(ua) ? 'mac' : 'other';
+            var browser = /edg\//i.test(ua) ? 'edge' : /chrome/i.test(ua) ? 'chrome' : /safari/i.test(ua) ? 'safari' : /firefox/i.test(ua) ? 'firefox' : 'other';
+            var userId = null;
+            try { var s = window._sb || window.supabase; if (s && s.auth) { s.auth.getUser().then(function(r){ if(r && r.data && r.data.user) userId = r.data.user.id; }); } } catch(e2) {}
+            setTimeout(function() {
+              fetch('https://qyyflivkmnwikagnvstv.supabase.co/rest/v1/pwa_installs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF5eWZsaXZrbW53aWthZ252c3R2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAwNDQ4NDYsImV4cCI6MjA5NTYyMDg0Nn0.ZlQo_KtEIyGXffyuqme66pFiIzGGZGXKflJBLmdnb68' },
+                body: JSON.stringify({ user_id: userId, platform: platform, browser: browser, user_agent: ua.substring(0, 300) })
+              }).catch(function(){});
+            }, 500);
+          } catch(e) {}
         }
         deferredPrompt = null;
       });
