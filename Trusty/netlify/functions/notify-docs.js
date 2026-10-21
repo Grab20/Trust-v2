@@ -7,7 +7,7 @@
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const ADMIN_EMAIL    = ['ngomaft@yahoo.com', 'info@trustmate.co.za'];
-const FROM_EMAIL     = 'TrustMate <noreply@trustmatefleet.co.za>';
+const FROM_EMAIL     = 'TrustMate <noreply@trustmate.co.za>';
 
 exports.handler = async function (event) {
   if (event.httpMethod === 'OPTIONS') {
@@ -49,9 +49,9 @@ exports.handler = async function (event) {
       <tr><td style="padding:4px 12px 4px 0;color:#666">User ID</td><td style="font-size:12px;color:#999">${esc(uid || '—')}</td></tr>
     </table>
     <p style="margin-top:16px">
-      <a href="https://trustmatefleet.co.za" style="background:#16a34a;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:600">Review in Admin Panel</a>
+      <a href="https://trustmate.co.za" style="background:#16a34a;color:#fff;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:600">Review in Admin Panel</a>
     </p>
-    <p style="font-size:12px;color:#999;margin-top:24px">TrustMate · trustmatefleet.co.za</p>
+    <p style="font-size:12px;color:#999;margin-top:24px">TrustMate · trustmate.co.za</p>
   `;
 
   try {

@@ -15,3 +15,7 @@
 [functions."send-digest"]
   schedule = "0 5,10,16 * * *"
 
+# Driver doc reminders: 9am SAST daily (= 7am UTC)
+[functions."remind-incomplete-drivers"]
+  schedule = "0 7 * * *"
+
