@@ -663,6 +663,20 @@ nav div::-webkit-scrollbar{display:none}
   <button id="pwa-dismiss-btn" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;opacity:.7;line-height:1" aria-label="Dismiss">✕</button>
 </div>
 
+<!-- iOS install tip -->
+<div id="ios-install-tip" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1a5c28;color:#fff;padding:16px;box-shadow:0 -2px 12px rgba(0,0,0,.2);font-family:inherit">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+    <div style="font-weight:700;font-size:14px">Install TrustMate on iPhone</div>
+    <button id="ios-tip-dismiss" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 0 0 12px;opacity:.7;line-height:1" aria-label="Dismiss">✕</button>
+  </div>
+  <div style="font-size:13px;line-height:1.8">
+    <div>1. Tap the <strong>Share button</strong> <span style="font-size:16px">⬆</span> at the bottom of Safari</div>
+    <div>2. Scroll down and tap <strong>"Add to Home Screen"</strong></div>
+    <div>3. Tap <strong>"Add"</strong> in the top right</div>
+  </div>
+  <div style="margin-top:10px;font-size:11px;opacity:.75">Must be opened in Safari · Chrome on iPhone won't work</div>
+</div>
+
 <!-- LIGHTBOX -->
 <div class="lbox" id="lbox" onclick="this.classList.remove('on')">
   <div onclick="event.stopPropagation()" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:10px">
@@ -15872,6 +15886,26 @@ function mobActive(id){}
       if (last && Date.now() - parseInt(last) < 7 * 86400000) return false;
     } catch (e) {}
     return true;
+  }
+
+  // iOS Safari install tip
+  var isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isInStandalone = window.navigator.standalone;
+  var iosTip = document.getElementById('ios-install-tip');
+  var iosDismiss = document.getElementById('ios-tip-dismiss');
+  if (isIos && !isInStandalone && iosTip) {
+    try {
+      var iosDismissed = localStorage.getItem('ios_tip_dismissed');
+      if (!iosDismissed || Date.now() - parseInt(iosDismissed) > 7 * 86400000) {
+        setTimeout(function() { iosTip.style.display = 'block'; }, 3000);
+      }
+    } catch(e) { iosTip.style.display = 'block'; }
+  }
+  if (iosDismiss) {
+    iosDismiss.addEventListener('click', function() {
+      if (iosTip) iosTip.style.display = 'none';
+      try { localStorage.setItem('ios_tip_dismissed', Date.now().toString()); } catch(e) {}
+    });
   }
 
   window.addEventListener('beforeinstallprompt', function (e) {
