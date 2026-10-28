@@ -1,8 +1,8 @@
 /**
  * reconcile-boosts
  * Checks all pending boost_payments against Yoco API and activates any that were paid.
- * Protect with SETUP_SECRET. Call once to fix stuck payments.
- * GET /.netlify/functions/reconcile-boosts?secret=YOUR_SETUP_SECRET
+ * Runs automatically every 2 hours via Netlify scheduled functions.
+ * Also callable manually: GET /.netlify/functions/reconcile-boosts?secret=YOUR_SETUP_SECRET
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -18,8 +18,10 @@ exports.handler = async function (event) {
     return { statusCode: 200, headers: cors(), body: '' };
   }
 
+  // Allow scheduled invocation (no secret) or manual with secret
+  const isScheduled = event.httpMethod === undefined || event.httpMethod === null || !event.httpMethod;
   const secret = (event.queryStringParameters || {}).secret;
-  if (secret !== SETUP_SECRET) {
+  if (!isScheduled && secret !== SETUP_SECRET) {
     return { statusCode: 401, headers: cors(), body: JSON.stringify({ error: 'Unauthorized' }) };
   }
 
@@ -69,6 +71,49 @@ exports.handler = async function (event) {
       const now       = new Date();
       const expiry    = new Date(now.getTime() + payment.duration_days * 24 * 3600 * 1000);
 
+      // ── B/N application plan ───────────────────────────────────
+      if (payment.boost_type === 'bn_application') {
+        const { data: existing } = await sb
+          .from('bn_entitlements')
+          .select('id, expires_at')
+          .eq('driver_id', payment.user_id)
+          .eq('status', 'active')
+          .gte('expires_at', now.toISOString())
+          .order('expires_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const baseDate  = existing ? new Date(Math.max(new Date(existing.expires_at), now)) : now;
+        const newExpiry = new Date(baseDate.getTime() + payment.duration_days * 24 * 3600 * 1000);
+
+        const { error: entErr } = await sb.from('bn_entitlements').insert({
+          driver_id:  payment.user_id,
+          payment_id: payment.id,
+          plan_type:  'paid',
+          status:     'active',
+          starts_at:  now.toISOString(),
+          expires_at: newExpiry.toISOString(),
+        });
+
+        if (entErr && entErr.code !== '23505') {
+          results.errors.push({ id: payment.yoco_checkout_id, entErr: entErr.message });
+          continue;
+        }
+
+        await sb.from('boost_payments').update({
+          payment_status:   'paid',
+          yoco_payment_id:  yocoPayId,
+          boost_start_at:   now.toISOString(),
+          boost_expires_at: newExpiry.toISOString(),
+          paid_at:          now.toISOString(),
+          updated_at:       now.toISOString(),
+        }).eq('id', payment.id);
+
+        results.activated.push({ checkout: payment.yoco_checkout_id, user: payment.user_id, type: 'bn_application' });
+        continue;
+      }
+
+      // ── Standard boost (driver / vehicle) ─────────────────────
       const { data: boost, error: boostErr } = await sb
         .from('boosts')
         .insert({

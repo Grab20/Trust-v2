@@ -19,3 +19,7 @@
 [functions."remind-incomplete-drivers"]
   schedule = "0 7 * * *"
 
+# Boost reconcile: every 2 hours — catches any boost payments missed by webhook
+[functions."reconcile-boosts"]
+  schedule = "0 */2 * * *"
+
