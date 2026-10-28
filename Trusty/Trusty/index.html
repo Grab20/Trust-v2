@@ -5398,7 +5398,7 @@ async function pOv() {
     html+='<div class="tbox" style="border:2px solid var(--gm)">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
       +'<div class="shd" style="margin-bottom:0">&#11088; TrustScore</div>'
-      +'<span style="font-size:10px;font-weight:700;background:'+(DP.status==='approved'?'var(--gs)':DP.status==='incomplete'?'#fef3c7':'#fef2f2')+';color:'+(DP.status==='approved'?'var(--gm)':DP.status==='incomplete'?'#7a5200':'#dc2626')+';padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px">'+(DP.status||'pending')+'</span>'
+      +(function(){var st=DP.status||'pending';var bg=st==='approved'?'var(--gs)':st==='incomplete'?'#fef3c7':'#fef2f2';var cl=st==='approved'?'var(--gm)':st==='incomplete'?'#7a5200':'#dc2626';var lbl={'approved':'Approved','pending':'Under Review','pending_docs':'Docs Under Review','incomplete':'Incomplete','rejected':'Not Approved','removed':'Removed','dormant':'Dormant'}[st]||st;return '<span style="font-size:10px;font-weight:700;background:'+bg+';color:'+cl+';padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px">'+lbl+'</span>';})()+'<button onclick="pOv()" style="font-size:10px;color:var(--muted);background:none;border:none;cursor:pointer;padding:2px 6px;margin-left:4px" title="Refresh">&#8635;</button>'
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">'
       +'<div style="font-size:40px;font-weight:900;font-family:\'Playfair Display\',serif;color:'+si[4]+';line-height:1">'+s+'</div>'
@@ -5406,6 +5406,7 @@ async function pOv() {
       +'</div>'
       +(s===0?'<p style="font-size:11px;color:var(--muted);background:var(--cream);border-radius:6px;padding:6px 10px;margin-bottom:8px">Your TrustScore starts at 0 and increases as owners rate your reliability, payments and communication.</p>':'')
       +(DP.status==='approved'?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'')
+      +(DP.status==='pending_docs'?'<p style="font-size:11px;color:#7a5200;background:#fef3c7;border-radius:6px;padding:6px 10px;margin-bottom:8px">&#128196; Your documents are being reviewed. We\'ll notify you once approved.</p>':'')
       +(DP.status==='approved'?'<button onclick="openTmShare(\'driver\')" style="margin-top:10px;width:100%;padding:9px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#128279; Share My Profile</button>':'')
       +'</div>';
     // ── PROFILE STATS: views, likes (always shown for approved driver) ──
@@ -14852,9 +14853,19 @@ async function adSaveTrustScore(dpId){
   if(!el){toast('Score input not found.');return;}
   var score=parseInt(el.value);
   if(isNaN(score)||score<0||score>100){toast('Trust score must be between 0 and 100.');return;}
-  var r=await sb.from('driver_profiles').update({trust_score:score}).eq('id',dpId).select();
+  var r=await sb.from('driver_profiles').update({trust_score:score,updated_at:new Date().toISOString()}).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
-  if(!r.data||!r.data.length){toast('Save failed - check admin permissions');return;}
+  if(!r.data||!r.data.length){
+    // Fallback: verify the update landed
+    var chk=await sb.from('driver_profiles').select('trust_score').eq('id',dpId).maybeSingle();
+    if(chk.data&&chk.data.trust_score===score){toast('Trust score updated to '+score+'!');}
+    else{toast('Save failed — check admin permissions');}
+    return;
+  }
+  // Confirm saved value matches (guards against silent RLS block)
+  var saved=r.data[0]&&r.data[0].trust_score;
+  if(saved!==score){toast('Warning: DB returned score '+saved+' — please try again.');return;}
+  el.value=score;
   toast('Trust score updated to '+score+'!');
 }
 var _unmatchAid=null,_unmatchRole=null,_unmatchReasonRequired=false;
