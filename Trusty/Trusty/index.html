@@ -2309,6 +2309,15 @@ async function sendDriverEmail(type, driverProfileId) {
     });
   } catch(e) { console.warn('Email notification failed', e); }
 }
+// ── Web Push helper (fire-and-forget, no await needed) ───────────────────────
+function sendPushToUser(userId, title, body, url, tag) {
+  if(!userId) return;
+  fetch('/.netlify/functions/send-push', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({user_id: userId, title: title, body: body, url: url||'/', tag: tag||'tm-general'})
+  }).catch(function(e){console.warn('Push notification failed (non-blocking):', e);});
+}
 // ── Brevo contact sync (fire-and-forget) ──────────────────────────────────
 function _brevoSync(userId, eventType) {
   try {
@@ -10457,6 +10466,8 @@ async function adMoveToPendingDocs(dpId){
   var r=await sb.from('driver_profiles').update({status:'pending_docs'}).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   sendDriverEmail('incomplete_reminder',dpId);
+  var _pdUid=(r.data&&r.data[0]&&r.data[0].user_id)||null;
+  if(_pdUid) sendPushToUser(_pdUid,'Action required 📄','Please upload your documents to complete your TrustMate profile.','/?tab=dc','tm-pending-docs');
   toast('Moved to Pending Documents — reminder sent.');
   adReg();adOv();
 }
@@ -10652,8 +10663,10 @@ async function incPromote(dpId){
   adNav('reg');
 }
 async function incApprove(dpId){
-  await sb.from('driver_profiles').update({status:'approved',approved_at:new Date().toISOString()}).eq('id',dpId);
+  var r=await sb.from('driver_profiles').update({status:'approved',approved_at:new Date().toISOString()}).eq('id',dpId).select();
   sendDriverEmail('driver_approved', dpId);
+  var _uid=r.data&&r.data[0]&&r.data[0].user_id;
+  if(_uid) sendPushToUser(_uid,'You\'re approved! 🎉','Your TrustMate profile is now live. Start applying for vehicles.','/?tab=ap','tm-approved');
   toast('Approved! Welcome email sent.');adInc();
 }
 async function incDecline(dpId){
@@ -10909,9 +10922,10 @@ async function adSetDrv(dpId,status){
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   toast(status==='approved'?'Driver approved.':'Driver rejected. Rejection email sent.');
-  // Sync to Brevo using user_id from the driver_profiles row
   var _drvUserId=(r.data[0]&&r.data[0].user_id)||null;
   if(_drvUserId) _brevoSync(_drvUserId, 'driver_status_change');
+  if(_drvUserId&&status==='approved') sendPushToUser(_drvUserId,'You\'re approved! 🎉','Your TrustMate profile is now live. Start applying for vehicles.','/?tab=ap','tm-approved');
+  if(_drvUserId&&status==='rejected') sendPushToUser(_drvUserId,'Application update','Your application needs attention. Log in to see details.','/?tab=dc','tm-rejected');
   adReg();adPendingDocs();adOv();adDrv();adBnd();
 }
 async function adMoveToBN(dpId){
@@ -10926,6 +10940,7 @@ async function adMoveToBN(dpId){
   sendDriverEmail('driver_approved', dpId);
   var _drvUserId=(r.data[0]&&r.data[0].user_id)||null;
   if(_drvUserId) _brevoSync(_drvUserId,'driver_status_change');
+  if(_drvUserId) sendPushToUser(_drvUserId,'You\'re approved! 🎉','Your TrustMate profile is now live. Start applying for vehicles.','/?tab=ap','tm-approved');
   toast('Moved to B/N. Driver approved and welcome email sent.');
   adReg();adBnd();adOv();adDrv();
 }
@@ -10940,8 +10955,10 @@ async function adSetOwner(pid,status){
   if(status==='approved'){
     var carR=await sb.from('cars').update({admin_status:'approved'}).eq('owner_id',pid).eq('admin_status','pending');
     if(carR.error){console.error('Car approval error (non-blocking):',carR.error);}
+    sendPushToUser(pid,'You\'re approved! 🎉','Your TrustMate owner account is live. Start browsing drivers now.','/?tab=br','tm-owner-approved');
     toast('Owner and vehicles approved!');
   } else {
+    sendPushToUser(pid,'Account update','Your application needs attention. Log in for details.','/','tm-owner-rejected');
     toast('Owner declined');
   }
   _brevoSync(pid, 'owner_status_change');
@@ -14781,7 +14798,17 @@ async function adSaveTrustScore(dpId){
   if(isNaN(score)||score<0||score>100){toast('Trust score must be between 0 and 100.');return;}
   var r=await sb.from('driver_profiles').update({trust_score:score}).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
-  if(!r.data||!r.data.length){toast('Save failed - check admin permissions');return;}
+  if(!r.data||!r.data.length){
+    var chk=await sb.from('driver_profiles').select('trust_score').eq('id',dpId).maybeSingle();
+    if(chk.data&&chk.data.trust_score===score){toast('Trust score updated to '+score+'!');}
+    else{toast('Save failed — check admin permissions');}
+    return;
+  }
+  var saved=r.data[0]&&r.data[0].trust_score;
+  if(saved!==score){toast('Warning: DB returned score '+saved+' — please try again.');return;}
+  el.value=score;
+  var _tsUid=r.data[0]&&r.data[0].user_id;
+  if(_tsUid) sendPushToUser(_tsUid,'Your TrustScore was updated','Your new TrustMate TrustScore is '+score+'. Log in to see your profile.','/?tab=ov','tm-trustscore');
   toast('Trust score updated to '+score+'!');
 }
 var _unmatchAid=null,_unmatchRole=null;
