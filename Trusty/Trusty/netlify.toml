@@ -15,3 +15,11 @@
 [functions."send-digest"]
   schedule = "0 5,10,16 * * *"
 
+# Driver doc push reminders: 9am SAST daily (= 7am UTC)
+[functions."remind-incomplete-drivers"]
+  schedule = "0 7 * * *"
+
+# Boost reconcile: every 2 hours
+[functions."reconcile-boosts"]
+  schedule = "0 */2 * * *"
+

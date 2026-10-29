@@ -10421,6 +10421,7 @@ async function adPendingDocs(){
   var dPr=await sb.from('profiles').select('id,full_name,email,phone,location,created_at').in('id',dUids);
   var dpm={};(dPr.data||[]).forEach(function(p){dpm[p.id]=p;});
   var html='<div class="adm-pg"><div class="ptitle">Pending Documents</div>'
+    +'<button onclick="adPushIncompleteReminder(this)" style="margin-bottom:10px;padding:8px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#128276; Send Push Reminder to All</button>'
     +'<div style="margin-bottom:10px"><input id="adm-pdoc-q" type="text" placeholder="&#128269; Search name, email, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adPdocSearch()"/></div>'
     +'<div class="psub">'+allDocs.length+' driver'+(allDocs.length!==1?'s':'')+' awaiting document upload &amp; approval</div>';
   html+=allDocs.map(function(d){
@@ -10487,6 +10488,7 @@ async function adInc(){
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
   if(_incSort==='name'){dps.sort(function(a,b){var na=(pm[a.user_id]||{}).full_name||'';var nb=(pm[b.user_id]||{}).full_name||'';return na.localeCompare(nb);});}
   el.innerHTML='<div class="adm-pg"><div class="ptitle">Incomplete Registrations</div>'
+    +'<button onclick="adPushIncompleteReminder(this)" style="margin-bottom:10px;padding:8px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#128276; Send Push Reminder to All</button>'
     +'<div style="display:flex;gap:8px;margin-bottom:10px">'
     +'<input id="adm-inc-q" type="text" placeholder="&#128269; Search name, email, location..." style="flex:1;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adIncSearch()"/>'
     +'<select id="adm-inc-sort" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--card)" onchange="adInc()">'
@@ -10965,6 +10967,15 @@ async function adSetOwner(pid,status){
   adReg();adOv();adOwn();
 }
 
+async function adPushIncompleteReminder(btn){
+  if(btn){btn.disabled=true;btn.textContent='Sending...';}
+  try{
+    var r=await fetch('/.netlify/functions/remind-incomplete-drivers?secret='+(window._setupSecret||'trustmate-setup-2026'));
+    var data=await r.json();
+    toast('Push sent to '+data.sent+' driver'+(data.sent!==1?'s':'')+' ('+(data.failed||0)+' failed).');
+  }catch(e){toast('Failed to send reminders: '+e.message);}
+  if(btn){btn.disabled=false;btn.textContent='&#128276; Send Push Reminder to All';}
+}
 async function adMoveIncomplete(type,id){
   var c=document.getElementById((type==='drv'?'rc-':'ro-')+id);
   if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
