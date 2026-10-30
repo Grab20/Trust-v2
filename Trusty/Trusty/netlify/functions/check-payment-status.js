@@ -28,6 +28,59 @@ exports.handler = async function (event) {
 
   const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+  // Check verify_payments first (driver R29 fee)
+  const { data: verifyPayment } = await sb
+    .from('verify_payments')
+    .select('id, user_id, payment_status, yoco_checkout_id')
+    .eq('yoco_checkout_id', checkoutId)
+    .maybeSingle();
+
+  if (verifyPayment) {
+    // If paid, return immediately
+    if (verifyPayment.payment_status === 'paid') {
+      return { statusCode: 200, headers: cors(), body: JSON.stringify({ payment: verifyPayment }) };
+    }
+    // Still pending — check with Yoco API directly as fallback
+    if (YOCO_SECRET_KEY && verifyPayment.payment_status === 'pending') {
+      try {
+        const yocoRes = await fetch(`${YOCO_API_BASE}/checkouts/${checkoutId}`, {
+          headers: { 'Authorization': `Bearer ${YOCO_SECRET_KEY}` },
+        });
+        if (yocoRes.ok) {
+          const yocoData = await yocoRes.json();
+          const checkoutStatus = (yocoData.status || '').toLowerCase();
+          const paymentStatus  = (yocoData.payment?.status || yocoData.paymentStatus || '').toLowerCase();
+          const isPaid = ['succeeded','complete','completed','paid'].includes(checkoutStatus)
+                      || ['succeeded','complete','completed','paid'].includes(paymentStatus);
+          if (isPaid) {
+            const yocoPayId = yocoData.payment?.id || yocoData.id;
+            const now = new Date().toISOString();
+            await sb.from('verify_payments')
+              .update({ payment_status: 'paid', yoco_payment_id: yocoPayId, paid_at: now, updated_at: now })
+              .eq('yoco_checkout_id', checkoutId)
+              .eq('payment_status', 'pending');
+            await sb.from('driver_profiles')
+              .update({ status: 'pending', verify_paid_at: now, updated_at: now })
+              .eq('user_id', verifyPayment.user_id)
+              .eq('status', 'pending_payment');
+            // Fire admin notification (non-blocking)
+            try {
+              const { data: prof } = await sb.from('profiles').select('full_name,email').eq('id', verifyPayment.user_id).maybeSingle();
+              fetch(`${process.env.URL || 'https://trustmatefleet.co.za'}/.netlify/functions/notify-docs`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: prof?.full_name||'', email: prof?.email||'', role: 'driver', uid: verifyPayment.user_id }),
+              }).catch(() => {});
+            } catch (_) {}
+            return { statusCode: 200, headers: cors(), body: JSON.stringify({ payment: { ...verifyPayment, payment_status: 'paid' } }) };
+          }
+        }
+      } catch (e) {
+        console.warn('Yoco API check failed for verify payment (non-blocking):', e.message);
+      }
+    }
+    return { statusCode: 200, headers: cors(), body: JSON.stringify({ payment: verifyPayment }) };
+  }
+
   const { data: payment, error } = await sb
     .from('boost_payments')
     .select('*')

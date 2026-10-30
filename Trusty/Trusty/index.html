@@ -5157,7 +5157,7 @@ async function doReg() {
     var hasPdp=false;
     var tripsDecl=parseInt(eid('d-trips').value||0)||0;
     var has1yr=tripsDecl>=50;
-    var dpPayload=Object.assign({user_id:uid,years_driving:0,platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,date_of_birth:dobDate,citizenship:citizenVal,trust_score:hasDoc?40:0,status:'pending',id_number:eid('d-id').value.trim()||null,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:shotUrls.uber,screenshot_bolt_url:shotUrls.bolt,screenshot_indrive_url:shotUrls.indrive,has_pdp:false,has_1yr_experience:has1yr,declared_trips:tripsDecl},u);
+    var dpPayload=Object.assign({user_id:uid,years_driving:0,platforms:platList,safe_parking:eid('d-pk').value==='true',bio:eid('d-bio').value.trim()||null,age:parseInt(eid('d-ag').value||0)||null,date_of_birth:dobDate,citizenship:citizenVal,trust_score:hasDoc?40:0,status:'pending_payment',id_number:eid('d-id').value.trim()||null,deposit_amount:depAmt,doc_uploaded_at:hasDoc?now:null,doc_expires_at:hasDoc?new Date(Date.now()+90*864e5).toISOString():null,screenshot_uber_url:shotUrls.uber,screenshot_bolt_url:shotUrls.bolt,screenshot_indrive_url:shotUrls.indrive,has_pdp:false,has_1yr_experience:has1yr,declared_trips:tripsDecl},u);
     // Use SECURITY DEFINER RPC to bypass RLS (anon users can't update via direct query)
     var dpR=await sb.rpc('complete_driver_registration',{payload:dpPayload});
     if(dpR.error){
@@ -5200,8 +5200,10 @@ async function doReg() {
     }
   }
   _logFunnelEvent('registration_submitted',{role:rRole});
-  // Fire-and-forget admin notification — don't block or show errors to user
-  (function(){try{fetch('/.netlify/functions/notify-docs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:rName,email:rEmail,role:rRole,uid:uid})});}catch(e){}})();
+  // Admin notification: owners notified immediately; drivers notified after R29 payment confirmed
+  if(rRole!=='driver'){
+    (function(){try{fetch('/.netlify/functions/notify-docs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:rName,email:rEmail,role:rRole,uid:uid})});}catch(e){}})();
+  }
   // Sync new user to Brevo
   _brevoSync(uid, 'registration');
   docFiles={};
@@ -5210,7 +5212,7 @@ async function doReg() {
     gtag('event', 'sign_up', { method: rRole === 'driver' ? 'driver_registration' : 'owner_registration' });
   }
   rPhone='';
-  toast('Account created! Welcome to TrustMate 🎉');
+  toast(rRole==='driver'?'Documents uploaded! Pay R29 to complete registration.':'Account created! Welcome to TrustMate 🎉');
   if(rRole==='owner'){
     // Redirect owner to dashboard after successful registration
     await loadP();setNav();
@@ -5341,7 +5343,7 @@ async function pOv() {
     html+='<div class="tbox" style="border:2px solid var(--gm)">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
       +'<div class="shd" style="margin-bottom:0">&#11088; TrustScore</div>'
-      +'<span style="font-size:10px;font-weight:700;background:'+(DP.status==='approved'?'var(--gs)':DP.status==='incomplete'?'#fef3c7':'#fef2f2')+';color:'+(DP.status==='approved'?'var(--gm)':DP.status==='incomplete'?'#7a5200':'#dc2626')+';padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px">'+(DP.status||'pending')+'</span>'
+      +(function(){var _st=DP.status||'pending';var _bg=_st==='approved'?'var(--gs)':_st==='incomplete'||_st==='pending_payment'?'#fef3c7':'#fef2f2';var _cl=_st==='approved'?'var(--gm)':_st==='incomplete'||_st==='pending_payment'?'#7a5200':'#dc2626';var _lbl={'approved':'Approved','pending':'Under Review','pending_docs':'Docs Under Review','incomplete':'Incomplete','rejected':'Not Approved','removed':'Removed','dormant':'Dormant','pending_payment':'Payment Required'}[_st]||_st;return '<span style="font-size:10px;font-weight:700;background:'+_bg+';color:'+_cl+';padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.5px">'+_lbl+'</span>';})()+'&nbsp;'
       +'</div>'
       +'<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">'
       +'<div style="font-size:40px;font-weight:900;font-family:\'Playfair Display\',serif;color:'+si[4]+';line-height:1">'+s+'</div>'
@@ -5349,8 +5351,22 @@ async function pOv() {
       +'</div>'
       +(s===0?'<p style="font-size:11px;color:var(--muted);background:var(--cream);border-radius:6px;padding:6px 10px;margin-bottom:8px">Your TrustScore starts at 0 and increases as owners rate your reliability, payments and communication.</p>':'')
       +(DP.status==='approved'?'<p style="font-size:11px;color:var(--gm)">&#10003; Documents Verified</p>':'')
+      +(DP.status==='pending_payment'?'<p style="font-size:11px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 10px;margin-top:4px">&#9201; R29 verification fee required to complete registration.</p>':'')
       +(DP.status==='approved'?'<button onclick="openTmShare(\'driver\')" style="margin-top:10px;width:100%;padding:9px;background:var(--gm);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#128279; Share My Profile</button>':'')
       +'</div>';
+    // ── PENDING PAYMENT: show R29 fee wall ──────────────────────────
+    if(DP.status==='pending_payment'){
+      html+='<div class="tbox" style="border:2px solid #f59e0b;background:linear-gradient(135deg,#fffbef 0%,#fff 100%)">'
+        +'<div style="font-size:16px;font-weight:800;color:#92400e;margin-bottom:6px">&#128179; Complete Your Registration</div>'
+        +'<p style="font-size:13px;color:#78350f;margin-bottom:12px">Your documents have been uploaded. Pay the once-off R29 verification fee to submit your profile for admin review and go live on TrustMate.</p>'
+        +'<div style="background:#fef3c7;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">'
+        +'<div><div style="font-size:11px;font-weight:700;color:#92400e">Verification Fee</div><div style="font-size:11px;color:#a16207">Once-off · Non-refundable</div></div>'
+        +'<div style="font-size:22px;font-weight:900;color:#92400e">R29</div>'
+        +'</div>'
+        +'<button id="verify-pay-btn" onclick="startVerifyCheckout()" style="width:100%;padding:11px;background:#f59e0b;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit">&#9889; Pay R29 &amp; Submit Profile</button>'
+        +'<p style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px">Secure payment via Yoco. Your documents are already safely stored.</p>'
+        +'</div>';
+    }
     // ── PROFILE STATS: views, likes (always shown for approved driver) ──
     var _now=new Date().toISOString();
     var [_boostR,_pvLogR,_lkAllR]=await Promise.all([
@@ -10681,7 +10697,7 @@ async function incDecline(dpId){
 async function adReg(){
   var el=document.getElementById('ap-reg');
   el.innerHTML='<div class="adm-pg"><div class="ptitle">New Registrations</div></div>'+adSpin();
-  var dr=await sb.from('driver_profiles').select('*').in('status',['pending']).order('created_at',{ascending:false});
+  var dr=await sb.from('driver_profiles').select('*').in('status',['pending','pending_payment']).order('created_at',{ascending:false});
   var pDrvs=dr.data||[];
   var dUids=pDrvs.map(function(d){return d.user_id;});
   var dPr=dUids.length?await sb.from('profiles').select('id,full_name,email,phone,whatsapp,location,created_at').in('id',dUids):{data:[]};
@@ -15421,6 +15437,37 @@ async function startBoostCheckout(boostType, targetId){
   }
 }
 
+async function startVerifyCheckout(){
+  if(!U){toast('Please log in first.');return;}
+  var btn=document.getElementById('verify-pay-btn');
+  if(btn){btn.disabled=true;btn.textContent='Redirecting to payment…';}
+  try{
+    var siteUrl=window.location.origin+window.location.pathname;
+    var res=await fetch('/.netlify/functions/create-verify-checkout',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({user_id:U.id,site_url:siteUrl})
+    });
+    var data;
+    try{data=await res.json();}catch(je){
+      toast('Payment server returned an unexpected response. Please try again.');
+      if(btn){btn.disabled=false;btn.textContent='&#9889; Pay R29 & Submit Profile';}
+      return;
+    }
+    if(!res.ok||!data.redirectUrl){
+      toast(data.error||'Payment setup failed. Please try again.');
+      if(btn){btn.disabled=false;btn.textContent='&#9889; Pay R29 & Submit Profile';}
+      return;
+    }
+    try{localStorage.setItem('tm_pending_verify_checkout',data.checkoutId);}catch(e){}
+    window.location.href=data.redirectUrl;
+  }catch(e){
+    console.error('Verify checkout error:',e);
+    toast('Could not reach the payment server. Please check your connection and try again.');
+    if(btn){btn.disabled=false;btn.textContent='&#9889; Pay R29 & Submit Profile';}
+  }
+}
+
 // Called on page load — handles return from Yoco checkout
 async function handleBoostPaymentReturn(){
   var params=new URLSearchParams(window.location.search);
@@ -15429,12 +15476,17 @@ async function handleBoostPaymentReturn(){
   // Fallback: read checkoutId from localStorage if not in URL (Yoco may not append it)
   if(!checkoutId){try{checkoutId=localStorage.getItem('tm_pending_checkout');}catch(e){}}
   if(!paymentResult)return;
+  // Check if this is a verify-payment return (R29 fee) vs a boost return
+  var verifyCheckoutId=null;
+  try{verifyCheckoutId=localStorage.getItem('tm_pending_verify_checkout');}catch(e){}
+  var isVerify=verifyCheckoutId&&(checkoutId===verifyCheckoutId||!checkoutId);
+  if(isVerify&&!checkoutId)checkoutId=verifyCheckoutId;
   // Clean URL
   var cleanUrl=window.location.pathname;
   window.history.replaceState({},'',cleanUrl);
   if(paymentResult==='success'&&checkoutId){
     // Poll payment status — webhook may take a few seconds
-    toast('&#11088; Payment received! Verifying…');
+    toast(isVerify?'&#128179; Payment received! Submitting your profile…':'&#11088; Payment received! Verifying…');
     var attempts=0;
     var poll=setInterval(async function(){
       attempts++;
@@ -15443,17 +15495,22 @@ async function handleBoostPaymentReturn(){
         var d=await r.json();
         if(d.payment&&d.payment.payment_status==='paid'){
           clearInterval(poll);
-          try{localStorage.removeItem('tm_pending_checkout');}catch(e){}
-          toast('&#11088; Payment confirmed! Refreshing your dashboard…');
+          if(isVerify){
+            try{localStorage.removeItem('tm_pending_verify_checkout');}catch(e){}
+            toast('&#10003; Payment confirmed! Your profile has been submitted for review.');
+          } else {
+            try{localStorage.removeItem('tm_pending_checkout');}catch(e){}
+            toast('&#11088; Payment confirmed! Refreshing your dashboard…');
+          }
           setTimeout(function(){pOv();},1500);
         } else if(attempts>=12){
           clearInterval(poll);
-          toast('Payment confirmed — activating now. Refresh in a moment if needed.');
+          toast(isVerify?'Payment confirmed — your profile is being submitted. Refresh in a moment if needed.':'Payment confirmed — activating now. Refresh in a moment if needed.');
         }
       }catch(e){if(attempts>=12)clearInterval(poll);}
     },3000);
   } else if(paymentResult==='failed'){
-    toast('&#9888; Payment was unsuccessful. Your Boost has not been activated.');
+    toast(isVerify?'&#9888; Payment was unsuccessful. Please try again to complete your registration.':'&#9888; Payment was unsuccessful. Your Boost has not been activated.');
   } else if(paymentResult==='cancelled'){
     toast('Payment cancelled. You can try again anytime.');
   }

@@ -124,11 +124,17 @@ async function handlePaymentSucceeded(payload, sb) {
   if (!checkoutId) {
     // Last resort: look up by user_id from our metadata (we always set this)
     const userId = payload.payload?.metadata?.user_id || payload.metadata?.user_id;
+    const paymentType = payload.payload?.metadata?.payment_type || payload.metadata?.payment_type;
     if (!userId) {
       console.error('Cannot identify payment — no checkoutId or user_id in payload:', JSON.stringify(payload));
       return;
     }
     console.warn('No checkoutId found, falling back to user_id lookup:', userId);
+    if (paymentType === 'driver_verify') {
+      const { data: vp } = await sb.from('verify_payments').select('*').eq('user_id', userId).eq('payment_status', 'pending').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (!vp) { console.error('No pending verify payment for user_id:', userId); return; }
+      return activateVerify(vp, vp.yoco_checkout_id, yocoPayId, sb);
+    }
     const { data: fallbackPayment } = await sb
       .from('boost_payments')
       .select('*')
@@ -144,7 +150,22 @@ async function handlePaymentSucceeded(payload, sb) {
     return activateBoost(fallbackPayment, fallbackPayment.yoco_checkout_id, yocoPayId, sb);
   }
 
-  // ── Find the pending payment record ───────────────────────────
+  // ── Check verify_payments first ──────────────────────────────
+  const { data: verifyPayment } = await sb
+    .from('verify_payments')
+    .select('*')
+    .eq('yoco_checkout_id', checkoutId)
+    .maybeSingle();
+
+  if (verifyPayment) {
+    if (verifyPayment.payment_status === 'paid') {
+      console.log('Verify payment already processed:', checkoutId);
+      return;
+    }
+    return activateVerify(verifyPayment, checkoutId, yocoPayId, sb);
+  }
+
+  // ── Find the pending boost payment record ─────────────────────
   const { data: payment, error: fetchErr } = await sb
     .from('boost_payments')
     .select('*')
@@ -353,4 +374,55 @@ async function handlePaymentRefunded(payload, sb) {
     .eq('yoco_checkout_id', checkoutId);
 
   console.log('Boost deactivated due to refund:', checkoutId);
+}
+
+// ── Driver verification fee payment ───────────────────────────────────────────
+async function activateVerify(verifyPayment, checkoutId, yocoPayId, sb) {
+  const now = new Date().toISOString();
+
+  // Mark verify payment as paid
+  await sb
+    .from('verify_payments')
+    .update({ payment_status: 'paid', yoco_payment_id: yocoPayId, paid_at: now, updated_at: now })
+    .eq('yoco_checkout_id', checkoutId);
+
+  // Advance driver profile from pending_payment → pending
+  const { data: dp, error: dpErr } = await sb
+    .from('driver_profiles')
+    .update({ status: 'pending', verify_paid_at: now, updated_at: now })
+    .eq('user_id', verifyPayment.user_id)
+    .eq('status', 'pending_payment')
+    .select('user_id')
+    .maybeSingle();
+
+  if (dpErr) {
+    console.error('activateVerify: failed to advance driver status:', dpErr);
+    return;
+  }
+  if (!dp) {
+    console.warn('activateVerify: driver not in pending_payment state (already advanced?):', verifyPayment.user_id);
+    return;
+  }
+
+  // Fire admin notification email now that payment is confirmed
+  try {
+    const { data: prof } = await sb
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', verifyPayment.user_id)
+      .maybeSingle();
+
+    const name  = prof?.full_name || '';
+    const email = prof?.email     || '';
+
+    await fetch(`${process.env.URL || 'https://trustmatefleet.co.za'}/.netlify/functions/notify-docs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, role: 'driver', uid: verifyPayment.user_id }),
+    });
+  } catch (e) {
+    console.warn('activateVerify: admin notification failed (non-blocking):', e.message);
+  }
+
+  console.log('activateVerify: driver advanced to pending, admin notified:', verifyPayment.user_id);
 }
