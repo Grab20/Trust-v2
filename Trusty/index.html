@@ -4,17 +4,6 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
 <title>TrustMate - Driver & Owner Marketplace</title>
-
-<!-- PWA manifest & theme -->
-<link rel="manifest" href="/manifest.json"/>
-<meta name="theme-color" content="#1a5c28"/>
-<meta name="mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-capable" content="yes"/>
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<meta name="apple-mobile-web-app-title" content="TrustMate"/>
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png"/>
-<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png"/>
-<link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png"/>
 <!-- Google Analytics (GA4) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-43Y9FW8FMP"></script>
 <script>
@@ -23,7 +12,7 @@
   gtag('js', new Date());
   gtag('config', 'G-43Y9FW8FMP');
 </script>
-<script src="/js/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
@@ -651,17 +640,6 @@ nav div::-webkit-scrollbar{display:none}
 </head>
 <body>
 <div id="toast"></div>
-
-<!-- PWA Install Banner -->
-<div id="pwa-install-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#1a5c28;color:#fff;padding:14px 16px;display:none;align-items:center;gap:12px;box-shadow:0 -2px 12px rgba(0,0,0,.18)">
-  <img src="/icons/icon-192.png" style="width:40px;height:40px;border-radius:10px;flex-shrink:0" alt=""/>
-  <div style="flex:1;min-width:0">
-    <div style="font-weight:700;font-size:14px;line-height:1.3">Install TrustMate</div>
-    <div style="font-size:12px;opacity:.85;line-height:1.3">Add to home screen for faster access</div>
-  </div>
-  <button id="pwa-install-btn" style="background:#fff;color:#1a5c28;border:none;border-radius:7px;padding:8px 16px;font-weight:700;font-size:13px;cursor:pointer;flex-shrink:0;font-family:inherit">Install</button>
-  <button id="pwa-dismiss-btn" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:4px;flex-shrink:0;opacity:.7;line-height:1" aria-label="Dismiss">✕</button>
-</div>
 
 <!-- LIGHTBOX -->
 <div class="lbox" id="lbox" onclick="this.classList.remove('on')">
@@ -1934,7 +1912,7 @@ nav div::-webkit-scrollbar{display:none}
     <div style="font-size:17px;font-weight:800;color:var(--g);text-align:center;margin-bottom:6px">Confirm Unmatch</div>
     <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:16px">Are you sure you want to end this rental match? This cannot be undone.</p>
     <div class="fg" style="margin-bottom:16px">
-      <label id="unmatch-reason-label" style="font-size:12px;font-weight:600;color:var(--muted)">Reason for unmatching (optional)</label>
+      <label style="font-size:12px;font-weight:600;color:var(--muted)">Reason for unmatching (optional)</label>
       <textarea id="unmatch-reason-input" placeholder="e.g. Driver found another car, owner sold vehicle..." style="height:70px;resize:none"></textarea>
     </div>
     <div style="display:flex;gap:10px">
@@ -2330,6 +2308,15 @@ async function sendDriverEmail(type, driverProfileId) {
       body: JSON.stringify({type: type, driver_profile_id: driverProfileId})
     });
   } catch(e) { console.warn('Email notification failed', e); }
+}
+// ── Web Push helper (fire-and-forget, no await needed) ───────────────────────
+function sendPushToUser(userId, title, body, url, tag) {
+  if(!userId) return;
+  fetch('/.netlify/functions/send-push', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({user_id: userId, title: title, body: body, url: url||'/', tag: tag||'tm-general'})
+  }).catch(function(e){console.warn('Push notification failed (non-blocking):', e);});
 }
 // ── Brevo contact sync (fire-and-forget) ──────────────────────────────────
 function _brevoSync(userId, eventType) {
@@ -3533,8 +3520,6 @@ function _renderHomeGrid(){
     });
     if(_homeFilters.sort==='price_asc')items.sort(function(a,b){return (a.price_per_week||0)-(b.price_per_week||0);});
     else if(_homeFilters.sort==='price_desc')items.sort(function(a,b){return (b.price_per_week||0)-(a.price_per_week||0);});
-    // Available cars always before matched
-    items.sort(function(a,b){return (a.isMatched?1:0)-(b.isMatched?1:0);});
     var show=items.slice(0,limit);
     var signup=(!U&&items.length>limit)?_signupCard('&#128663;',items.length-limit):'';
     var html=show.map(carHTML).join('');
@@ -3551,8 +3536,6 @@ function _renderHomeGrid(){
     });
     if(_homeFilters.sort==='trust_desc')items2.sort(function(a,b){return ((b.trust_score||b.trustscore||0)-(a.trust_score||a.trustscore||0));});
     else if(_homeFilters.sort==='rentals_desc')items2.sort(function(a,b){return ((b.completed_rentals||b.rentals_completed||0)-(a.completed_rentals||a.rentals_completed||0));});
-    // Available drivers always before matched
-    items2.sort(function(a,b){return (a.isMatched?1:0)-(b.isMatched?1:0);});
     var show2=items2.slice(0,limit);
     var signup2=(!U&&items2.length>limit)?_signupCard('&#128100;',items2.length-limit):'';
     var html2=show2.map(drvHTML).join('');
@@ -3763,10 +3746,6 @@ async function _runCarsQuery(replace){
     try{res=await _execCarsQuery(0);}catch(e){console.error('cars fallback threw',e);}
     _carsQuery.sort=_savedCarsSort;
   }
-  // When showing all (no status filter), available cars come first, matched cars go to the bottom
-  if(!_carsQuery.status&&res.data.length){
-    res.data=res.data.slice().sort(function(a,b){return (a.isMatched?1:0)-(b.isMatched?1:0);});
-  }
   var grid=eid('cars-grid');
   var moreWrap=eid('cars-more-wrap');
   if(replace){
@@ -3855,10 +3834,6 @@ async function _runDriversQuery(replace){
     _drvsQuery.sort='score';
     try{res=await _execDriversQuery(0);}catch(e){console.error('drivers fallback query threw',e);}
     _drvsQuery.sort=_savedSort;
-  }
-  // When showing all (no status filter), available drivers come first, matched go to the bottom
-  if(!_drvsQuery.status&&res.data.length){
-    res.data=res.data.slice().sort(function(a,b){return (a.isMatched?1:0)-(b.isMatched?1:0);});
   }
   var grid=eid('drvs-grid');
   var moreWrap=eid('drvs-more-wrap');
@@ -4568,8 +4543,7 @@ async function _retryPendingCar(){
 }
 function completeOwnerReg(){
   // Pre-fill rRole and rEmail/rName/rPhone from current session so reg2o() can use them
-  // If already a driver → registering for both roles
-  rRole=(P&&(P.role==='driver'||P.role==='both'))?'both':'owner';
+  rRole='owner';
   if(P){rName=P.full_name||'';rEmail=P.email||'';rPhone=P.phone||rPhone;}
   go('register');
   setTimeout(function(){
@@ -4585,24 +4559,6 @@ function completeOwnerReg(){
     var waEl=eid('o-wa');if(waEl&&P&&P.whatsapp&&!waEl.value)waEl.value=P.whatsapp;
     var loEl=eid('o-lo');if(loEl&&P&&P.location&&!loEl.value)loEl.value=P.location;
     toast('Please complete your vehicle listing below.');
-  },200);
-}
-function completeDriverReg(){
-  // Allow an existing owner to add a driver account
-  if(P&&(P.role==='driver'||P.role==='both')){toast('You already have a driver account.');return;}
-  rRole=(P&&(P.role==='owner'||P.role==='both'))?'both':'driver';
-  if(P){rName=P.full_name||'';rEmail=P.email||'';rPhone=P.phone||rPhone;}
-  go('register');
-  setTimeout(function(){
-    setRole('driver');
-    eid('reg-s1')&&(eid('reg-s1').style.display='none');
-    eid('reg-s1-otp')&&(eid('reg-s1-otp').style.display='none');
-    eid('reg-s2-d')&&(eid('reg-s2-d').style.display='block');
-    eid('reg-s2-o')&&(eid('reg-s2-o').style.display='none');
-    var rs1=eid('rs1'),rs2=eid('rs2');
-    if(rs1){rs1.classList.remove('on');rs1.classList.add('done');}
-    if(rs2)rs2.classList.add('on');
-    toast('Please complete your driver registration below.');
   },200);
 }
 async function saveRegLater(){
@@ -5349,6 +5305,7 @@ async function initDash() {
   showMobNav();
   dpanel('ov');
   _idpOnboardingCheck();
+  dcpCheck();
 }
 function dpanel(name) {
   document.querySelectorAll('#page-dashboard .panel').forEach(function(p){p.classList.remove('on');});
@@ -6126,22 +6083,11 @@ async function pOv() {
     var settingsHtml='<div class="tbox" style="margin-top:14px">'
       +'<div class="shd">&#9881;&#65039; Settings</div>'
       +'<div style="display:flex;flex-direction:column;gap:8px">'
-      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'pr\')">&#128100; My Profile &amp; Documents</button>'
+      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'pr\')">&#128100; Edit My Profile &amp; Documents</button>'
       +(DP.status==='approved'?'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="dpanel(\'ap\')">&#128203; View My Applications</button>':'')
-      +(P.role==='driver'?'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="completeOwnerReg()">&#127968; Register as Owner</button>':'')
       +'<button class="btn btn-red btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px;font-weight:600" onclick="doSignOut()">&#128682; Sign Out</button>'
       +'</div></div>';
     html+=settingsHtml;
-  }
-  // Owner-only settings (no driver account)
-  if(U&&P&&P.role==='owner'){
-    var ownerSettingsHtml='<div class="tbox" style="margin-top:14px">'
-      +'<div class="shd">&#9881;&#65039; Settings</div>'
-      +'<div style="display:flex;flex-direction:column;gap:8px">'
-      +'<button class="btn btn-out btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px" onclick="completeDriverReg()">&#128663; Register as Driver</button>'
-      +'<button class="btn btn-red btn-w" style="text-align:left;justify-content:flex-start;gap:10px;padding:11px 14px;font-weight:600" onclick="doSignOut()">&#128682; Sign Out</button>'
-      +'</div></div>';
-    html+=ownerSettingsHtml;
   }
   el.innerHTML=html;
   // Load recommended drivers for owner (location + TrustScore based)
@@ -6581,9 +6527,14 @@ async function pPr() {
         +'<button class="btn btn-gm btn-w" onclick="saveDriverAddress()">&#128190; Save Address &amp; Parking</button>'
         +'</div>'
         +'<div class="tbox">'
-        +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#128196; My Documents</div>'
-        +'<p style="font-size:12px;color:var(--muted);margin-bottom:10px">Upload or update your verification documents.</p>'
-        +'<button class="btn btn-gm btn-w" onclick="dpanel(\'dc\')">&#128196; Go to Documents</button>'
+        +'<div style="font-size:13px;font-weight:700;color:var(--g);margin-bottom:4px">&#9998; Request Contact Edit</div>'
+        +'<p style="font-size:12px;color:var(--muted);margin-bottom:12px">Contact changes are reviewed by admin before going live. Your name can only be changed by admin.</p>'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">Phone</label><input id="pr-phone" value="'+esc(P.phone||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'<div><label style="font-size:10px;font-weight:600;color:var(--muted)">WhatsApp</label><input id="pr-wa" value="'+esc(P.whatsapp||'')+'" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit"/></div>'
+        +'</div>'
+        +'<div style="margin-bottom:8px"><label style="font-size:10px;font-weight:600;color:var(--muted)">Bio</label><textarea id="pr-bio" style="width:100%;padding:7px 9px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;height:64px;resize:vertical">'+(DP&&DP.bio||'')+'</textarea></div>'
+        +'<button class="btn btn-gm btn-w" onclick="submitProfileEdit()">&#128190; Submit for Review</button>'
         +'</div>';
     } else {
       // Owners: can edit name (goes through admin approval)
@@ -6730,11 +6681,6 @@ async function upDocItem(n,col,inp) {
   if(col==='pdp_url')DP.has_pdp=true;
   toast('Uploaded!'); pDc();
   sendDriverEmail('doc_uploaded', DP.id);
-  if(DP.status==='incomplete'||DP.status==='dormant'){
-    await sb.from('driver_profiles').update({status:'pending_docs'}).eq('id',DP.id);
-    DP.status='pending_docs';
-    sendDriverEmail('pending_docs_reminder', DP.id);
-  }
 }
 // Camera capture for headshot / holding-ID in driver docs panel
 function captureDocPhoto(n, col) {
@@ -6780,11 +6726,6 @@ async function snapDocPhoto(n, col) {
     await sb.from('driver_profiles').update(upd).eq('id', DP.id);
     DP[col] = url; toast('Photo captured & uploaded!'); pDc();
     sendDriverEmail('doc_uploaded', DP.id);
-    if(DP.status==='incomplete'||DP.status==='dormant'){
-      await sb.from('driver_profiles').update({status:'pending_docs'}).eq('id',DP.id);
-      DP.status='pending_docs';
-      sendDriverEmail('pending_docs_reminder', DP.id);
-    }
   }, 'image/jpeg', 0.9);
 }
 
@@ -9302,6 +9243,15 @@ async function subWeeklyUpdate() {
       });
       var _res=await _resp.json();
       if(!_resp.ok||_res.error)errors.push(checks[i].value);
+      // Directly increment payment counter if applicable (send-match-email doesn't handle trust_action type)
+      var _col=_paymentColMap[type];
+      if(_col&&_wuDpId){
+        var _dpRow=await sb.from('driver_profiles').select('id,'+_col).eq('id',_wuDpId).maybeSingle();
+        if(_dpRow.data){
+          var _upd={}; _upd[_col]=(_dpRow.data[_col]||0)+1;
+          await sb.from('driver_profiles').update(_upd).eq('id',_wuDpId);
+        }
+      }
     } catch(e){ errors.push(checks[i].value); }
   }
   if(errors.length){toast('Some updates failed. Please try again.');btn.disabled=false;btn.textContent='Submit Weekly Update';return;}
@@ -10471,6 +10421,7 @@ async function adPendingDocs(){
   var dPr=await sb.from('profiles').select('id,full_name,email,phone,location,created_at').in('id',dUids);
   var dpm={};(dPr.data||[]).forEach(function(p){dpm[p.id]=p;});
   var html='<div class="adm-pg"><div class="ptitle">Pending Documents</div>'
+    +'<button onclick="adPushIncompleteReminder(this)" style="margin-bottom:10px;padding:8px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#128276; Send Push Reminder to All</button>'
     +'<div style="margin-bottom:10px"><input id="adm-pdoc-q" type="text" placeholder="&#128269; Search name, email, location..." style="width:100%;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adPdocSearch()"/></div>'
     +'<div class="psub">'+allDocs.length+' driver'+(allDocs.length!==1?'s':'')+' awaiting document upload &amp; approval</div>';
   html+=allDocs.map(function(d){
@@ -10516,6 +10467,8 @@ async function adMoveToPendingDocs(dpId){
   var r=await sb.from('driver_profiles').update({status:'pending_docs'}).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   sendDriverEmail('incomplete_reminder',dpId);
+  var _pdUid=(r.data&&r.data[0]&&r.data[0].user_id)||null;
+  if(_pdUid) sendPushToUser(_pdUid,'Action required 📄','Please upload your documents to complete your TrustMate profile.','/?tab=dc','tm-pending-docs');
   toast('Moved to Pending Documents — reminder sent.');
   adReg();adOv();
 }
@@ -10535,6 +10488,7 @@ async function adInc(){
   var pm={};(pr.data||[]).forEach(function(p){pm[p.id]=p;});
   if(_incSort==='name'){dps.sort(function(a,b){var na=(pm[a.user_id]||{}).full_name||'';var nb=(pm[b.user_id]||{}).full_name||'';return na.localeCompare(nb);});}
   el.innerHTML='<div class="adm-pg"><div class="ptitle">Incomplete Registrations</div>'
+    +'<button onclick="adPushIncompleteReminder(this)" style="margin-bottom:10px;padding:8px 14px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">&#128276; Send Push Reminder to All</button>'
     +'<div style="display:flex;gap:8px;margin-bottom:10px">'
     +'<input id="adm-inc-q" type="text" placeholder="&#128269; Search name, email, location..." style="flex:1;padding:7px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit" oninput="adIncSearch()"/>'
     +'<select id="adm-inc-sort" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;font-family:inherit;background:var(--card)" onchange="adInc()">'
@@ -10711,8 +10665,10 @@ async function incPromote(dpId){
   adNav('reg');
 }
 async function incApprove(dpId){
-  await sb.from('driver_profiles').update({status:'approved',approved_at:new Date().toISOString()}).eq('id',dpId);
+  var r=await sb.from('driver_profiles').update({status:'approved',approved_at:new Date().toISOString()}).eq('id',dpId).select();
   sendDriverEmail('driver_approved', dpId);
+  var _uid=r.data&&r.data[0]&&r.data[0].user_id;
+  if(_uid) sendPushToUser(_uid,'You\'re approved! 🎉','Your TrustMate profile is now live. Start applying for vehicles.','/?tab=ap','tm-approved');
   toast('Approved! Welcome email sent.');adInc();
 }
 async function incDecline(dpId){
@@ -10968,9 +10924,10 @@ async function adSetDrv(dpId,status){
   if(r.error){toast('Error: '+r.error.message);if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   if(!r.data||!r.data.length){toast('Update blocked - check admin permissions');if(c){c.style.opacity='1';c.style.pointerEvents='auto';}return;}
   toast(status==='approved'?'Driver approved.':'Driver rejected. Rejection email sent.');
-  // Sync to Brevo using user_id from the driver_profiles row
   var _drvUserId=(r.data[0]&&r.data[0].user_id)||null;
   if(_drvUserId) _brevoSync(_drvUserId, 'driver_status_change');
+  if(_drvUserId&&status==='approved') sendPushToUser(_drvUserId,'You\'re approved! 🎉','Your TrustMate profile is now live. Start applying for vehicles.','/?tab=ap','tm-approved');
+  if(_drvUserId&&status==='rejected') sendPushToUser(_drvUserId,'Application update','Your application needs attention. Log in to see details.','/?tab=dc','tm-rejected');
   adReg();adPendingDocs();adOv();adDrv();adBnd();
 }
 async function adMoveToBN(dpId){
@@ -10985,6 +10942,7 @@ async function adMoveToBN(dpId){
   sendDriverEmail('driver_approved', dpId);
   var _drvUserId=(r.data[0]&&r.data[0].user_id)||null;
   if(_drvUserId) _brevoSync(_drvUserId,'driver_status_change');
+  if(_drvUserId) sendPushToUser(_drvUserId,'You\'re approved! 🎉','Your TrustMate profile is now live. Start applying for vehicles.','/?tab=ap','tm-approved');
   toast('Moved to B/N. Driver approved and welcome email sent.');
   adReg();adBnd();adOv();adDrv();
 }
@@ -10999,14 +10957,25 @@ async function adSetOwner(pid,status){
   if(status==='approved'){
     var carR=await sb.from('cars').update({admin_status:'approved'}).eq('owner_id',pid).eq('admin_status','pending');
     if(carR.error){console.error('Car approval error (non-blocking):',carR.error);}
+    sendPushToUser(pid,'You\'re approved! 🎉','Your TrustMate owner account is live. Start browsing drivers now.','/?tab=br','tm-owner-approved');
     toast('Owner and vehicles approved!');
   } else {
+    sendPushToUser(pid,'Account update','Your application needs attention. Log in for details.','/','tm-owner-rejected');
     toast('Owner declined');
   }
   _brevoSync(pid, 'owner_status_change');
   adReg();adOv();adOwn();
 }
 
+async function adPushIncompleteReminder(btn){
+  if(btn){btn.disabled=true;btn.textContent='Sending...';}
+  try{
+    var r=await fetch('/.netlify/functions/remind-incomplete-drivers?secret='+(window._setupSecret||'trustmate-setup-2026'));
+    var data=await r.json();
+    toast('Push sent to '+data.sent+' driver'+(data.sent!==1?'s':'')+' ('+(data.failed||0)+' failed).');
+  }catch(e){toast('Failed to send reminders: '+e.message);}
+  if(btn){btn.disabled=false;btn.textContent='&#128276; Send Push Reminder to All';}
+}
 async function adMoveIncomplete(type,id){
   var c=document.getElementById((type==='drv'?'rc-':'ro-')+id);
   if(c){c.style.opacity='.3';c.style.pointerEvents='none';}
@@ -12372,15 +12341,16 @@ async function adMatchDriverModal(driverUserId, driverName){
   document.getElementById('admin-match-modal').style.display='flex';
   try{
     var carsR=await sb.from('cars')
-      .select('id,owner_id,make,model,year,color,location,price_per_week,photo_front_url,profiles!owner_id(id,full_name,email,phone)')
-      .eq('admin_status','approved').neq('status','removed').limit(200);
-    // Admin override: show all approved available cars regardless of existing applications.
-    // Owner-level blocking was hiding cars when a driver had any pending request from that owner.
-    var cars=(carsR.data||[]);
+      .select('id,owner_id,make,model,year,color,location,price_per_week,photo_front_url,profiles(id,full_name,email,phone)')
+      .eq('admin_status','approved').eq('status','available').limit(200);
+    var existAppR=await sb.from('applications').select('car_id,owner_id').eq('driver_id',driverUserId).in('status',['pending','approved']);
+    var alreadyCarIds=new Set((existAppR.data||[]).map(function(a){return a.car_id;}));
+    var alreadyOwnerIds=new Set((existAppR.data||[]).map(function(a){return a.owner_id;}));
+    var cars=(carsR.data||[]).filter(function(c){return !alreadyCarIds.has(c.id)&&!alreadyOwnerIds.has(c.owner_id);});
     if(!cars.length){listEl.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">No available cars to match with.</div>';return;}
     listEl.innerHTML=cars.map(function(c){
       var owner=c.profiles||{};
-      return '<div class="rcard" style="margin:0;border-radius:10px" data-hay="'+((owner.full_name||'')+' '+(owner.email||'')+' '+(c.location||'')).toLowerCase()+'">'
+      return '<div class="rcard" style="margin:0;border-radius:10px" data-hay="'+(owner.full_name+' '+owner.email+' '+c.location).toLowerCase()+'">'
         +'<div style="display:flex;gap:10px;align-items:center;padding:10px 12px">'
         +(c.photo_front_url?'<img src="'+imgUrl(c.photo_front_url,80,60)+'" style="width:64px;height:48px;object-fit:cover;border-radius:7px"/>':'<div style="width:64px;height:48px;background:var(--cream);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:20px">&#128663;</div>')
         +'<div style="flex:1">'
@@ -12408,8 +12378,7 @@ async function adDoMatch(carId,ownerUserId,btn){
   try{
     var r=await sb.from('applications').insert({
       driver_id:_adMatchDrvUid,owner_id:ownerUserId,car_id:carId,
-      status:'approved',initiated_by:'admin',message:'Admin manual match',
-      matched_at:new Date().toISOString()
+      status:'approved',initiated_by:'admin',message:'Admin manual match'
     }).select('id').maybeSingle();
     if(r.error)throw r.error;
     toast('Matched! Refreshing…');
@@ -14840,52 +14809,42 @@ async function adSaveTrustScore(dpId){
   if(isNaN(score)||score<0||score>100){toast('Trust score must be between 0 and 100.');return;}
   var r=await sb.from('driver_profiles').update({trust_score:score}).eq('id',dpId).select();
   if(r.error){toast('Error: '+r.error.message);return;}
-  if(!r.data||!r.data.length){toast('Save failed - check admin permissions');return;}
+  if(!r.data||!r.data.length){
+    var chk=await sb.from('driver_profiles').select('trust_score').eq('id',dpId).maybeSingle();
+    if(chk.data&&chk.data.trust_score===score){toast('Trust score updated to '+score+'!');}
+    else{toast('Save failed — check admin permissions');}
+    return;
+  }
+  var saved=r.data[0]&&r.data[0].trust_score;
+  if(saved!==score){toast('Warning: DB returned score '+saved+' — please try again.');return;}
+  el.value=score;
+  var _tsUid=r.data[0]&&r.data[0].user_id;
+  if(_tsUid) sendPushToUser(_tsUid,'Your TrustScore was updated','Your new TrustMate TrustScore is '+score+'. Log in to see your profile.','/?tab=ov','tm-trustscore');
   toast('Trust score updated to '+score+'!');
 }
-var _unmatchAid=null,_unmatchRole=null,_unmatchReasonRequired=false;
+var _unmatchAid=null,_unmatchRole=null;
 function ownerUnmatch(aidOrBtn){
   var aid=typeof aidOrBtn==='string'?aidOrBtn:(aidOrBtn&&aidOrBtn.dataset&&aidOrBtn.dataset.aid?aidOrBtn.dataset.aid:String(aidOrBtn));
   if(!aid||aid==='[object Object]'){toast('Could not identify application.');return;}
-  _unmatchAid=aid; _unmatchRole='owner'; _unmatchReasonRequired=false;
+  _unmatchAid=aid; _unmatchRole='owner';
   var inp=document.getElementById('unmatch-reason-input');if(inp)inp.value='';
-  var lbl=document.getElementById('unmatch-reason-label');if(lbl)lbl.textContent='Reason for unmatching (optional)';
   openModal('unmatch-modal');
 }
-async function driverUnmatch(aid){
+function driverUnmatch(aid){
   if(!aid){toast('Could not identify application.');return;}
-  _unmatchAid=aid; _unmatchRole='driver'; _unmatchReasonRequired=false;
+  _unmatchAid=aid; _unmatchRole='driver';
   var inp=document.getElementById('unmatch-reason-input');if(inp)inp.value='';
-  var lbl=document.getElementById('unmatch-reason-label');
-  if(lbl)lbl.textContent='Reason for unmatching (optional)';
   openModal('unmatch-modal');
-  // Check if match is older than 7 days — if so, reason becomes mandatory
-  try{
-    var appR=await sb.from('applications').select('matched_at,created_at').eq('id',aid).maybeSingle();
-    var matchDate=appR.data&&(appR.data.matched_at||appR.data.created_at);
-    if(matchDate){
-      var ageMs=Date.now()-new Date(matchDate).getTime();
-      if(ageMs>7*24*3600*1000){
-        _unmatchReasonRequired=true;
-        if(lbl)lbl.textContent='Reason for unmatching (required — match is over 7 days old)';
-        if(lbl)lbl.style.color='#dc2626';
-      }
-    }
-  }catch(e){}
 }
 async function execUnmatch(){
   var aid=_unmatchAid,role=_unmatchRole;
   if(!aid){toast('No application selected.');return;}
-  var reason=((document.getElementById('unmatch-reason-input')||{}).value||'').trim();
-  if(_unmatchReasonRequired&&!reason){
-    toast('Please provide a reason — this match is over 7 days old.');
-    return;
-  }
+  var reason=(document.getElementById('unmatch-reason-input')||{}).value||'';
   var btn=document.getElementById('unmatch-confirm-btn');
   if(btn){btn.disabled=true;btn.textContent='Unmatching...';}
   // Fetch driver_id before update for rentals counter
   var appR=await sb.from('applications').select('driver_id').eq('id',aid).maybeSingle();
-  var r=await sb.from('applications').update({unmatched_at:new Date().toISOString(),unmatched_by:role,unmatch_reason:reason||null}).eq('id',aid);
+  var r=await sb.from('applications').update({unmatched_at:new Date().toISOString(),unmatched_by:role,unmatch_reason:reason.trim()||null}).eq('id',aid);
   if(btn){btn.disabled=false;btn.textContent='&#128683; Unmatch';}
   if(r.error){toast('Error unmatching: '+r.error.message);return;}
   // Increment rentals_completed for driver
@@ -15329,18 +15288,12 @@ async function loadBoostPage(){
     +'<div style="font-size:12px;color:var(--muted)">Premium visibility for faster matches</div></div>'
     +'</div>';
   if(isD){
-    var [bR,likeR,appR,matchR,dpBNR,entR,bnPayR]=await Promise.all([
+    var [bR,likeR,appR,matchR]=await Promise.all([
       sb.from('boosts').select('id,start_at,end_at,profile_views,impressions').eq('type','driver').eq('target_id',U.id).eq('status','active').lte('start_at',now).gte('end_at',now).maybeSingle(),
       sb.from('shortlisted_drivers').select('id').eq('driver_id',U.id),
       sb.from('applications').select('id').eq('driver_id',U.id),
-      sb.from('applications').select('id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle(),
-      sb.from('driver_profiles').select('uber_trips,bolt_trips,indrive_trips,self_uber_trips,self_bolt_trips,self_indride_trips').eq('user_id',U.id).maybeSingle(),
-      sb.from('bn_entitlements').select('id,expires_at').eq('driver_id',U.id).eq('status','active').gte('expires_at',now).order('expires_at',{ascending:false}).limit(1).maybeSingle(),
-      sb.from('boost_payments').select('id,paid_at,boost_expires_at,amount_cents').eq('user_id',U.id).eq('boost_type','bn_application').eq('payment_status','paid').order('paid_at',{ascending:false}).limit(1).maybeSingle()
+      sb.from('applications').select('id').eq('driver_id',U.id).eq('status','approved').is('unmatched_at',null).maybeSingle()
     ]);
-    // Detect BN driver (no trip counts on any platform)
-    var dpBN=dpBNR.data||{};
-    var isBNDriver=!parseInt(dpBN.uber_trips||0)&&!parseInt(dpBN.bolt_trips||0)&&!parseInt(dpBN.indrive_trips||0)&&!parseInt(dpBN.self_uber_trips||0)&&!parseInt(dpBN.self_bolt_trips||0)&&!parseInt(dpBN.self_indride_trips||0);
     var b=bR.data;
     var likes=(likeR.data||[]).length, appsSent=(appR.data||[]).length, matches=matchR.data?1:0;
     html+='<div style="background:linear-gradient(135deg,#fffbef,#fff8e1);border:2px solid #f59e0b;border-radius:16px;padding:22px;margin-bottom:18px">'
@@ -15374,31 +15327,6 @@ async function loadBoostPage(){
         +'<button class="btn btn-gm" style="width:100%;padding:14px;font-size:15px;font-weight:800" onclick="startBoostCheckout(\'driver\',\''+esc(U.id)+'\')">&#128640; Boost My Profile — R49 / 7 days</button>';
     }
     html+='</div>';
-    // ── Extenda section (BN drivers only, internal — no B/N label shown) ─
-    if(isBNDriver){
-      var extActive=entR.data;
-      var extPay=bnPayR.data;
-      html+='<div style="background:linear-gradient(135deg,#eff6ff,#fff);border:2px solid #3b82f6;border-radius:16px;padding:22px;margin-bottom:18px">'
-        +'<div style="font-size:13px;font-weight:800;color:#1d4ed8;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">&#128640; Extenda — Application Extender</div>'
-        +'<div style="font-size:13px;color:#374151;margin-bottom:14px">Send more applications per week to find your perfect match faster.</div>';
-      if(extActive){
-        var eDaysLeft=Math.max(0,Math.ceil((new Date(extActive.expires_at)-new Date())/86400000));
-        html+='<div style="background:#dbeafe;border-radius:10px;padding:12px 14px;margin-bottom:10px">'
-          +'<div style="font-size:13px;font-weight:700;color:#1d4ed8;margin-bottom:2px">&#10003; Extenda Active</div>'
-          +'<div style="font-size:12px;color:#1e40af">'+eDaysLeft+' day'+(eDaysLeft!==1?'s':'')+' remaining · Expires '+new Date(extActive.expires_at).toLocaleDateString('en-ZA',{day:'2-digit',month:'short',year:'numeric'})+'</div>'
-          +'</div>';
-        if(extPay){
-          html+='<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Last purchase: '+fmtD(extPay.paid_at)+' · R'+(extPay.amount_cents/100).toFixed(2)+'</div>';
-        }
-        html+='<button class="btn" style="width:100%;padding:11px;font-size:13px;font-weight:700;background:#3b82f6;color:#fff;border-color:#3b82f6" onclick="startBoostCheckout(\'bn_application\',\''+esc(U.id)+'\')">&#128640; Extend Again</button>';
-      } else {
-        html+='<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">'
-          +['&#128203; Send more applications per week','&#11088; Higher chance of finding the right match','&#9889; Get matched faster with more exposure'].map(function(f){return '<div style="display:flex;align-items:center;gap:10px"><span style="flex-shrink:0;width:22px;height:22px;border-radius:50%;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#1d4ed8">&#10003;</span><span style="font-size:13px;color:var(--g)">'+f+'</span></div>';}).join('')
-          +'</div>'
-          +'<button class="btn" style="width:100%;padding:14px;font-size:15px;font-weight:800;background:#3b82f6;color:#fff;border-color:#3b82f6" onclick="startBoostCheckout(\'bn_application\',\''+esc(U.id)+'\')">&#128640; Get Extenda — R49 / 30 days</button>';
-      }
-      html+='</div>';
-    }
   }
   if(isO){
     var carsR=await sb.from('cars').select('id,make,model,year,photo_front_url').eq('owner_id',U.id).neq('status','removed');
@@ -15666,10 +15594,10 @@ async function adCamp(){
     '',
     'Getting matched quickly means getting on the road and earning sooner. TrustBoost gives you that edge.',
     '',
-    'Activate TrustBoost now: https://trustmate.co.za',
+    'Activate TrustBoost now: https://trustmatefleet.co.za',
     '',
     '— The TrustMate Team',
-    'trustmate.co.za',
+    'trustmatefleet.co.za',
   ].join('\n');
 
   el.innerHTML='<div class="adm-pg">'
@@ -15854,128 +15782,6 @@ function mobActive(id){}
   var _waPoll=setInterval(function(){if(window.P){toggleWaBtn();clearInterval(_waPoll);}},2000);
   document.addEventListener('trustmate-auth',toggleWaBtn);
 })();
-</script>
-<script>
-// ── PWA: Install prompt ───────────────────────────────────────────────────────
-(function () {
-  var deferredPrompt = null;
-  var banner = document.getElementById('pwa-install-banner');
-  var installBtn = document.getElementById('pwa-install-btn');
-  var dismissBtn = document.getElementById('pwa-dismiss-btn');
-
-  // Don't show if already installed or user dismissed within 7 days
-  function shouldShow() {
-    if (window.matchMedia('(display-mode: standalone)').matches) return false;
-    if (window.navigator.standalone) return false; // iOS standalone
-    try {
-      var last = localStorage.getItem('pwa_banner_dismissed');
-      if (last && Date.now() - parseInt(last) < 7 * 86400000) return false;
-    } catch (e) {}
-    return true;
-  }
-
-  window.addEventListener('beforeinstallprompt', function (e) {
-    e.preventDefault();
-    deferredPrompt = e;
-    if (shouldShow() && banner) {
-      banner.style.display = 'flex';
-    }
-  });
-
-  if (installBtn) {
-    installBtn.addEventListener('click', function () {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(function (result) {
-        if (result.outcome === 'accepted') {
-          banner.style.display = 'none';
-          try { localStorage.setItem('pwa_installed', '1'); } catch(e) {}
-        }
-        deferredPrompt = null;
-      });
-    });
-  }
-
-  if (dismissBtn) {
-    dismissBtn.addEventListener('click', function () {
-      banner.style.display = 'none';
-      try { localStorage.setItem('pwa_banner_dismissed', Date.now().toString()); } catch(e) {}
-    });
-  }
-
-  // Handle navigation messages from SW (push notification click)
-  navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', function (e) {
-    if (e.data && e.data.type === 'PUSH_NAV' && e.data.url) {
-      var hash = e.data.url.replace(/^.*#/, '');
-      if (hash && typeof go === 'function') go(hash);
-    }
-  });
-})();
-
-// ── PWA: Push notification subscription ──────────────────────────────────────
-var VAPID_PUBLIC_KEY = 'BBt_ZDd_QaMS_CrjysWAnUQ0US8m15ISEVRItyW6nqP_Qb-LVhmvc_dYNeRWk6oLZWTZ2BcztDqM6U0TRiS4hqU';
-
-function urlBase64ToUint8Array(base64String) {
-  var padding = '='.repeat((4 - base64String.length % 4) % 4);
-  var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  var rawData = window.atob(base64);
-  var arr = new Uint8Array(rawData.length);
-  for (var i = 0; i < rawData.length; i++) arr[i] = rawData.charCodeAt(i);
-  return arr;
-}
-
-async function subscribeToPush() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (!window.U || !window.sb) return; // not logged in yet
-
-  try {
-    var reg = await navigator.serviceWorker.ready;
-    var existing = await reg.pushManager.getSubscription();
-
-    // Save subscription to Supabase (upsert by endpoint)
-    async function saveSubscription(sub) {
-      var json = sub.toJSON();
-      var ua = navigator.userAgent.slice(0, 200);
-      await window.sb.from('push_subscriptions').upsert({
-        user_id:   window.U.id,
-        endpoint:  json.endpoint,
-        p256dh:    json.keys.p256dh,
-        auth:      json.keys.auth,
-        user_agent: ua,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'endpoint' });
-    }
-
-    if (existing) { await saveSubscription(existing); return; }
-
-    // Request permission then subscribe
-    var perm = await Notification.requestPermission();
-    if (perm !== 'granted') return;
-
-    var sub = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
-    await saveSubscription(sub);
-  } catch (e) {
-    console.warn('Push subscription failed:', e);
-  }
-}
-
-// Trigger push subscription after login
-document.addEventListener('trustmate-auth', function () {
-  // Small delay so U and sb are definitely set
-  setTimeout(subscribeToPush, 2000);
-});
-
-// ── PWA: Service worker registration ─────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/sw.js').catch(function (e) {
-      console.warn('SW registration failed:', e);
-    });
-  });
-}
 </script>
 </body>
 </html>
